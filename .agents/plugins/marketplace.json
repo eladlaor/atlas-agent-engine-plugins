@@ -1,0 +1,32 @@
+{
+  "name": "atlas-agent-engine-plugins",
+  "interface": {
+    "displayName": "Atlas Agent Engine Plugins"
+  },
+  "plugins": [
+    {
+      "name": "aae",
+      "source": {
+        "source": "local",
+        "path": "./plugins/aae"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "aae-docs-watch",
+      "source": {
+        "source": "local",
+        "path": "./plugins/aae-docs-watch"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

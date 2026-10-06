@@ -1,0 +1,26 @@
+{
+  "name": "aae",
+  "version": "0.2.0",
+  "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex), skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
+  "author": {
+    "name": "Elad Laor"
+  },
+  "homepage": "https://github.com/eladlaor/atlas-agent-engine-plugins",
+  "repository": "https://github.com/eladlaor/atlas-agent-engine-plugins",
+  "license": "MIT",
+  "keywords": [
+    "mongodb",
+    "atlas",
+    "agent-engine",
+    "agentengine",
+    "langgraph"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Atlas Agent Engine",
+    "shortDescription": "MongoDB Atlas Agent Engine toolkit",
+    "developerName": "Elad Laor",
+    "category": "Developer Tools",
+    "websiteURL": "https://github.com/eladlaor/atlas-agent-engine-plugins"
+  }
+}

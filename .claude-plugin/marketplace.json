@@ -1,0 +1,48 @@
+{
+  "name": "atlas-agent-engine-plugins",
+  "owner": {
+    "name": "Elad Laor",
+    "email": "eladlaor88@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code and Codex plugins for MongoDB Atlas Agent Engine."
+  },
+  "plugins": [
+    {
+      "name": "aae",
+      "source": "./plugins/aae",
+      "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex), skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Elad Laor"
+      },
+      "license": "MIT",
+      "category": "developer-tools",
+      "tags": [
+        "mongodb",
+        "atlas",
+        "agent-engine",
+        "agentengine",
+        "langgraph"
+      ]
+    },
+    {
+      "name": "aae-docs-watch",
+      "source": "./plugins/aae-docs-watch",
+      "description": "Detects when MongoDB Atlas Agent Engine documentation pages change, by content hashing, and tells you once at session start, with per-page diffs. Built for a Public Preview product whose docs move weekly.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Elad Laor"
+      },
+      "license": "MIT",
+      "category": "developer-tools",
+      "tags": [
+        "mongodb",
+        "atlas",
+        "agent-engine",
+        "docs-watch",
+        "changelog"
+      ]
+    }
+  ]
+}
