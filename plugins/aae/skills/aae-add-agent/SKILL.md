@@ -83,14 +83,30 @@ Read `slug`, `module` and `agent_dir` from the JSON. **Do not reconstruct them.*
 nothing remote. Without `--llm` and with `--yes` it may still prompt, so pass
 `--llm` (use `custom` if the user has no preference) and close stdin.
 
+Copy it **with exclusions**, the same way the `--from` path below does. A plain
+`cp -R` takes the scratch project's `.git` and `project-config.yaml` with it, and
+both are actively harmful here:
+
 ```bash
-cp -R "<agent_dir>" agents/<slug>
+rsync -a --exclude .git --exclude project-config.yaml \
+  "<agent_dir>/" agents/<slug>/
 rm -rf "$scratch"
 ```
 
-Throw away the scratch project's `project-config.yaml` and `.git`. The monorepo
-already has a `project-config.yaml` at its root, and memory configuration is
-project-wide.
+The monorepo already has a `project-config.yaml` at its root, and memory
+configuration is project-wide, so a second one under the agent silently competes
+with it — for a single-agent `dev up` the CLI uses the *nearest* one at or above
+the agent directory, so the per-agent copy wins, while `--all` reads only the
+root's. The two modes then disagree about the same agent.
+
+The nested `.git` is the worse one: git treats `agents/<slug>` as an embedded
+repository, so nothing inside it is tracked by the monorepo and `git status` shows
+one bare directory entry instead of the new files. Verify before moving on:
+
+```bash
+find agents/<slug> -name .git            # must print nothing
+git add -n agents/<slug> | head          # must NOT say "adding embedded git repository"
+```
 
 ### `--from <agent>`: copy a sibling
 
@@ -187,6 +203,13 @@ Leave committing to the user unless they asked for it.
   a 404 `not_found_error`. Check `src/<module>/llm.py` before the first `dev up`.
 - **A gateway reachable from your laptop may be unreachable from a deployed
   sandbox.** Local `dev up` success proves nothing about it.
+- **Copy agent folders with exclusions, never a bare `cp -R`.** `agentengine
+  create` runs `git init` in its scratch directory, so a plain copy carries a
+  nested `.git` into the monorepo and every file under the new agent silently goes
+  untracked. The same applies in reverse when removing an agent: `git rm -r` drops
+  only tracked files and leaves `.env`, lockfiles and caches behind with a clean
+  `git status`. Both directions need an explicit check — `find`/`git clean -nxd`
+  after a removal, `find … -name .git` after a copy.
 
 ## Handing off
 
