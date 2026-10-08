@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-08
+
+### Added
+
+- `aae-scout` agent in the `aae` plugin (a subagent in Claude Code, a skill in Codex). It
+  checks that the AAE docs and CLI are current, then checks whether the platform, CLI,
+  SDK, official examples, or the user's own work already provide what is about to be
+  built. It returns CONFIGURE, REUSE, WAIT, or BUILD with dated evidence, and keeps a
+  list of recurring needs that could become plugin utilities.
+- Contribution ideas 2–4: a scheduled-invoke helper, a fleet spec kit (agent spec cards
+  plus an A2A message contract), and a golden-set evaluation harness.
+- Behaviour spec FR-17 to FR-19 and AC-13 to AC-15 for `aae-scout`.
+- AAE Watch design: a section on the deployed watcher that will share its detection logic.
+
 ## [0.2.0] - 2026-10-06
 
 First release as a standalone repository. Earlier history lives in the `aae` plugin of
@@ -38,5 +52,6 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/releases/tag/v0.2.0

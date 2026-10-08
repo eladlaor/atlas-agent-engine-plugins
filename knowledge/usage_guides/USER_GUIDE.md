@@ -5,6 +5,7 @@
 - [How do I type `ae` instead of `agentengine`?](#how-do-i-type-ae-instead-of-agentengine)
 - [Why a symlink instead of a shell alias?](#why-a-symlink-instead-of-a-shell-alias)
 - [How do I know when the AAE docs change?](#how-do-i-know-when-the-aae-docs-change)
+- [How do I check I'm not rebuilding something AAE already does?](#how-do-i-check-im-not-rebuilding-something-aae-already-does)
 - [How does change detection actually work?](#how-does-change-detection-actually-work)
 - [Why does it crawl every page instead of checking a timestamp?](#why-does-it-crawl-every-page-instead-of-checking-a-timestamp)
 - [How do I schedule the check?](#how-do-i-schedule-the-check)
@@ -122,6 +123,26 @@ so it does not repeat in every future session.
 
 You can also ask at any time: *"check the AAE docs"* invokes the `aae-docs-watch`
 skill, which runs the watcher and explains the diff.
+
+## How do I check I'm not rebuilding something AAE already does?
+
+Ask **`aae-scout`** before you build: "does AAE already let me X?" or "before we build X…".
+It first confirms the docs and CLI are current. Then it searches, in order: the platform
+docs, the CLI's `--help`, the SDK and its upcoming-changes notes, the official examples
+repo, and your own repo and plugins. It answers with one verdict:
+
+- **CONFIGURE**: AAE does it; here's the setting.
+- **REUSE**: it exists; here's where.
+- **WAIT**: it's coming; here's the evidence and a minimal stopgap.
+- **BUILD**: nothing exists; here's everywhere it looked.
+
+**The misunderstanding to avoid:** treating "I couldn't find it" as "it doesn't exist".
+A BUILD verdict always lists the sources searched and the date, so you can judge whether
+the absence is real. When the docs later change, the scout rechecks earlier BUILD and WAIT
+verdicts, because a workaround the platform has made obsolete is debt you don't know you
+have.
+
+It needs `aae-docs-watch` installed for the freshness check, and it never changes anything.
 
 ## How does change detection actually work?
 

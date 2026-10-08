@@ -23,7 +23,7 @@ a model of the product that was correct last week.
 
 | Plugin | Contents |
 |---|---|
-| **`aae`** | `aae-guide`, the AAE specialist: the runtime model, the agent contract, config, and the known failure modes. It checks the live docs before asserting any API detail. Plus skills: **`aae-add-agent`** adds an agent to an existing AAE monorepo, because `agentengine create` only scaffolds whole new projects. **`aae-delete-agent`** tears one down completely, because `workspace delete` alone leaves secrets, sessions and the database user behind. |
+| **`aae`** | `aae-guide`, the AAE specialist: the runtime model, the agent contract, config, and the known failure modes. It checks the live docs before asserting any API detail. **`aae-scout`**, a cheap first check to run before building anything on AAE: it confirms the docs and CLI are current, then checks whether the platform, CLI, SDK, official examples or your own repo already do what you're about to build. It answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence, and keeps a list of recurring needs worth turning into plugin utilities. Plus skills: **`aae-add-agent`** adds an agent to an existing AAE monorepo, because `agentengine create` only scaffolds whole new projects. **`aae-delete-agent`** tears one down completely, because `workspace delete` alone leaves secrets, sessions and the database user behind. |
 | **`aae-docs-watch`** | Detects AAE documentation changes by hashing every page's markdown, shows per-page diffs, and tells you once at session start when something moved. |
 
 They are separate so you can take the guide and skills without anything running at
@@ -55,6 +55,8 @@ it and you get no notices.
 |---|---|---|
 | `aae-guide` | A **subagent**: runs in its own context window, on its own model, and Claude delegates to it | A **skill**: the same instructions, loaded into your main conversation |
 | `aae-guide` memory across sessions | Yes: a per-user memory directory it reads and writes | **No** |
+| `aae-scout` | A **subagent** (runs on a smaller model, to stay cheap), with memory for its verdict and utility-candidate lists | A **skill**: same instructions; the lists appear in the answer instead of being saved |
+| `aae-scout` freshness gate | Reads the `aae-docs-watch` state; needs that plugin installed | Same |
 | `aae-add-agent`, `aae-delete-agent`, `aae-docs-watch` skills | Yes | Yes, the same files |
 | Session-start notice that the docs changed | Runs automatically | Runs **only after you trust the hook**, and again after each update that changes it |
 | Scheduled nightly docs crawl | Opt-in, via macOS `launchd` | Same: opt-in, via macOS `launchd` |

@@ -3,6 +3,9 @@
 - [Summary](#summary)
 - [How to use this file](#how-to-use-this-file)
 - [1. An add-on agent-orchestration supervisor for AAE](#1-an-add-on-agent-orchestration-supervisor-for-aae)
+- [2. A scheduled-invoke helper](#2-a-scheduled-invoke-helper)
+- [3. A fleet spec kit: agent spec cards plus an A2A message contract](#3-a-fleet-spec-kit-agent-spec-cards-plus-an-a2a-message-contract)
+- [4. A golden-set evaluation harness for AAE agents](#4-a-golden-set-evaluation-harness-for-aae-agents)
 
 ## Summary
 
@@ -11,7 +14,10 @@ recorded with the observation that motivated it. An idea earns a place here when
 names a **specific gap** — something the platform demonstrably does not do — rather
 than a general wish.
 
-Current list: one idea, below.
+Current list: four ideas. Ideas 2–4 came out of planning a multi-agent fleet on AAE
+(2026-10-06 to 2026-10-08). That fleet is also the intended proving ground for idea 1.
+New candidates are collected by the `aae-scout` agent (in its `UTILITY_CANDIDATES.md`
+memory file) and promoted here once they meet the bar above.
 
 ## How to use this file
 
@@ -114,3 +120,94 @@ Derived from the A2A and agent-contract documentation reviewed 2026-10-05, plus 
 not work" — is an **inference from the absence** of any multi-agent workflow object
 in the platform. It is well supported, but it is an absence argument: if AAE ships a
 workflow primitive, this idea's premise disappears. Re-check before building.
+
+---
+
+## 2. A scheduled-invoke helper
+
+**Status:** idea, unbuilt. Recorded 2026-10-08.
+
+### What's the gap?
+
+AAE has no way to run an agent on a schedule. The docs index (checked 2026-10-06) has no
+scheduling, cron, or trigger page. An agent runs only when something calls its invoke
+endpoint. Everyone who wants a daily or nightly agent writes the same small script around
+an external scheduler (cron, launchd, a cloud function, CI):
+
+1. `POST /api/v1/oauth/token` with a service account, `grant_type=client_credentials`.
+   Tokens last 1 hour and are rate-limited (`429`), so fetch one per run.
+2. `POST /api/v1/projects/{project_id}/workspaces/{workspace_id}/invoke`, with a dated
+   `X-Session-ID` so a rerun on the same day reuses one sandbox pair.
+
+Two complications are easy to miss:
+
+- **A paused Atlas cluster makes invoke return `503` while `agentengine status` still
+  reports healthy.** A scheduled job on an auto-pausing cluster has to start the cluster,
+  wait until it really accepts connections, and retry `503` within a time limit.
+- **Silence looks like success.** If the agent never starts, nothing reports it. The
+  scheduler itself has to alert on any response other than 2xx.
+
+### The proposal
+
+A script (plus a skill that explains it) that takes a project, workspace, message, and
+service-account credentials from the host's secret store. Optionally it starts a named
+Atlas cluster first. It retries `503` with backoff up to a limit, and exits non-zero with
+the execution ID on failure. It works the same from cron, launchd, or a cloud scheduler.
+
+### Evidence
+
+`deploy/invoke-agent.md` and `api-keys-service-accounts.md`, read 2026-10-06. The paused-cluster
+behaviour was observed 2026-10-05. **Re-check before building:** native scheduling is a
+plausible future feature, and if it ships this idea is obsolete.
+
+---
+
+## 3. A fleet spec kit: agent spec cards plus an A2A message contract
+
+**Status:** idea, unbuilt. Recorded 2026-10-08.
+
+### What's the gap?
+
+AAE gives multi-agent systems discovery, brokered calls, and `allowed_callers` (see idea 1).
+It gives no help with **specifying** a fleet: what each agent is for, its input and output,
+who may call it, its time budget, its pass bar. Without that, tuning one agent quietly
+breaks another. The A2A limits also have to be designed in from the start, not discovered
+later: 300 s timeout, 5-minute token, intra-project only, no authentication between agents
+in a project.
+
+### The proposal
+
+A skill that scaffolds:
+
+- a **spec-card template**: purpose, non-goals, invocation, I/O, knowledge sources, tools,
+  A2A callers, model and budget, sandbox config, pass bar, change log;
+- a **message contract**: a request envelope with a call chain and a deadline, a response
+  envelope with status values and citations, cycle and hop rules, and time budgets that
+  shrink down the chain to fit the 300 s limit;
+- an **index**, checked against the 25-workspace project limit.
+
+Generalized from the specification of a 16-agent fleet.
+
+---
+
+## 4. A golden-set evaluation harness for AAE agents
+
+**Status:** idea, unbuilt. Recorded 2026-10-08.
+
+### What's the gap?
+
+AAE ships **no evaluation tooling**: no eval datasets, no LLM judge, no regression suites.
+Testing means manually driving the Playground. Every team that cares about quality builds
+its own harness.
+
+### The proposal
+
+A small harness that runs each agent's golden question set through `agentengine invoke`
+(locally against `dev up`, or deployed). It scores rule-based criteria (citations present,
+payload shape, item counts, latency) and LLM-judged criteria (fairness, specificity), and
+fails when results regress past a baseline. Paired with idea 3, the pass bar on each spec
+card becomes executable.
+
+**Open question:** is this better as a plugin script, or as an AAE agent that evaluates the
+other agents over A2A? A2A's 300 s limit and its intra-project scope favour a local harness
+first. `[verify]`

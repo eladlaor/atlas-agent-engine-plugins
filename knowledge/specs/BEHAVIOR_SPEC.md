@@ -110,6 +110,15 @@ source list, project key, or query.
   or declared as an alias/function in a shell rc file, and MUST prompt before shadowing
   it. A collision with no TTY available MUST be a hard error, never a silent overwrite.
 - **FR-16.** `uninstall` MUST refuse to remove anything that is not its own symlink.
+- **FR-17.** The `aae-scout` agent MUST be read-only. It MUST NOT run any mutating
+  `agentengine` command; the only `deploy` forms it may run are `deploy list` and
+  `deploy get <id>`.
+- **FR-18.** `aae-scout` MUST open every answer with a freshness line built from the
+  `aae-docs-watch` state and the CLI release check. If the watcher isn't installed, it
+  MUST say so and stop the gate, never crawl by hand. A `baseline` report MUST be
+  described as "nothing compared", never as "no changes".
+- **FR-19.** Every BUILD verdict from `aae-scout` MUST list the sources it searched and
+  the date it searched them.
 
 ## Behavioural contracts
 
@@ -198,6 +207,9 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-10** | `install-ae-shortcut.sh` refuses to shadow an existing `ae` without a TTY, and `uninstall` refuses to delete a non-symlink | To write |
 | **AC-11** | Every row of the README's host matrix matches the shipped manifests (`.claude-plugin/` vs `.codex-plugin/`) and an install run on each host | To write |
 | **AC-12** | A simulated degraded crawl (<50% of pages) exits 1 and leaves `manifest.tsv` unmodified | To write |
+| **AC-13** | Asked about a need AAE handles natively (e.g. "limit which agents may call mine"), `aae-scout` answers CONFIGURE and names `allowed_callers` with a docs URL | To write (`claude plugin eval` case) |
+| **AC-14** | Asked about a need AAE lacks (e.g. "run my agent on a schedule"), `aae-scout` answers BUILD or WAIT, and lists the sources it searched and the date | To write (`claude plugin eval` case) |
+| **AC-15** | With the watcher's state removed and the script missing from PATH and the plugin directories, `aae-scout` reports that `aae-docs-watch` isn't installed and doesn't claim the docs are current | To write |
 
 **Install verification (not automatable, must be done once before delivery):**
 add the `eladlaor/atlas-agent-engine-plugins` marketplace in **each** host, install both
