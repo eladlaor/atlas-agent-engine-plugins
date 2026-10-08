@@ -139,14 +139,45 @@ not stop the meter.
 list, then remove the agent folder — prefer `git rm -r` and leave committing to the
 user.
 
+**`git rm -r` is not the end of it.** It removes only *tracked* files, so everything
+git was ignoring stays on disk, and `git status` stays clean while it does. For a
+typical agent that leaves at least:
+
+| Leftover | Why it survives |
+|---|---|
+| `.env` | gitignored — **this is the agent's live credentials** |
+| `uv.lock` | untracked whenever the project kept the upstream template's ignore rule |
+| `.venv/`, `__pycache__/`, `.pytest_cache/` | gitignored build and tool output |
+| `.devcontainer/`, other tool dirs | gitignored per project |
+| the agent directory itself | git only removes a directory once it is empty |
+
+So after `git rm -r`, **always** enumerate what remains and show it:
+
+```bash
+git clean -nxd <agent-dir>     # -n = dry run. Never run it without -n here.
+find <agent-dir> -type f       # the plain view, including ignored files
+```
+
+Then stop and let the user decide, one directory at a time. **Do not delete these
+automatically, and do not pipe them into `git clean -fxd`.** The `.env` holds working
+credentials — often the only copy outside a password manager, and frequently still
+valid for a shared gateway or project-scoped resource that outlives this agent. A
+teardown that silently destroys them is worse than one that leaves tidy-up to do.
+
+Report the leftovers explicitly in Phase 8 under "manual steps still outstanding",
+naming the `.env` paths. Reporting "agent deleted" while its secrets sit on disk
+unmentioned is the failure this step exists to prevent.
+
 Delete a context (`agentengine context delete <name>`) **only** if no other agent
 directory's `state.json` pins its `ctx_…` id. Pins are keyed by the internal context
 id, not the display name; resolve via `~/.agentengine/contexts.json`. The long
 auto-generated context name is cosmetic.
 
 **8. Verify and report.** Confirm `agentengine workspace list` no longer shows the
-ws-id. Then report three things: what was removed, what was kept and **why**, and any
-manual steps still outstanding.
+ws-id. Then report four things: what was removed, what was kept and **why**, any
+files left on disk from Phase 7 — naming every `.env` among them — and any manual
+steps still outstanding. A teardown is not "complete" while the deleted agent's
+credentials are still sitting in the working tree.
 
 ## Gotchas
 
@@ -157,6 +188,9 @@ manual steps still outstanding.
 - **`auth status` shows a cached workspace name** from `state.json`. The live name
   comes from `workspace list`.
 - **Workspace IDs are identity; names drift.** Match on the id, always.
+- **A clean `git status` does not mean a clean directory.** Ignored files are
+  invisible to it, so the agent's `.env`, lockfile and caches can survive a
+  `git rm -r` with no sign that anything is left. Check with `git clean -nxd`.
 
 ## Handing off
 
