@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
+Plugin versions: `aae` 0.3.1, `aae-docs-watch` 0.3.0.
+
 ### Added
 
 - `aae-docs-watch.sh --skip-if-ran-today`: a full check that already completed today is not
@@ -71,6 +75,7 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/releases/tag/v0.2.0
