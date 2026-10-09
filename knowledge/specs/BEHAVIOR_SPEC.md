@@ -79,6 +79,12 @@ source list, project key, or query.
 - **FR-6.** It MUST refuse to overwrite its baseline when a crawl returns fewer than
   half the previously-known pages, and MUST exit non-zero saying so. A degraded network
   must never be recorded as "the docs shrank."
+- **FR-20.** With `--skip-if-ran-today`, a `--full` run MUST do nothing and exit `20` when
+  a full crawl already completed on the current local date, leaving that run's report in
+  place. The daily schedule and the on-demand skill both use it, so a second run on the
+  same day cannot replace the morning's list of changes with "clean". Without the flag a
+  `--full` run always crawls.
+- **FR-21.** The daily schedule MUST default to 10:00 local time.
 
 ### Tier 2 — CLI release watch (to build)
 
@@ -130,6 +136,7 @@ These are the interfaces other code depends on. Changing one is a breaking chang
 |---|---|
 | `0` | Ran successfully, nothing changed |
 | `10` | Ran successfully, changes detected |
+| `20` | Skipped: `--skip-if-ran-today` and a full crawl already completed today |
 | `1` | Error — network failure, unparseable inventory, or a refused degraded crawl |
 
 ### State layout
@@ -147,6 +154,7 @@ pages/<slug>      last fetched body per page
 diffs/<slug>.diff unified diff for each changed page
 report.json       machine-readable result of the last run
 acknowledged      marker: the current report has been shown
+last-full-run     local date and time of the last completed --full crawl
 ```
 
 The URL baseline is tracked **separately** from the content manifest so a `--quick`
@@ -210,6 +218,7 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-13** | Asked about a need AAE handles natively (e.g. "limit which agents may call mine"), `aae-scout` answers CONFIGURE and names `allowed_callers` with a docs URL | To write (`claude plugin eval` case) |
 | **AC-14** | Asked about a need AAE lacks (e.g. "run my agent on a schedule"), `aae-scout` answers BUILD or WAIT, and lists the sources it searched and the date | To write (`claude plugin eval` case) |
 | **AC-15** | With the watcher's state removed and the script missing from PATH and the plugin directories, `aae-scout` reports that `aae-docs-watch` isn't installed and doesn't claim the docs are current | To write |
+| **AC-16** | `--full --skip-if-ran-today`: with no marker it crawls and writes `last-full-run`; a second call the same day exits `20` and leaves `report.json` unchanged; with yesterday's date in the marker it crawls; with `--quick` it exits `1` | **Verified** (2026-10-09) |
 
 **Install verification (not automatable, must be done once before delivery):**
 add the `eladlaor/atlas-agent-engine-plugins` marketplace in **each** host, install both

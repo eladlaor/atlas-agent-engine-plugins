@@ -30,20 +30,29 @@ readonly PAGES_DIR="${STATE_DIR}/pages"
 readonly DIFF_DIR="${STATE_DIR}/diffs"
 readonly REPORT_FILE="${STATE_DIR}/report.json"
 readonly ACK_FILE="${STATE_DIR}/acknowledged"
+# Local date and time of the last completed full crawl, e.g. "2026-10-09 10:00 IDT".
+readonly LAST_FULL_RUN_FILE="${STATE_DIR}/last-full-run"
+readonly EXIT_CHANGES=10
+readonly EXIT_SKIPPED=20
 
 MODE="full"
+SKIP_IF_RAN_TODAY=""
 
 die() { printf 'aae-docs-watch: ERROR: %s\n' "$1" >&2; exit 1; }
 log() { [ -n "${AAE_WATCH_QUIET:-}" ] || printf '%s\n' "$1" >&2; }
 
 usage() {
   cat <<'USAGE'
-Usage: aae-docs-watch.sh [--quick|--full] [-h]
+Usage: aae-docs-watch.sh [--quick|--full] [--skip-if-ran-today] [-h]
 
-  --quick   Inventory-only check (page added/removed/retitled). Fast.
-  --full    Full crawl with per-page content hashing. Default.
+  --quick               Inventory-only check (page added/removed/retitled). Fast.
+  --full                Full crawl with per-page content hashing. Default.
+  --skip-if-ran-today   With --full: if a full crawl already completed today (local
+                        date), do nothing and keep that run's report. Used by the
+                        daily schedule and by on-demand checks, so a second run on
+                        the same day cannot replace the morning's list of changes.
 
-Exit: 0 no changes, 10 changes detected, 1 error.
+Exit: 0 no changes, 10 changes detected, 20 skipped (already ran today), 1 error.
 State lives in ${XDG_STATE_HOME:-~/.local/state}/aae-docs-watch (override with AAE_WATCH_STATE_DIR).
 USAGE
 }
@@ -52,11 +61,24 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --quick) MODE="quick" ;;
     --full)  MODE="full" ;;
+    --skip-if-ran-today) SKIP_IF_RAN_TODAY="1" ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown argument: $1 (try --help)" ;;
   esac
   shift
 done
+
+if [ -n "$SKIP_IF_RAN_TODAY" ]; then
+  [ "$MODE" = "full" ] || die "--skip-if-ran-today applies to --full only"
+  if [ -f "$LAST_FULL_RUN_FILE" ]; then
+    last_run="$(cat "$LAST_FULL_RUN_FILE")"
+    if [ "${last_run%% *}" = "$(date '+%Y-%m-%d')" ]; then
+      log "already ran today (${last_run}); keeping that report. Run without --skip-if-ran-today to force."
+      printf 'status=skipped last_full_run=%s report=%s\n' "$last_run" "$REPORT_FILE"
+      exit "$EXIT_SKIPPED"
+    fi
+  fi
+fi
 
 command -v curl   >/dev/null 2>&1 || die "curl not found on PATH"
 command -v shasum >/dev/null 2>&1 || die "shasum not found on PATH"
@@ -238,6 +260,8 @@ fi
   printf '}\n'
 } > "$REPORT_FILE"
 
+[ "$MODE" = "full" ] && date '+%Y-%m-%d %H:%M %Z' > "$LAST_FULL_RUN_FILE"
+
 # A fresh report has not been shown to the user yet.
 [ "$STATUS" = "changes" ] && rm -f "$ACK_FILE"
 
@@ -252,5 +276,5 @@ else
     "$STATUS" "$n_added" "$n_removed" "$n_changed" "$REPORT_FILE"
 fi
 
-[ "$STATUS" = "changes" ] && exit 10
+[ "$STATUS" = "changes" ] && exit "$EXIT_CHANGES"
 exit 0

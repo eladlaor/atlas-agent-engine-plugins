@@ -36,18 +36,25 @@ usually unset in your shell.
 The watcher is `${PLUGIN_DIR}/scripts/aae-docs-watch.sh`.
 
 ```bash
+# Default: today's full check, unless one already completed today. ~40s, ~2.4 MB.
+"${PLUGIN_DIR}/scripts/aae-docs-watch.sh" --full --skip-if-ran-today
+
 # Inventory only: pages added, removed, or retitled. ~1s.
 "${PLUGIN_DIR}/scripts/aae-docs-watch.sh" --quick
 
-# Full crawl with per-page content hashing. ~40s, ~2.4 MB.
+# Force another full crawl today. Use only when the user asks to re-run.
 "${PLUGIN_DIR}/scripts/aae-docs-watch.sh" --full
 ```
 
-Exit codes: `0` no changes, `10` changes detected, `1` error.
+Exit codes: `0` no changes, `10` changes detected, `20` skipped because today's full
+check already ran, `1` error.
 
-Choose `--quick` when the user just wants a fast "anything new?", and `--full`
-when they ask what actually changed, or before you rely on a specific API
-detail. The first run on a fresh machine records a baseline and reports no
+**Default to `--full --skip-if-ran-today`.** On exit `20`, say that today's check
+already ran (the time is in `last-full-run`), then report from the existing
+`report.json` and `diffs/` exactly as for a fresh run. Do not force a re-crawl to
+"refresh" it: a second crawl the same day replaces the morning's changes with "clean",
+because the baseline has already moved. Force with `--full` alone only when the user
+explicitly asks to run it again. Use `--quick` only for a fast "anything new?". The first run on a fresh machine records a baseline and reports no
 changes — say so rather than implying the docs are unchanged.
 
 ## Reporting what changed
@@ -63,6 +70,7 @@ Codex alike:
 | `diffs/<slug>.diff` | Unified diff per changed page |
 | `pages/<slug>` | Current markdown snapshot of each page |
 | `manifest.tsv` | `url <TAB> sha256` baseline |
+| `last-full-run` | Local date and time of the last completed full crawl |
 
 To explain a change: read the relevant `diffs/*.diff`, then summarise the
 behavioural impact — a new config key, a changed CLI flag, a revised limit —
@@ -82,7 +90,7 @@ Neither Claude Code nor Codex plugins can declare scheduled work, so a full craw
 between sessions runs from launchd (macOS only):
 
 ```bash
-"${PLUGIN_DIR}/scripts/install-schedule.sh" install   # daily at 09:00
+"${PLUGIN_DIR}/scripts/install-schedule.sh" install   # daily at 10:00 local time
 "${PLUGIN_DIR}/scripts/install-schedule.sh" status
 "${PLUGIN_DIR}/scripts/install-schedule.sh" uninstall
 ```

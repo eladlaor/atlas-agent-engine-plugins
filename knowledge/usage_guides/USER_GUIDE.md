@@ -180,14 +180,24 @@ Claude Code plugins **cannot** declare cron or scheduled work. For checks that
 run while Claude Code is closed, the plugin ships a launchd wrapper:
 
 ```bash
-<plugin-dir>/scripts/install-schedule.sh install            # daily 09:00
+<plugin-dir>/scripts/install-schedule.sh install            # daily 10:00 local time
 <plugin-dir>/scripts/install-schedule.sh install --hour 7   # daily 07:00
 <plugin-dir>/scripts/install-schedule.sh status
 <plugin-dir>/scripts/install-schedule.sh uninstall
 ```
 
 `install` writes `~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist` and
-loads it. Logs go to `~/Library/Logs/aae-docs-watch/`.
+loads it. Logs go to `~/Library/Logs/aae-docs-watch/`. The time is the Mac's local time.
+If the Mac is asleep at that time, launchd runs the job when it wakes; if it is powered
+off, that day is skipped.
+
+### Why didn't my check run again today?
+
+The scheduled job and the skill both pass `--skip-if-ran-today`: once a full crawl has
+completed today, another one does nothing (exit `20`) and keeps the morning's report.
+Without that, a second run would replace the morning's list of changes with "clean",
+because the baseline already moved. To crawl again anyway, run the watcher with `--full`
+alone.
 
 If you would rather not use launchd, set `AAE_WATCH_ON_SESSION=quick` and the
 session hook will run the ~1s inventory check itself when its state is more than

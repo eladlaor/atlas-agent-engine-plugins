@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `aae-docs-watch.sh --skip-if-ran-today`: a full check that already completed today is not
+  repeated (exit `20`), so a second run can't replace the morning's list of changes. The
+  daily schedule and the `aae-docs-watch` skill both use it; `--full` alone still forces a
+  crawl.
+
 ### Changed
 
+- The daily docs check now defaults to 10:00 local time instead of 09:00.
 - AAE Watch design: the deployed watcher shares the detection rules, not the code.
   `aae-docs-watch.sh` stays bash, so the plugin still needs only bash, curl and jq.
 

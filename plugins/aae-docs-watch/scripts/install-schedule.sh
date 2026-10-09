@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly WATCHER="${SCRIPT_DIR}/aae-docs-watch.sh"
 readonly STATE_DIR="${AAE_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/aae-docs-watch}"
 
-HOUR=9
+HOUR=10
 MINUTE=0
 ACTION="${1:-}"
 [ $# -gt 0 ] && shift
@@ -52,6 +52,7 @@ do_install() {
     <array>
         <string>${WATCHER}</string>
         <string>--full</string>
+        <string>--skip-if-ran-today</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
