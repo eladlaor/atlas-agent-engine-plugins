@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- AAE Watch design: the deployed watcher shares the detection rules, not the code.
+  `aae-docs-watch.sh` stays bash, so the plugin still needs only bash, curl and jq.
+
 ### Removed
 
 - User-specific sections from `aae-guide` (personal coding standards, language-register

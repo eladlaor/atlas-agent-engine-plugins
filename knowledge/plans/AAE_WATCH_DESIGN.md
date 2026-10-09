@@ -243,8 +243,8 @@ Related, verified: `self-update --auto` is **not configured** on this machine (n
 
 ## Is there a second consumer of the same detection?
 
-Yes, and it should share code with this one rather than reimplementing it. *(Recorded
-2026-10-08.)*
+Yes. It follows the same detection rules but has its own implementation; the two share
+behaviour, not code.
 
 The watch described here runs **on a developer's machine** and keeps coding agents current.
 A second, independent design runs the same detection **as a deployed AAE agent**. A scheduler
@@ -254,13 +254,15 @@ the changed pages into a search index that a deployed "AAE expert" agent answers
 | | This design (local) | Deployed watcher |
 |---|---|---|
 | Purpose | Keep `aae-guide`/Codex current | Notify a team; refresh an agent's knowledge base |
-| Tier 1 docs hashing | Yes | Yes, **same logic** |
+| Tier 1 docs hashing | Yes | Yes, same rules, own implementation |
 | Tier 2 CLI releases | Yes | Yes, adopted from here |
 | Tier 3 private sources | Optional, via MCP | No; ingested separately |
 
-Consequence for this repo: when tier 1 and tier 2 are next touched, pull the detection
-logic out into a module both can import, so the two watchers can never disagree about what
-changed.
+Consequence for this repo: none. `aae-docs-watch.sh` stays bash. The shared part is small
+(read `llms.txt`, fetch each page as `.md`, SHA-256 the body, unified-diff the changed
+pages), and a shared package would force Python on users who today need only bash, curl
+and jq. What must not change silently is the rules above: if they change here, the
+deployed watcher has to follow.
 
 ## Component inventory
 
