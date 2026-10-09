@@ -4,8 +4,13 @@
 # between Claude Code sessions.
 #
 # Claude Code plugins cannot declare cron or scheduled work, so the periodic
-# full crawl runs from launchd and writes its result into the plugin's data
+# full crawl runs from launchd and writes its result into the shared state
 # directory. The SessionStart hook then surfaces it.
+#
+# launchd runs a copy of the watcher in a fixed location, not the script inside
+# the plugin. The plugin lives in a versioned folder that a plugin update can
+# delete, which would break the job silently. Re-run `install` after updating
+# the plugin to refresh the copy; `status` says when it is out of date.
 #
 # Usage: install-schedule.sh {install|uninstall|status|run} [--hour N] [--minute N]
 
@@ -18,6 +23,8 @@ readonly LOG_DIR="${HOME}/Library/Logs/aae-docs-watch"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly WATCHER="${SCRIPT_DIR}/aae-docs-watch.sh"
 readonly STATE_DIR="${AAE_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/aae-docs-watch}"
+readonly BIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/aae-docs-watch/bin"
+readonly SCHEDULED_WATCHER="${BIN_DIR}/aae-docs-watch.sh"
 
 HOUR=10
 MINUTE=0
@@ -38,7 +45,9 @@ done
 [ -x "$WATCHER" ] || die "watcher not found or not executable: ${WATCHER}"
 
 do_install() {
-  mkdir -p "$(dirname "$PLIST")" "$LOG_DIR" "$STATE_DIR"
+  mkdir -p "$(dirname "$PLIST")" "$LOG_DIR" "$STATE_DIR" "$BIN_DIR"
+  install -m 0755 "$WATCHER" "$SCHEDULED_WATCHER" \
+    || die "cannot copy the watcher to ${SCHEDULED_WATCHER}"
 
   # Written fresh each time; this plist is owned solely by this plugin.
   cat > "$PLIST" <<PLISTEOF
@@ -50,7 +59,7 @@ do_install() {
     <string>${LABEL}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${WATCHER}</string>
+        <string>${SCHEDULED_WATCHER}</string>
         <string>--full</string>
         <string>--skip-if-ran-today</string>
     </array>
@@ -82,7 +91,7 @@ PLISTEOF
   launchctl bootstrap "gui/$(id -u)" "$PLIST" \
     || die "launchctl bootstrap failed; check ${PLIST}"
   printf 'Installed %s — runs daily at %02d:%02d\n' "$LABEL" "$HOUR" "$MINUTE"
-  printf 'State: %s\nLogs:  %s\n' "$STATE_DIR" "$LOG_DIR"
+  printf 'Watcher copy: %s\nState: %s\nLogs:  %s\n' "$SCHEDULED_WATCHER" "$STATE_DIR" "$LOG_DIR"
 }
 
 do_uninstall() {
@@ -92,6 +101,10 @@ do_uninstall() {
     printf 'Removed %s\n' "$PLIST"
   else
     printf 'Not installed (no %s)\n' "$PLIST"
+  fi
+  if [ -f "$SCHEDULED_WATCHER" ]; then
+    rm -f "$SCHEDULED_WATCHER"
+    printf 'Removed %s\n' "$SCHEDULED_WATCHER"
   fi
   printf 'State left in place: %s\n' "$STATE_DIR"
 }
@@ -106,6 +119,18 @@ do_status() {
     printf 'loaded: yes\n'
   else
     printf 'loaded: no\n'
+  fi
+  if [ -f "$SCHEDULED_WATCHER" ]; then
+    if cmp -s "$WATCHER" "$SCHEDULED_WATCHER"; then
+      printf 'watcher copy: current (%s)\n' "$SCHEDULED_WATCHER"
+    else
+      printf 'watcher copy: OUT OF DATE, differs from this plugin version; re-run install\n'
+    fi
+  elif [ -f "$PLIST" ]; then
+    printf 'watcher copy: MISSING (%s); re-run install\n' "$SCHEDULED_WATCHER"
+  fi
+  if [ -f "${STATE_DIR}/last-full-run" ]; then
+    printf 'last full run: %s\n' "$(cat "${STATE_DIR}/last-full-run")"
   fi
   if [ -f "${STATE_DIR}/report.json" ]; then
     printf 'last report: %s\n' "$(stat -f '%Sm' "${STATE_DIR}/report.json")"

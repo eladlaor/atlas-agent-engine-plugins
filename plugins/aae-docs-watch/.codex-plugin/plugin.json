@@ -1,6 +1,6 @@
 {
   "name": "aae-docs-watch",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Detects when MongoDB Atlas Agent Engine documentation pages change, by content hashing, and tells you once at session start, with per-page diffs. Built for a Public Preview product whose docs move weekly.",
   "author": {
     "name": "Elad Laor"

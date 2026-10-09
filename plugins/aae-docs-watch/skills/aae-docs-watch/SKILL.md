@@ -91,9 +91,13 @@ between sessions runs from launchd (macOS only):
 
 ```bash
 "${PLUGIN_DIR}/scripts/install-schedule.sh" install   # daily at 10:00 local time
-"${PLUGIN_DIR}/scripts/install-schedule.sh" status
+"${PLUGIN_DIR}/scripts/install-schedule.sh" status    # incl. whether the job's copy is current
 "${PLUGIN_DIR}/scripts/install-schedule.sh" uninstall
 ```
+
+The job runs a copy of the watcher from `~/.local/share/aae-docs-watch/bin/`, because the
+plugin's own folder is versioned and an update can delete it. If `status` reports the
+copy as out of date or missing, tell the user and re-run `install`.
 
 The `SessionStart` hook then reports any pending result once, and marks it
 acknowledged so it does not repeat every session.

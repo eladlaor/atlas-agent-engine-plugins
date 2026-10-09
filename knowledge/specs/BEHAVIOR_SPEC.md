@@ -85,6 +85,10 @@ source list, project key, or query.
   same day cannot replace the morning's list of changes with "clean". Without the flag a
   `--full` run always crawls.
 - **FR-21.** The daily schedule MUST default to 10:00 local time.
+- **FR-22.** The scheduled job MUST run a copy of the watcher at a fixed path
+  (`${XDG_DATA_HOME:-~/.local/share}/aae-docs-watch/bin/`), never the script inside the
+  versioned plugin folder, which a plugin update can delete. `status` MUST report whether
+  that copy matches the plugin's watcher.
 
 ### Tier 2 — CLI release watch (to build)
 
@@ -219,6 +223,7 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-14** | Asked about a need AAE lacks (e.g. "run my agent on a schedule"), `aae-scout` answers BUILD or WAIT, and lists the sources it searched and the date | To write (`claude plugin eval` case) |
 | **AC-15** | With the watcher's state removed and the script missing from PATH and the plugin directories, `aae-scout` reports that `aae-docs-watch` isn't installed and doesn't claim the docs are current | To write |
 | **AC-16** | `--full --skip-if-ran-today`: with no marker it crawls and writes `last-full-run`; a second call the same day exits `20` and leaves `report.json` unchanged; with yesterday's date in the marker it crawls; with `--quick` it exits `1` | **Verified** (2026-10-09) |
+| **AC-17** | `install` copies the watcher to the fixed path and the plist points at the copy; `status` reports `current`, then `OUT OF DATE` after the copy is edited, then `MISSING` after it is deleted; `uninstall` removes the copy | **Verified** (2026-10-09) |
 
 **Install verification (not automatable, must be done once before delivery):**
 add the `eladlaor/atlas-agent-engine-plugins` marketplace in **each** host, install both

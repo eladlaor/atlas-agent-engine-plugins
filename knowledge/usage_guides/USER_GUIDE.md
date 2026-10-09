@@ -186,10 +186,20 @@ run while Claude Code is closed, the plugin ships a launchd wrapper:
 <plugin-dir>/scripts/install-schedule.sh uninstall
 ```
 
-`install` writes `~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist` and
-loads it. Logs go to `~/Library/Logs/aae-docs-watch/`. The time is the Mac's local time.
+`install` copies the watcher to `~/.local/share/aae-docs-watch/bin/`, writes
+`~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist` pointing at that copy, and
+loads it. **Re-run `install` after updating the plugin**: `status` says when the copy is
+out of date. Logs go to `~/Library/Logs/aae-docs-watch/`. The time is the Mac's local time.
 If the Mac is asleep at that time, launchd runs the job when it wakes; if it is powered
 off, that day is skipped.
+
+### Why does the schedule run a copy of the watcher?
+
+The plugin's own files sit in a folder named after its version, and updating the plugin can
+delete that folder. A job pointing there would then fail every morning without a sound,
+and the session notice would keep showing the last good report, which looks exactly like
+docs that stopped changing. The copy in a fixed location keeps working across updates;
+`status` tells you when it lags behind the plugin.
 
 ### Why didn't my check run again today?
 
