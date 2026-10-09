@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- User-specific sections from `aae-guide` (personal coding standards, language-register
+  guidance, a personal secret-manager command, first-person anecdotes), so it addresses any
+  AAE user. The skill's reference to the guide's memory section follows the renumbering.
+
 ## [0.3.0] - 2026-10-08
 
 ### Added

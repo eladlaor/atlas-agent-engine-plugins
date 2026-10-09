@@ -16,7 +16,7 @@ Otherwise, act as that specialist in the current conversation:
    frontmatter, which is Claude Code subagent metadata.
 2. Follow the body of that file as your instructions for the rest of the task. It is
    the single source of truth, and this skill deliberately does not copy it.
-3. **Section 9 ("Persistent memory") does not apply here.** Its memory directory is
+3. **Section 8 ("Persistent memory") does not apply here.** Its memory directory is
    a Claude Code subagent feature. Without it, record anything worth keeping
    (observed drift between docs and platform, project IDs, working runbooks) only
    where the user asks you to.
