@@ -4,6 +4,7 @@
 - [What is this plugin?](#what-is-this-plugin)
 - [How do I install it?](#how-do-i-install-it)
 - [What does the guide already know, and where does it keep what it learns?](#what-does-the-guide-already-know-and-where-does-it-keep-what-it-learns)
+- [How do I ship what I learned to every user of the plugin?](#how-do-i-ship-what-i-learned-to-every-user-of-the-plugin)
 - [How do I type `ae` instead of `agentengine`?](#how-do-i-type-ae-instead-of-agentengine)
 - [Why a symlink instead of a shell alias?](#why-a-symlink-instead-of-a-shell-alias)
 - [How do I know when the AAE docs change?](#how-do-i-know-when-the-aae-docs-change)
@@ -19,7 +20,7 @@
 ## Summary
 
 Two plugins for working with MongoDB Atlas Agent Engine (AAE), in Claude Code or
-Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-knowledge` base, the
+Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-kb-read` base, the
 `aae-scout` prior-art check, the add-agent / delete-agent skills and an `ae` shortcut;
 `aae-docs-watch` tells you when AAE documentation pages change. Install
 `aae-docs-watch` and optionally schedule it with launchd; the first check records a
@@ -35,7 +36,7 @@ Two plugins that belong together.
 
 **`aae`** centres on **`aae-guide`**, the specialist for Atlas Agent Engine — the
 runtime model, the SDK surface, the config contract, and the failure modes. In Claude
-Code it is a subagent; in Codex, a skill. Alongside it: the `aae-knowledge` base, the
+Code it is a subagent; in Codex, a skill. Alongside it: the `aae-kb-read` base, the
 `aae-scout` skill, and the `aae-add-agent` / `aae-delete-agent` skills.
 
 **`aae-docs-watch`** is a skill plus a background watcher that answers "did the
@@ -68,10 +69,10 @@ changes by design: there is nothing to compare against yet.
 
 ## What does the guide already know, and where does it keep what it learns?
 
-It ships with a knowledge base, the **`aae-knowledge`** skill, and keeps your own notes
+It ships with a knowledge base, the **`aae-kb-read`** skill, and keeps your own notes
 separately.
 
-- **The baseline** (`plugins/aae/skills/aae-knowledge/`) is the same for every user, in
+- **The baseline** (`plugins/aae/skills/aae-kb-read/`) is the same for every user, in
   Claude Code and Codex: a dated drift log of where the live platform and CLI disagree
   with the docs, verified details the guides omit, doc contradictions, numbered runbooks
   and symptom-first troubleshooting. Every entry carries the date and the CLI or SDK
@@ -86,6 +87,18 @@ before relying on it.
 **The misunderstanding to avoid:** treating the baseline as current documentation. It is
 a dated record of what was true when checked. AAE is in Public Preview and moves weekly,
 so the guide still verifies version-specific details against the live docs or `--help`.
+
+## How do I ship what I learned to every user of the plugin?
+
+Run the **`aae-kb-update`** skill ("update the kb") with a local clone of this repository.
+It reads your personal notes, picks out the entries that hold for every AAE user, strips
+anything project-specific (IDs, hostnames, names, local paths), and shows you each
+proposed entry and the reference file it would go into. It edits the clone only after you
+approve, and adds a `CHANGELOG.md` line. Committing and releasing stay with you.
+
+**The misunderstanding to avoid:** expecting the guide to update the shipped knowledge
+base on its own. It writes only to your personal notes. Moving a finding into the public
+baseline is always a deliberate, reviewed step.
 
 ## How do I type `ae` instead of `agentengine`?
 

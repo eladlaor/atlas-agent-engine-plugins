@@ -112,13 +112,16 @@ source list, project key, or query.
 - **FR-12.** The `aae-guide` agent MUST verify API details against live docs before
   asserting them, because the product post-dates the model's training cutoff.
 - **FR-23.** Before answering anything substantive, `aae-guide` MUST read the bundled
-  `aae-knowledge` skill and then the user's personal overlay
+  `aae-kb-read` skill and then the user's personal overlay
   (`~/.claude/agent-memory/aae-guide/MEMORY.md`, Claude Code only). When they disagree, the
   newer dated entry wins. A missing baseline or overlay MUST be stated, never treated as
   empty. New findings go to the overlay, never into the shipped skill.
-- **FR-24.** Every `aae-knowledge` entry that states platform behaviour MUST carry the
+- **FR-24.** Every `aae-kb-read` entry that states platform behaviour MUST carry the
   date it was checked, and the CLI or SDK version where it matters. The skill MUST NOT
   contain organization-specific IDs, hostnames, or personal details.
+- **FR-25.** `aae-kb-update` MUST NOT edit anything before the user approves its proposal,
+  MUST edit only a git clone of the plugin repository (never an installed plugin copy),
+  MUST run its leak scan before proposing and after applying, and MUST NOT run git.
 - **FR-13.** The `aae-docs-watch` skill MUST answer "what changed?" on demand, reading
   existing state rather than forcing a crawl.
 - **FR-14.** `install-ae-shortcut.sh` MUST create `ae` as a **symlink on PATH**, never a
@@ -232,7 +235,7 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-14** | Asked about a need AAE lacks (e.g. "run my agent on a schedule"), `aae-scout` answers BUILD or WAIT, and lists the sources it searched and the date | To write (`claude plugin eval` case) |
 | **AC-15** | With the watcher's state removed and the script missing from PATH and the plugin directories, `aae-scout` reports that `aae-docs-watch` isn't installed and doesn't claim the docs are current | To write |
 | **AC-16** | `--full --skip-if-ran-today`: with no marker it crawls and writes `last-full-run`; a second call the same day exits `20` and leaves `report.json` unchanged; with yesterday's date in the marker it crawls; with `--quick` it exits `1` | **Verified** (2026-10-09) |
-| **AC-18** | Asked a question answered only in `aae-knowledge`, `aae-guide` (Claude Code) loads the skill from the installed plugin, reads the overlay, reads only the reference files the question touches, and cites them | **Verified** (2026-10-10) |
+| **AC-18** | Asked a question answered only in `aae-kb-read`, `aae-guide` (Claude Code) loads the skill from the installed plugin, reads the overlay, reads only the reference files the question touches, and cites them | **Verified** (2026-10-10) |
 | **AC-17** | `install` copies the watcher to the fixed path and the plist points at the copy; `status` reports `current`, then `OUT OF DATE` after the copy is edited, then `MISSING` after it is deleted; `uninstall` removes the copy | **Verified** (2026-10-09) |
 
 **Install verification (not automatable, must be done once before delivery):**
@@ -244,7 +247,7 @@ the highest-risk unknown in the project.
 
 Progress on 2026-10-10:
 - **Claude Code:** done. Installed from the marketplace, the subagent and skills are
-  listed, and `aae-guide` loads `aae-knowledge` (AC-18).
+  listed, and `aae-guide` loads `aae-kb-read` (AC-18).
 - **Codex:** partly done. The marketplace adds from GitHub, both plugins install, and all
   six skills reach the model prompt with absolute paths. This was checked with
   `codex-cli` 0.162.1 in an isolated `CODEX_HOME` via `codex debug prompt-input`.

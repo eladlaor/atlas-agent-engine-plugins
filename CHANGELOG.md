@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-10
+
+Plugin versions: `aae` 0.5.0, `aae-docs-watch` 0.3.1.
+
+### Added
+
+- `aae-kb-update` skill: promotes generic findings from the user's personal `aae-guide` notes into the shipped knowledge base in a local clone of the repo, with project details stripped and only after approval.
+
 ### Changed
+
+- The `aae-knowledge` skill is renamed `aae-kb-read`; `aae-guide` loads it under the new name, and points to `aae-kb-update` for findings worth shipping.
+- The README, user guide and behaviour spec (FR-25) cover `aae-kb-update`.
 
 - The behaviour spec no longer refers to developer, devops or QA guides; the user guide is the repo's only usage guide.
 - The README and user guide state up front that docs change detection is a deterministic hash check costing no AI tokens; the model reads only the diffs of changed pages.
@@ -151,7 +162,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.1...v0.5.0

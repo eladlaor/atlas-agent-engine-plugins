@@ -18,8 +18,8 @@ Otherwise, act as that specialist in the current conversation:
    the single source of truth, and this skill deliberately does not copy it.
 3. **Section 8 ("STEP 0: Knowledge and memory") applies in part.**
    - **Layer (a) applies in full.** The bundled knowledge base ships to every host. Read
-     `../aae-knowledge/SKILL.md`, resolved relative to the directory of this `SKILL.md`,
-     then the files in `../aae-knowledge/references/` that the question touches. Start
+     `../aae-kb-read/SKILL.md`, resolved relative to the directory of this `SKILL.md`,
+     then the files in `../aae-kb-read/references/` that the question touches. Start
      with `DRIFT_LOG.md` for anything version-specific. If that directory is missing,
      say so: the plugin install is incomplete.
    - **Layer (b), the personal overlay, does not apply.** Its memory directory is a

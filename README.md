@@ -40,7 +40,8 @@ stays silent.
 | Resource | Type | What it does |
 |---|---|---|
 | `aae-guide` | Subagent (a skill in Codex) | The AAE specialist: runtime model, agent contract, config, and known failure modes. Checks the live docs before asserting any API detail. |
-| `aae-knowledge` | Skill | The guide's bundled knowledge base: a dated drift log, verified details the docs omit, runbooks, and troubleshooting. Every entry carries the date and CLI version it was checked on. |
+| `aae-kb-read` | Skill | The guide's bundled knowledge base: a dated drift log, verified details the docs omit, runbooks, and troubleshooting. Every entry carries the date and CLI version it was checked on. |
+| `aae-kb-update` | Skill | Promotes the generic findings from your personal notes into `aae-kb-read`, in your clone of this repo. Strips project-specific details, proposes each entry, and edits only after you approve. |
 | `aae-scout` | Skill | A cheap check before building anything: confirms the docs and CLI are current, then whether the platform, CLI, SDK, official examples or your repo already do it. Answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence. |
 | `aae-add-agent` | Skill | Adds one agent to an existing AAE monorepo. `agentengine create` only scaffolds whole new projects. |
 | `aae-delete-agent` | Skill | Tears one agent down completely. `workspace delete` alone leaves secrets, sessions and the database user behind. |
@@ -64,7 +65,7 @@ session start or on a schedule.
 reading the docs, checking framework code, and walking a failed deploy, and they load
 only inside that project. These plugins build on them rather than replacing them:
 
-- **Knowledge the docs don't have.** `aae-knowledge` is a dated record of what running
+- **Knowledge the docs don't have.** `aae-kb-read` is a dated record of what running
   the platform taught: where the CLI and platform drift from the docs, where doc pages
   contradict each other, failures outside the deploy path, and version-pinned runbooks.
 - **Utilities the CLI doesn't ship.** Add or fully tear down one agent in a monorepo,
@@ -73,7 +74,7 @@ only inside that project. These plugins build on them rather than replacing them
   and keeps a personal memory overlay. It reads the CLI's skills first when they're present.
 - **Available everywhere,** not just inside a project directory.
 
-Details: [`CLI_SKILLS_AND_THIS_PLUGIN.md`](plugins/aae/skills/aae-knowledge/references/CLI_SKILLS_AND_THIS_PLUGIN.md).
+Details: [`CLI_SKILLS_AND_THIS_PLUGIN.md`](plugins/aae/skills/aae-kb-read/references/CLI_SKILLS_AND_THIS_PLUGIN.md).
 
 ## Install
 
@@ -101,11 +102,11 @@ it and you get no notices.
 | Component | Claude Code | Codex |
 |---|---|---|
 | `aae-guide` | A **subagent**: runs in its own context window, on its own model, and Claude delegates to it | A **skill**: the same instructions, loaded into your main conversation |
-| `aae-guide` bundled knowledge (`aae-knowledge` skill: drift log, verified details, runbooks, troubleshooting) | Yes | Yes, the same files |
+| `aae-guide` bundled knowledge (`aae-kb-read` skill: drift log, verified details, runbooks, troubleshooting) | Yes | Yes, the same files |
 | `aae-guide` personal memory across sessions (your project IDs, your own drift notes) | Yes: a per-user memory directory it reads and writes | **No** |
 | `aae-scout` | A **skill**, with its verdict and utility-candidate ledgers in `~/.local/state/aae-scout/` | Same, sharing the same ledgers |
 | `aae-scout` freshness gate | Reads the `aae-docs-watch` state; needs that plugin installed | Same |
-| `aae-add-agent`, `aae-delete-agent`, `aae-knowledge`, `aae-docs-watch` skills | Yes | Yes, the same files |
+| `aae-add-agent`, `aae-delete-agent`, `aae-kb-read`, `aae-kb-update`, `aae-docs-watch` skills | Yes | Yes, the same files |
 | Session-start notice that the docs changed | Runs automatically | Runs **only after you trust the hook**, and again after each update that changes it |
 | Scheduled daily docs crawl | Opt-in, via macOS `launchd` | Same: opt-in, via macOS `launchd` |
 
@@ -134,13 +135,13 @@ ones.
 
 ## Status and caveats
 
-- **Version 0.5.2.** Installed and in use in Claude Code; the manifests pass
+- **Version 0.6.0.** Installed and in use in Claude Code; the manifests pass
   `claude plugin validate`. In Codex (codex-cli 0.162.1), both plugins install and all
   skills load; a full Codex conversation and the hook-trust flow are not yet tested.
 - Atlas Agent Engine is in **Public Preview**: *"intended for evaluation and
   prototyping purposes only"*, with no SLAs. These plugins inherit that.
 - Knowledge is checked against the live docs with `agentengine` CLI 0.1.118 and SDK
-  0.11.8; each `aae-knowledge` entry carries its own date. CLI 0.1.119 is out but untested.
+  0.11.8; each `aae-kb-read` entry carries its own date. CLI 0.1.119 is out but untested.
 - Not affiliated with or endorsed by MongoDB.
 
 Docs: [user guide](knowledge/usage_guides/USER_GUIDE.md) ·

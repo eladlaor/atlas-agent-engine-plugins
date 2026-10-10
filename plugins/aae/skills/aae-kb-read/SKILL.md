@@ -1,9 +1,9 @@
 ---
-name: aae-knowledge
+name: aae-kb-read
 description: "The aae-guide's bundled MongoDB Atlas Agent Engine (AAE) knowledge base: a dated drift log of where the live platform and CLI disagree with the docs, verified details the guides omit (OpenAPI-only endpoints, Policy Engine types, cost accounting, OTLP export), doc contradictions, CLI targeting rules, monorepo and build-archive rules, SDK adapter facts, numbered runbooks (first deploy, connect an external client, recover after a cluster pause), troubleshooting traps, and how this plugin complements the skills the agentengine CLI installs. Load it when answering or acting on any AAE question, before relying on the aae-guide card's 2026-10-10 snapshot."
 ---
 
-# AAE Knowledge
+# AAE KB Read
 
 The baseline knowledge the `aae-guide` specialist carries beyond its card. Every entry is
 dated and, where it matters, pinned to a CLI or SDK version. **Freshness is the point:**
@@ -51,4 +51,6 @@ Observed: <what actually happened>
 Resolution: <what to do>
 ```
 
-Findings that hold for every AAE user are worth contributing back to this repository.
+Findings that hold for every AAE user reach this knowledge base only through the
+`aae-kb-update` skill, which proposes them with project details stripped and edits a clone
+of the plugin repository after the user approves.
