@@ -20,7 +20,7 @@ What must be true when v1.0 ships:
 
 | # | Statement | How it is proven |
 |---|---|---|
-| 1 | Installing `aae` and `aae-docs-watch` from the `atlas-agent-engine-plugins` marketplace yields a working agent (Claude Code) or guide skill (Codex), skills and hook | Manual install run per host, recorded in `QA_GUIDE.md` |
+| 1 | Installing `aae` and `aae-docs-watch` from the `atlas-agent-engine-plugins` marketplace yields a working agent (Claude Code) or guide skill (Codex), skills and hook | Manual install run per host, recorded under [Acceptance criteria](#acceptance-criteria) |
 | 2 | The watcher detects a changed docs page and names it | `AC-1` |
 | 3 | The watcher detects a new `agentengine` CLI release and reports its release notes | `AC-5` |
 | 4 | A session shows a change notice exactly once, then stays quiet | `AC-7` |
@@ -268,6 +268,4 @@ Stated so they are not mistaken for omissions:
 
 1. Where tier 2's state lives inside `report.json` — additive `cli` object, shape TBD.
 2. Whether `--quick` should also run tier 2 (it is one cheap API call; probably yes).
-3. `knowledge/usage_guides/` currently holds only `USER_GUIDE.md`. `DEVELOPER_GUIDE.md`,
-   `DEVOPS_GUIDE.md` and `QA_GUIDE.md` are required by the house standard and absent.
-4. No `tests/` directory exists. AC-5 through AC-12 need somewhere to live and a runner.
+3. No `tests/` directory exists. AC-5 through AC-12 need somewhere to live and a runner.
