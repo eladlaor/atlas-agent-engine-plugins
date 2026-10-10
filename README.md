@@ -27,6 +27,12 @@ These plugins add two things:
    change weekly and its CLI ships faster than the docs. The plugins keep an assistant
    from answering confidently from a picture of the product that is no longer true.
 
+**Token-efficient by design.** Checking the docs costs no AI tokens. A plain script
+hashes every docs page and compares the hashes with the last run. Only when that check
+finds a change does the AI model see anything, and then only the diffs of the pages that
+changed. On a day with no changes the model reads nothing and the session-start notice
+stays silent.
+
 ## What's inside
 
 ### `aae` plugin
@@ -44,7 +50,7 @@ These plugins add two things:
 
 | Resource | Type | What it does |
 |---|---|---|
-| `aae-docs-watch` | Skill | Checks the AAE docs on demand by hashing every page's markdown, and shows per-page diffs. |
+| `aae-docs-watch` | Skill | Checks the AAE docs on demand. Change detection is a deterministic hash comparison with no AI involved; the model reads only the per-page diffs, and only when something changed. |
 | Session-start notice | Hook | Tells you once, at session start, when the docs changed. |
 | Daily crawl | `launchd` job (optional, macOS) | Runs the check every day, at 10:00 by default. See [Optional extras](#optional-extras). |
 

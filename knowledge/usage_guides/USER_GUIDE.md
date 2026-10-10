@@ -22,9 +22,12 @@ Two plugins for working with MongoDB Atlas Agent Engine (AAE), in Claude Code or
 Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-knowledge` base, the
 `aae-scout` prior-art check, the add-agent / delete-agent skills and an `ae` shortcut;
 `aae-docs-watch` tells you when AAE documentation pages change. Install
-`aae-docs-watch`, run the watcher once to record a baseline, optionally schedule it
-with launchd, and your host will tell you at session start whenever the docs have
-moved.
+`aae-docs-watch` and optionally schedule it with launchd; the first check records a
+baseline, and your host tells you at session start whenever the docs have moved.
+
+Change detection is deterministic and costs no AI tokens: a script hashes every page
+and compares the hashes with the last run. The model reads only the diffs of the pages
+that changed, and nothing at all on a day with no changes.
 
 ## What is this plugin?
 

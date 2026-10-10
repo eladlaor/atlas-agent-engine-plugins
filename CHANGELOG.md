@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The README and user guide state up front that docs change detection is a deterministic hash check costing no AI tokens; the model reads only the diffs of changed pages.
 - The README explains that the daily docs crawl is a `launchd` job on your own machine (the macOS equivalent of cron), where it's installed, and when it runs.
 
 ## [0.5.2] - 2026-10-10
