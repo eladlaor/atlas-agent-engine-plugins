@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-10
+
+Plugin versions: `aae` 0.4.1, `aae-docs-watch` 0.3.1.
+
+### Added
+
+- `aae-knowledge` explains how the plugin complements the skills `agentengine init` installs into each project, and which one answers which question; the README summarizes it.
+
+### Changed
+
+- `aae-guide` reads the CLI's project skills first when the working directory has them, and builds on them instead of restating them.
+
 ## [0.5.0] - 2026-10-10
 
 Plugin versions: `aae` 0.4.0, `aae-docs-watch` 0.3.1.
@@ -113,7 +125,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.3.0...v0.4.0

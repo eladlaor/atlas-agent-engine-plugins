@@ -2,6 +2,7 @@
 
 - [Summary](#summary)
 - [What's inside](#whats-inside)
+- [How does this relate to the skills the CLI installs?](#how-does-this-relate-to-the-skills-the-cli-installs)
 - [Install](#install)
 - [Claude Code vs Codex: what each host gets](#claude-code-vs-codex-what-each-host-gets)
 - [Why the differences exist](#why-the-differences-exist)
@@ -28,6 +29,24 @@ a model of the product that was correct last week.
 
 They are separate so you can take the guide and skills without anything running at
 session start or on a schedule.
+
+## How does this relate to the skills the CLI installs?
+
+`agentengine init` writes a few vendor-maintained skills into each project
+(`atlas-agent-engine-docs`, `feature-validations`, `troubleshoot-deploy`). They cover
+reading the docs, checking framework code, and walking a failed deploy, and they load
+only inside that project. These plugins build on them rather than replacing them:
+
+- **Knowledge the docs don't have.** `aae-knowledge` is a dated record of what running
+  the platform taught: where the CLI and platform drift from the docs, where doc pages
+  contradict each other, failures outside the deploy path, and version-pinned runbooks.
+- **Utilities the CLI doesn't ship.** Add or fully tear down one agent in a monorepo,
+  detect docs changes, and check for prior art before building.
+- **Agents, not only skills.** In Claude Code, `aae-guide` runs in its own context and
+  keeps a personal memory overlay. It reads the CLI's skills first when they're present.
+- **Available everywhere,** not just inside a project directory.
+
+Details: [`CLI_SKILLS_AND_THIS_PLUGIN.md`](plugins/aae/skills/aae-knowledge/references/CLI_SKILLS_AND_THIS_PLUGIN.md).
 
 ## Install
 
@@ -124,7 +143,7 @@ ones.
 
 ## Status and caveats
 
-- **Version 0.5.0. Installed and in use in Claude Code**; the manifests pass
+- **Version 0.5.1. Installed and in use in Claude Code**; the manifests pass
   `claude plugin validate`. The Codex manifests follow the
   [Codex plugin docs](https://developers.openai.com/codex/plugins/build) but have not
   been loaded by a Codex install yet.

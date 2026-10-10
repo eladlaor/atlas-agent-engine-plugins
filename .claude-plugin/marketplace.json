@@ -12,7 +12,7 @@
       "name": "aae",
       "source": "./plugins/aae",
       "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex), the aae-scout prior-art and freshness check, skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "author": {
         "name": "Elad Laor"
       },

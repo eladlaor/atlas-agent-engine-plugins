@@ -1,6 +1,6 @@
 ---
 name: aae-knowledge
-description: "The aae-guide's bundled MongoDB Atlas Agent Engine (AAE) knowledge base: a dated drift log of where the live platform and CLI disagree with the docs, verified details the guides omit (OpenAPI-only endpoints, Policy Engine types, cost accounting, OTLP export), doc contradictions, CLI targeting rules, monorepo and build-archive rules, SDK adapter facts, numbered runbooks (first deploy, connect an external client, recover after a cluster pause), and troubleshooting traps. Load it when answering or acting on any AAE question, before relying on the aae-guide card's 2026-10-04 snapshot."
+description: "The aae-guide's bundled MongoDB Atlas Agent Engine (AAE) knowledge base: a dated drift log of where the live platform and CLI disagree with the docs, verified details the guides omit (OpenAPI-only endpoints, Policy Engine types, cost accounting, OTLP export), doc contradictions, CLI targeting rules, monorepo and build-archive rules, SDK adapter facts, numbered runbooks (first deploy, connect an external client, recover after a cluster pause), troubleshooting traps, and how this plugin complements the skills the agentengine CLI installs. Load it when answering or acting on any AAE question, before relying on the aae-guide card's 2026-10-04 snapshot."
 ---
 
 # AAE Knowledge
@@ -36,6 +36,7 @@ asserting anything version-specific.
 | [A2A_AND_CAPABILITY_GAPS.md](references/A2A_AND_CAPABILITY_GAPS.md) | A2A token lifetime and ACL, and what AAE does not ship: RAG, evals, scheduling, with what to build on instead | A2A design, "does AAE have RAG / evals / cron?" |
 | [RUNBOOKS.md](references/RUNBOOKS.md) | Numbered procedures: first deploy, build-and-verify on the platform, connect an external client, recover after the Atlas cluster pauses | Doing any of those tasks |
 | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) | Symptom-first Q&A: misleading errors, gateway failures, paused clusters, half-finished `init`, and the misdiagnoses that recur | A user reports an error or odd behavior |
+| [CLI_SKILLS_AND_THIS_PLUGIN.md](references/CLI_SKILLS_AND_THIS_PLUGIN.md) | The skills `agentengine init` installs into each project, what this plugin adds on top of them, and which one answers which question | Working inside a project that has `.claude/skills/` or `.agents/skills/` from the CLI; "why use this plugin?" |
 | [FIRST_DEPLOY_EXPLAINED.md](references/FIRST_DEPLOY_EXPLAINED.md) | Q&A teaching write-up of the first-deploy setup | Teaching or recapping how login, context, workspace, Atlas setup and secrets fit together |
 
 ## Recording new findings
