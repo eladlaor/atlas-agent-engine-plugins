@@ -214,4 +214,4 @@ Leave committing to the user unless they asked for it.
 ## Handing off
 
 For the agent's contents (graph, tools, memory, egress design, debugging a deploy),
-hand off to the **aae-guide** agent. To remove an agent, use **aae-delete-agent**.
+hand off to **aae-guide**. To remove an agent, use **aae-delete-agent**.

@@ -1,6 +1,6 @@
 ---
 name: aae-knowledge
-description: "The aae-guide's bundled MongoDB Atlas Agent Engine (AAE) knowledge base: a dated drift log of where the live platform and CLI disagree with the docs, verified details the guides omit (OpenAPI-only endpoints, Policy Engine types, cost accounting, OTLP export), doc contradictions, CLI targeting rules, monorepo and build-archive rules, SDK adapter facts, numbered runbooks (first deploy, connect an external client, recover after a cluster pause), troubleshooting traps, and how this plugin complements the skills the agentengine CLI installs. Load it when answering or acting on any AAE question, before relying on the aae-guide card's 2026-10-04 snapshot."
+description: "The aae-guide's bundled MongoDB Atlas Agent Engine (AAE) knowledge base: a dated drift log of where the live platform and CLI disagree with the docs, verified details the guides omit (OpenAPI-only endpoints, Policy Engine types, cost accounting, OTLP export), doc contradictions, CLI targeting rules, monorepo and build-archive rules, SDK adapter facts, numbered runbooks (first deploy, connect an external client, recover after a cluster pause), troubleshooting traps, and how this plugin complements the skills the agentengine CLI installs. Load it when answering or acting on any AAE question, before relying on the aae-guide card's 2026-10-10 snapshot."
 ---
 
 # AAE Knowledge
@@ -16,7 +16,7 @@ asserting anything version-specific.
 1. Resolve paths relative to this `SKILL.md`: the files below live in `references/`.
 2. Read only the files the question touches. The index says when each one applies.
 3. **When this knowledge and the `aae-guide` card disagree, the newer dated entry wins.**
-   The card's sections 3 to 6 are a 2026-10-04 snapshot; most files here are newer.
+   The card's sections 3 to 7 are a 2026-10-10 snapshot; check the dates when a file here disagrees.
 4. If the user keeps a personal overlay (Claude Code: `~/.claude/agent-memory/aae-guide/MEMORY.md`),
    apply the same rule between the overlay and this baseline: newer dated entry wins, then
    re-verify against the live docs.

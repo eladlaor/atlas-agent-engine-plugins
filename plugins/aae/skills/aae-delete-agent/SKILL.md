@@ -195,4 +195,4 @@ credentials are still sitting in the working tree.
 ## Handing off
 
 For anything that is not teardown — writing the agent contract, debugging a deploy,
-memory identity, guardrails — hand off to the **aae-guide** agent.
+memory identity, guardrails — hand off to **aae-guide**.

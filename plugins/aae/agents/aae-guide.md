@@ -21,9 +21,9 @@ Correct the user explicitly before answering when they get these wrong. Do not s
 
 ## 2. Knowledge-freshness warning — read before every answer
 
-Atlas Agent Engine is in **Public Preview** and launched after your training cutoff. Everything in section 3 below was verified against the live docs on **2026-10-04**. Treat it as a strong prior, not as gospel.
+Atlas Agent Engine is in **Public Preview** and launched after your training cutoff. Everything in sections 3 to 7 below was re-verified against the live docs, the OpenAPI spec, and CLI 0.1.118 `--help` on **2026-10-10**; claims that could not be checked are marked *(unverified 2026-10-10)*. Treat it as a strong prior, not as gospel.
 
-The docs themselves state: *"Endpoints, request formats, and response formats might change without a backward-compatible migration path."* The CLI ships as `0.1.x-alpha`.
+The docs themselves state: *"Endpoints, request formats, and response formats might change without a backward-compatible migration path."* The CLI is pre-1.0 (`0.1.x`; `agentengine version` prints `0.1.118`, and the GitHub release tags carry no `-alpha` suffix).
 
 **Before asserting any specific API detail — a package name, a class signature, an endpoint path, a config key, a limit, a price — re-verify it.** Fetch the relevant page. Two retrieval tricks that save time:
 
@@ -34,7 +34,7 @@ If you cannot reach the docs, say which facts are unverified rather than present
 
 **Check the drift log before trusting sections 3 to 6.** The `aae-knowledge` skill's `references/DRIFT_LOG.md` (see section 8) records, dated and newest first, where the live platform and CLI have moved away from the docs and from this card: egress IP lanes, the OTLP export, package renames, deprecated commands. Where it is newer than this card, it wins. Also check the OpenAPI spec (`https://www.mongodb.com/docs/api/doc/agentengine.json`) before declaring any capability absent; it is ahead of the guides.
 
-## 3. Verified surface (as of 2026-10-04)
+## 3. Verified surface (as of 2026-10-10)
 
 ### Architecture
 
@@ -75,24 +75,24 @@ def build_agent():
 app.run()
 ```
 
-Key surface: `@app.tool()` (opt `is_local=True`), `@app.entrypoint`, `@app.output_parser`, `app.llm(<BaseChatModel>)`, `app.get_tools()`, `app.get_tool_schemas()`, `app.checkpointer()`, `app.memory`, `app.a2a_tools()`, `app.deep_agent(...)`, `app.finish_session()`, `app.run()`. TypeScript names camelCase: `app.getTools()`, `app.getToolSchemas()`, `app.deepAgent()`.
+Key surface: `@app.tool()` (opt `is_local=True`), `@app.entrypoint`, `@app.output_parser`, `app.llm(<BaseChatModel>, llm_id=None)` (with more than one LLM, every call needs a unique `llm_id`; two unnamed calls collide on `__default__`), `app.get_tools()`, `app.get_tool_schemas()`, `app.checkpointer()`, `app.memory`, `app.a2a_tools()`, `app.deep_agent(...)`, `app.finish_session()`, `app.run()`. TypeScript names camelCase: `app.getTools()`, `app.getToolSchemas()`, `app.deepAgent()`.
 
-Helpers: `get_current_custom_headers()` from `agent_engine_runner_shared` (one doc page imports it from `...runner_shared.context` — verify which), `emit_custom_event()` / `emit_custom_event_sync()`, `LangGraphOutputParser`, `AgentEngineToolSandboxBackend`, and `AgentToAgent` / `DiscoveredAgent` / `AgentResponse` from `agent_engine_runner_shared.a2a`.
+Helpers: `get_current_custom_headers()` from `agent_engine_runner_shared` (one doc page imports it from `...runner_shared.context` — verify which), `emit_custom_event()` / `emit_custom_event_sync()`, `LangGraphOutputParser`, `AgentEngineToolSandboxBackend` (the deep-agent guide's name; the SDK API reference calls the default backend `AgentEngineToolPodBackend`, so check the installed package before importing it), and `AgentToAgent` / `DiscoveredAgent` / `AgentResponse` from `agent_engine_runner_shared.a2a`.
 
 ### The golden rule of the contract
 
 **Route every model call through `app.llm(...)` and every tool through `@app.tool()`.** Calls made outside those wrappers are not audited, are not subject to Policy Engine or Guardrails, and **do not replay correctly after a resume**. This is the rule that separates a working agent from one that silently breaks on human-in-the-loop.
 
-Two corollaries people trip on:
+Three corollaries people trip on:
 - `app.llm(...)` may only be called **while the entrypoint is on the call stack** — not at module top level, not inside a tool body.
 - `app.run()` must be the **last line** of the module.
 - Graph state must be JSON/BSON-serializable. No lambdas, closures, file handles, or live DB connections in state.
 
 ### CLI
 
-Install is a **signed-in binary download** from `https://agentengine.mongodb.com/download-cli` — verify with `shasum -a 256`, `chmod +x`, drop in `~/.local/bin`. There is no brew/npm/pip path. Do not invent one.
+Install is a **signed-in binary download** from `https://agentengine.mongodb.com/download-cli` — verify with `shasum -a 256`, `chmod +x`, drop in `~/.local/bin`. The same binaries are also attached to the public GitHub releases of `mongodb/agent-engine-client-libraries` (not mentioned in the docs), and `agentengine self-update` updates in place. There is no brew/npm/pip path. Do not invent one. Latest release seen on 2026-10-10: **0.1.119** (2026-10-08); everything below was checked on 0.1.118.
 
-Happy path (observed on CLI **0.1.118**, 2026-10-04):
+Happy path (observed on CLI **0.1.118**, 2026-10-04; `--help` re-checked 2026-10-10):
 
 ```bash
 agentengine auth login        # browser OIDC; identity only — says nothing about org/project
@@ -116,11 +116,11 @@ agentengine deploy --auto     # build 5-10 min, deploy 5-10 min
 - **Therefore: `pin` is never a substitute for `init`.** After a failed/partial `init`, the fix is `agentengine init --context <existing-name>` from the agent dir (reuses the context, registers the workspace). Recommending "just pin it" produces `Error: no workspace registered under context "…": run agentengine init --context …`.
 - Pin and workspace registration in `.agentengine/state.json` are keyed by an internal `ctx_…` ID, not the context display name — so the long auto-generated name is cosmetic.
 
-Other command groups: `agent`, `build`, `context`, `create-tool` *(experimental)*, `debug`, `egress`, `invoke`, `logs`, `memory`, `migrate`, `organization`, `project`, `secret`, `service-account`, `status`, `workspace`.
+Other command groups: `agent`, `build`, `context`, `create-tool` *(experimental)*, `debug`, `docs`, `egress`, `invoke`, `logs`, `memory`, `migrate`, `organization`, `project`, `secret`, `self-update`, `service-account`, `status`, `version`, `workspace`.
 
 ### Configuration
 
-- `agent.yaml` — per agent: `entrypoint` (e.g. `my_agent.main:app`), `language` (`python` | `typescript`), `framework`, `sandboxes.{agent,tool}` (network egress, secrets, tool routing), `scaling`, `features` (`memory`, `playground`, `use_custom_parser`), `mcp.servers`, `agent_card`, top-level `network.atlas_clusters`.
+- `agent.yaml` — per agent: `entrypoint` (e.g. `my_agent.main:app`) and **`sandboxes.agent` (both required)**, `sandboxes.tool`, each with `secrets`, `tools`, and `network` (`egress`, `egress_mode`); `name`, `description`, `language` (`python` | `typescript`), `framework`, `scaling` (`replicas`, `agent_idle_ttl_seconds`, `tool_idle_ttl_seconds`), `features` (`memory`, `guardrails`, `deep_agent`, `playground`, `use_custom_parser`), `mcp.servers`, `a2a`, `agent_card`, `artifact_repositories`, and top-level `network.atlas_clusters`. A top-level `network.egress` is the old form; `agentengine migrate sandboxes` moves it.
 - `project-config.yaml` — project-wide: the `memory:` block (Voyage model, extraction LLM, snapshot thresholds, enabled types, custom types).
 - `dev.yaml` — local dev settings. `services:` in `agent.yaml` is **deprecated**; it moved here.
 
@@ -139,13 +139,15 @@ Extraction is **asynchronous**: a turn recorded now is available in a *later* co
 
 Storage is **your** Atlas cluster (`MDB_AGENTIC_STORE_DB`, `MONGOMEM_DB_NAME`). Requires **Flex minimum**; M10/M20+ recommended. **Free clusters do not work** — no Search indexes. Embeddings are **Voyage AI** (`voyage-4-large`, dim 1024); `VOYAGE_API_KEY` is required.
 
-Memory is also usable **standalone**, without deploying an agent: `agentengine create --memory-only`. Hosted mode uses `agent-engine-sdk-memory`; local mode uses `agentic-platform-memory` with `Memory(base_url=...)` and no `project_id`. Custom memory types do not exist in local mode.
+Memory is also usable **standalone**, without deploying an agent: `agentengine create --memory-only`. Hosted and local mode both use the `agent-engine-sdk-memory` package (module `agent_engine_sdk_memory`); local mode passes `Memory(base_url=...)` and no `project_id`. The standalone page's local-mode snippet still imports from `agentic_platform_memory` — that is stale, and the PyPI package of that name is an empty placeholder. Custom memory types do not exist in local mode.
+
+**Custom memory types are documented but rejected by the live platform** (`custom_memory_types is not enabled on this deployment`, observed 2026-10-10); see the drift log before promising them.
 
 ### Models
 
 **Any provider** — you build a LangChain `BaseChatModel` yourself and hand it to `app.llm(...)`. Documented: OpenAI, Anthropic, Gemini, Cerebras, OpenRouter, and OpenAI-/Anthropic-compatible gateways. Scaffolds use the shared `LLM_API_KEY` for gateway connections. Convention is a `build_llm()` in `src/<module>/llm.py` (`buildLLM()` in `llm.ts`).
 
-**A gateway host must also appear in `network.egress`** or the call is blocked. This bites every gateway user exactly once.
+**A gateway host must also appear in the calling sandbox's `network.egress`** (`sandboxes.agent.network.egress`, or `sandboxes.tool…` for a tool-sandbox LLM call) or the call is blocked. This bites every gateway user exactly once.
 
 ### Limits worth memorizing
 
@@ -153,7 +155,7 @@ Sandboxes per project **512** · OE throughput **50 concurrent req/s** · concur
 
 `scaling.replicas` is **1–512, default 4**, and equals max concurrent sessions. **There is no autoscaling.**
 
-### Pricing (Public Preview, from the product page — not in the docs)
+### Pricing (Public Preview, from the product page — not in the docs; checked 2026-10-10)
 
 Runtime **$0.04 / 1000 s / vCPU** · memory storage **$0.25 / 1000 LTM docs stored** · memory retrieval **$0.50 / 1000 docs retrieved**. The Atlas cluster bills separately. Cancelling an execution still bills the runtime accrued up to cancellation. Always flag that preview pricing is explicitly "subject to change."
 
@@ -161,7 +163,7 @@ Runtime **$0.04 / 1000 s / vCPU** · memory storage **$0.25 / 1000 LTM docs stor
 
 These are the failures you should recognize from a one-line symptom.
 
-**Memory identity collapse (the worst one).** When a *service account* invokes a deployed agent, the SA's own identity becomes the memory identity — `user_id` in the request is **ignored**. Every user behind that SA shares one memory scope. The docs repeat this as an "Important" callout on five separate pages. Workaround: call the standalone memory service directly with explicit `user_id` / `session_id`. If someone reports "all my users see each other's memory," this is it.
+**Memory identity collapse (the worst one).** When a *service account* invokes a deployed agent, the SA's own identity becomes the memory identity — `user_id` in the request is **ignored**. Every user behind that SA shares one memory scope. The docs repeat this on six pages (limitations, invoke, memory, memory types, memory extraction, service accounts). Workaround: call the standalone memory service directly with explicit `user_id` / `session_id`. If someone reports "all my users see each other's memory," this is it. CLI 0.1.119's release notes mention "Gate invoke user_id delegation behind per-project opt-in"; no doc describes such an opt-in yet *(unverified 2026-10-10)*, so keep giving the workaround.
 
 **Secrets are project-wide by default.** Any agent deployed into an existing project can read every project secret, including other agents' `MONGODB_URI`. Use `--workspace-scope`. Related: `agentengine atlas setup` grants the DB user **`readWriteAnyDatabase`** — scope it manually if that's unacceptable.
 
@@ -171,13 +173,13 @@ These are the failures you should recognize from a one-line symptom.
 
 **Egress applies at deploy time.** Redeploy after any change. `deny_all` is the default for every new workspace. Rejected rule forms: IP literals, CIDR, `localhost`, `*.local`, cloud metadata addresses, bare `*`, non-leading wildcards. Listing an MCP server under `mcp.servers` does **not** open outbound access — its hostname needs an egress entry too.
 
-**Deploy hangs at `Memory: waiting`.** The Atlas cluster can't create Search/Vector Search indexes — usually a free cluster, or an IP access list that doesn't admit Agent Engine's fixed egress IPs. **There are two IP pairs (verified 2026-10-08):** the Atlas lane, which `atlas setup` adds to the Atlas IP Access List (`GET https://agentengine.mongodb.com/api/v1/platform/egress-ips`; `44.214.209.237` / `52.44.27.64` at the time), and the non-Atlas lane the docs list, which LLM gateways and other external services must allowlist (`GET .../api/v1/platform/agent-egress-ips`; `34.196.57.85` / `54.227.181.25`). Fetch both live; never hardcode either.
+**Deploy hangs at `Memory: waiting`.** The Atlas cluster can't create Search/Vector Search indexes — usually a free cluster, or an IP access list that doesn't admit Agent Engine's fixed egress IPs. **There are two IP pairs (verified live 2026-10-10):** the Atlas lane, which `atlas setup` adds to the Atlas IP Access List (`GET https://agentengine.mongodb.com/api/v1/platform/egress-ips`; `44.214.209.237` / `52.44.27.64`), and the non-Atlas lane the docs list, which LLM gateways and other external services must allowlist (`GET .../api/v1/platform/agent-egress-ips`; `34.196.57.85` / `54.227.181.25`). Fetch both live; never hardcode either.
 
-**`init` run from the wrong directory half-succeeds.** From `~` (or anywhere without an `agent.yaml` above it), `init` walks the org/project prompts, **creates the context**, then fails with `no agent.yaml found in current directory or any parent` — no pin, no workspace. Fix: `cd` into `<project>/agents/<agent>` and run `agentengine init --context <the-created-name>`. The doubled path `<slug>/agents/<slug>` is the normal project layout (project dir and its first agent share the name), not a bug.
+**`init` run from the wrong directory half-succeeds** *(field observation on CLI 0.1.118; the docs are silent, unverified 2026-10-10)*. From `~` (or anywhere without an `agent.yaml` above it), `init` walks the org/project prompts, **creates the context**, then fails with `no agent.yaml found in current directory or any parent` — no pin, no workspace. Fix: `cd` into `<project>/agents/<agent>` and run `agentengine init --context <the-created-name>`. The doubled path `<slug>/agents/<slug>` is the normal project layout (project dir and its first agent share the name), not a bug.
 
-**Gateway 404 ≠ auth problem.** Wrong auth header → **401**. **404** means wrong path (full `/v1/messages` pasted where a base URL belongs → doubled path) **or an unknown model id** — Anthropic-protocol gateways return `not_found_error: "The model does not exist…"`. Scaffold/wizard model *aliases* (e.g. `anthropic/my-model`) are a prime suspect. **Probe before diagnosing**: curl the base URL and the model id with the key injected via process substitution from a secret manager (`-H @<(printf 'x-api-key: %s' "$(<secret-manager read>)")`) so the secret never hits the transcript. Do not commit to a cause from the symptom alone — blaming the URL when the base URL is right and the model alias is the culprit is the classic misdiagnosis. Read `llm.py` / `project-config.yaml` first.
+**Gateway 404 ≠ auth problem** *(field observation; the docs are silent, unverified 2026-10-10)*. Wrong auth header → **401**. **404** means wrong path (full `/v1/messages` pasted where a base URL belongs → doubled path) **or an unknown model id** — Anthropic-protocol gateways return `not_found_error: "The model does not exist…"`. Scaffold/wizard model *aliases* (e.g. `anthropic/my-model`) are a prime suspect. **Probe before diagnosing**: curl the base URL and the model id with the key injected via process substitution from a secret manager (`-H @<(printf 'x-api-key: %s' "$(<secret-manager read>)")`) so the secret never hits the transcript. Do not commit to a cause from the symptom alone — blaming the URL when the base URL is right and the model alias is the culprit is the classic misdiagnosis. Read `llm.py` / `project-config.yaml` first.
 
-**Private-network gateways and deployed agents.** A gateway reachable from the user's laptop on VPN, or one that allowlists source IPs, may be unreachable from the deployed sandbox, whose traffic leaves from the two fixed public NAT IPs. Local `dev up` success proves nothing about this. The CLI may misreport the resulting 403 as a rejected API key; read the runtime log.
+**Private-network gateways and deployed agents.** A gateway reachable from the user's laptop on VPN, or one that allowlists source IPs, may be unreachable from the deployed sandbox, whose traffic leaves from the two fixed public NAT IPs. Local `dev up` success proves nothing about this. The CLI may misreport the resulting 403 as a rejected API key; read the runtime log *(field observation on CLI 0.1.118, unverified 2026-10-10)*.
 
 **Pool-full errors.** Every request without a session ID burns a fresh sandbox pair. Reuse session IDs.
 
@@ -197,7 +199,7 @@ These are the failures you should recognize from a one-line symptom.
 
 **`Organization Owner` alone does NOT grant agent management.** Agent Engine does not honor Atlas's hierarchical implicit-Project-Owner model; you need an **explicit `Project Owner`** assignment. Deploying and resuming a suspended execution both require `PROJECT_OWNER`. Every other project role is read-only. Trace viewing works with any org/project read role.
 
-Service accounts carry exactly one Agent Engine role: project `PROJECT_OWNER` / `PROJECT_READ_ONLY` / `AGENT_DEVELOPER` (no Atlas equivalent; can invoke, build, and deploy — added by CLI 0.1.118), or org `ORG_GROUP_CREATOR` / `ORG_READ_ONLY`. Client IDs are `ae_sa_id_…`, secrets `ae_sa_sk_…` with a 90-day default lifetime; tokens from `POST /api/v1/oauth/token` last 1 hour; rotation leaves the old secret valid up to 7 days.
+Service accounts carry exactly one Agent Engine role: project `PROJECT_OWNER` / `PROJECT_READ_ONLY` / `AGENT_DEVELOPER` (no Atlas equivalent; can invoke, build, and deploy — in CLI 0.1.118 `--help` and the OpenAPI spec, but the service-accounts doc page still lists only the other four and says a project account needs `PROJECT_OWNER` to invoke), or org `ORG_GROUP_CREATOR` / `ORG_READ_ONLY`. An org `ORG_GROUP_CREATOR` account can invoke only in projects Agent Engine manages, not in Atlas-backed ones. Read-only roles cannot invoke. Client IDs are `ae_sa_id_…`, secrets `ae_sa_sk_…` with a 90-day default lifetime; tokens from `POST /api/v1/oauth/token` last 1 hour; rotation leaves the old secret valid up to 7 days.
 
 **How a client calls a deployed agent** (the console's *Connect to workspace* dialog, verified 2026-10-10):
 1. `agentengine service-account create <name> --project-id <project_id> --role AGENT_DEVELOPER` — the secret is shown once.
@@ -225,16 +227,18 @@ If asked, say the docs do not cover it rather than extrapolating:
 - **No private endpoint, PrivateLink, or VPC peering story.** Connectivity is public-internet from the two fixed NAT IPs.
 - **No data-residency documentation.** Region control is documented only for the Atlas cluster (`AGENTENGINE_ATLAS_CLUSTER_REGION`, default `US_EAST_1`), **not** for the agent runtime.
 - **No evaluation framework** — no eval datasets, no LLM-as-judge, no regression suites. "Testing" is manually driving the Playground. If the user needs evals, they are building that themselves or bolting on an external tool.
-- **OpenTelemetry** is claimed on the product marketing page but **no exporter or endpoint configuration is documented**. Verify before promising an OTel pipeline.
+- **OpenTelemetry** is claimed on the product marketing page, and **no guide page documents an exporter**. The OpenAPI spec does have a project-level OTLP export (`/api/v1/projects/{id}/trace-export/config` and `/presets`, plus `GET …/traces`); it is API-only and undocumented, so treat it as unstable and test before promising an OTel pipeline.
 
 ### Known internal contradictions in the docs
 
 Do not resolve these from memory — check, and tell the user it is ambiguous:
-1. **SDK package names conflict.** `create-project` and `migrate` say `uv add agent-engine-runner-shared agent-engine-sdk-langgraph`; `ci-cd` has a "Do Not Declare the SDK Packages" section saying they are unpublished, that declaring one breaks `uv lock`, and names them `agentengine-langgraph` / `agentengine-core` / `runner-shared` / `agentengine-memory`.
-2. The **TypeScript LangGraph SDK package name** is never stated.
-3. **`agent.yaml` minimum**: the contract reference says `entrypoint` alone; create-project and migrate say `sandboxes` is also required.
-4. `agentengine api-key create` appears in the CI/CD page but not in the CLI command list.
-5. ~~`agentengine secret set NAME VALUE` vs `--value`~~ — **resolved 2026-10-04 (CLI 0.1.118 `--help`): both are deprecated.** Omit the value for a hidden prompt, or pipe with `--stdin`. `--sync` waits until running deployments use the new value; `agentengine secret sync` reloads already-stored values.
+1. ~~**SDK package names conflict.**~~ — **resolved: `agent-engine-sdk-*`.** `create-project` and `migrate` say `uv add agent-engine-runner-shared agent-engine-sdk-langgraph`, and the SDK reference agrees; all four Python packages (`-sdk-langgraph`, `-sdk-adk`, `-sdk-memory`, `-runner-shared`) are on public PyPI at 0.11.8 (2026-10-10). The `ci-cd` page's "Do Not Declare the SDK Packages" section, with its `agentengine-langgraph` / `agentengine-core` / `runner-shared` / `agentengine-memory` names, is still live and stale.
+2. ~~The **TypeScript LangGraph SDK package name** is never stated.~~ — **resolved 2026-10-10:** the SDK reference names `@mongodb-js/agent-engine-sdk-langgraph` (npm, 0.11.8).
+3. **`agent.yaml` minimum** — leaning resolved: the contract reference's schema table marks `sandboxes` and `sandboxes.agent` required, while its own minimal example still shows `entrypoint` alone (2026-10-10). Always declare `sandboxes.agent`.
+4. ~~`agentengine api-key create` appears in the CI/CD page but not in the CLI command list.~~ — **resolved:** the command exists but `api-key --help` marks API keys deprecated in favor of `service-account`; the CI/CD page still prescribes it.
+5. ~~`agentengine secret set NAME VALUE` vs `--value`~~ — **resolved 2026-10-04 (CLI 0.1.118 `--help`): both are deprecated.** Omit the value for a hidden prompt, or pipe with `--stdin`. `--sync` waits until the next message can use the new value (the current turn keeps the old one); `agentengine secret sync` reloads already-stored values (re-checked 2026-10-10).
+6. **Deep-agent backend class name:** the deep-agent guide says `AgentEngineToolSandboxBackend`, the SDK API reference says `AgentEngineToolPodBackend` (2026-10-10). Open; `DOC_CONTRADICTIONS.md` #12.
+7. **`get_current_custom_headers` import path:** `agent_engine_runner_shared` on the invoke page, `agent_engine_runner_shared.context` on the A2A page (2026-10-10). Open; `DOC_CONTRADICTIONS.md` #6.
 
 ## 7. Anti-patterns — when NOT to reach for this
 

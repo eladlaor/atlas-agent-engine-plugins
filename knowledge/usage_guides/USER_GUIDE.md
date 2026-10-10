@@ -1,5 +1,6 @@
 # Atlas Agent Engine Plugins — User Guide
 
+- [Summary](#summary)
 - [What is this plugin?](#what-is-this-plugin)
 - [How do I install it?](#how-do-i-install-it)
 - [What does the guide already know, and where does it keep what it learns?](#what-does-the-guide-already-know-and-where-does-it-keep-what-it-learns)
@@ -10,25 +11,29 @@
 - [How does change detection actually work?](#how-does-change-detection-actually-work)
 - [Why does it crawl every page instead of checking a timestamp?](#why-does-it-crawl-every-page-instead-of-checking-a-timestamp)
 - [How do I schedule the check?](#how-do-i-schedule-the-check)
+  - [Why does the schedule run a copy of the watcher?](#why-does-the-schedule-run-a-copy-of-the-watcher)
+  - [Why didn't my check run again today?](#why-didnt-my-check-run-again-today)
 - [Where does state live?](#where-does-state-live)
 - [Why am I not getting notified?](#why-am-i-not-getting-notified)
 
 ## Summary
 
 Two plugins for working with MongoDB Atlas Agent Engine (AAE), in Claude Code or
-Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-knowledge` base, and
-the add-agent / delete-agent skills; `aae-docs-watch` tells you when AAE documentation pages change. Install
+Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-knowledge` base, the
+`aae-scout` prior-art check, the add-agent / delete-agent skills and an `ae` shortcut;
+`aae-docs-watch` tells you when AAE documentation pages change. Install
 `aae-docs-watch`, run the watcher once to record a baseline, optionally schedule it
 with launchd, and your host will tell you at session start whenever the docs have
 moved.
 
 ## What is this plugin?
 
-Two things that belong together.
+Two plugins that belong together.
 
-**`aae-guide`** is the specialist agent for Atlas Agent Engine — the runtime
-model, the SDK surface, the config contract, and the failure modes. It is the
-plugin's main agent.
+**`aae`** centres on **`aae-guide`**, the specialist for Atlas Agent Engine — the
+runtime model, the SDK surface, the config contract, and the failure modes. In Claude
+Code it is a subagent; in Codex, a skill. Alongside it: the `aae-knowledge` base, the
+`aae-scout` skill, and the `aae-add-agent` / `aae-delete-agent` skills.
 
 **`aae-docs-watch`** is a skill plus a background watcher that answers "did the
 AAE docs change?" mechanically instead of by guessing. AAE is in Public Preview
@@ -41,21 +46,22 @@ See the repository README for both hosts. In Claude Code:
 
 ```bash
 /plugin marketplace add eladlaor/atlas-agent-engine-plugins
+/plugin install aae@atlas-agent-engine-plugins
 /plugin install aae-docs-watch@atlas-agent-engine-plugins
 ```
 
-In Codex: `codex plugin marketplace add eladlaor/atlas-agent-engine-plugins`, then
-install from the Plugins Directory, and **trust the plugin's hook when prompted**:
-Codex skips plugin hooks until you do.
-
-Then record a baseline once:
+In Codex:
 
 ```bash
-<plugin-dir>/scripts/aae-docs-watch.sh --full   # or ask: "check the AAE docs, full crawl"
+codex plugin marketplace add eladlaor/atlas-agent-engine-plugins
+codex plugin add aae@atlas-agent-engine-plugins
+codex plugin add aae-docs-watch@atlas-agent-engine-plugins
 ```
 
-The first run reports no changes by design: there is nothing to compare against
-until a baseline exists.
+Then **trust the plugin's hook when prompted**: Codex skips plugin hooks until you do.
+
+The first docs check, scheduled or on demand, records the baseline and reports no
+changes by design: there is nothing to compare against yet.
 
 ## What does the guide already know, and where does it keep what it learns?
 
@@ -165,6 +171,8 @@ verdicts, because a workaround the platform has made obsolete is debt you don't 
 have.
 
 It needs `aae-docs-watch` installed for the freshness check, and it never changes anything.
+It is a skill in both hosts; its verdict and utility-candidate ledgers live in
+`~/.local/state/aae-scout/`, shared by Claude Code and Codex.
 
 ## How does change detection actually work?
 
@@ -198,8 +206,8 @@ If you only want to know about pages being **added, removed, or retitled**, the
 
 ## How do I schedule the check?
 
-Claude Code plugins **cannot** declare cron or scheduled work. For checks that
-run while Claude Code is closed, the plugin ships a launchd wrapper:
+Neither Claude Code nor Codex plugins can declare cron or scheduled work. For checks
+that run while your host is closed, the plugin ships a launchd wrapper:
 
 ```bash
 <plugin-dir>/scripts/install-schedule.sh install            # daily 10:00 local time
@@ -250,6 +258,7 @@ plugin updates and is shared by Claude Code, Codex and the launchd job.
 | `manifest.tsv` | `url <TAB> sha256` baseline |
 | `urls.txt` | Page-inventory baseline, used for added/removed detection |
 | `acknowledged` | Marker that the current report has been shown |
+| `last-full-run` | Local date and time of the last completed full crawl |
 
 Override the location with `AAE_WATCH_STATE_DIR` — useful for testing against a
 throwaway directory.
@@ -267,7 +276,8 @@ Work through these in order:
 4. **Nothing is scheduled.** Without launchd, state only refreshes when you run
    the watcher or invoke the skill. Check `install-schedule.sh status`.
 5. **The hook is not loaded.** Confirm the plugin is installed and run
-   `/reload-plugins`.
+   `/reload-plugins` (Claude Code). In Codex, check that you trusted the hook; an
+   update that changes it asks again.
 
 The watcher refuses to overwrite its baseline if a crawl returns fewer than half
 the previously-known pages, so a flaky network degrades to an error rather than

@@ -13,7 +13,8 @@
 ## Summary
 
 **v1.0 is a two-tier change watcher for MongoDB Atlas Agent Engine, plus a specialist
-agent and an `ae` CLI shortcut, for Claude Code and Codex.**
+agent with its knowledge base, helper skills and an `ae` CLI shortcut, for Claude Code
+and Codex.**
 
 What must be true when v1.0 ships:
 
@@ -110,6 +111,14 @@ source list, project key, or query.
 
 - **FR-12.** The `aae-guide` agent MUST verify API details against live docs before
   asserting them, because the product post-dates the model's training cutoff.
+- **FR-23.** Before answering anything substantive, `aae-guide` MUST read the bundled
+  `aae-knowledge` skill and then the user's personal overlay
+  (`~/.claude/agent-memory/aae-guide/MEMORY.md`, Claude Code only). When they disagree, the
+  newer dated entry wins. A missing baseline or overlay MUST be stated, never treated as
+  empty. New findings go to the overlay, never into the shipped skill.
+- **FR-24.** Every `aae-knowledge` entry that states platform behaviour MUST carry the
+  date it was checked, and the CLI or SDK version where it matters. The skill MUST NOT
+  contain organization-specific IDs, hostnames, or personal details.
 - **FR-13.** The `aae-docs-watch` skill MUST answer "what changed?" on demand, reading
   existing state rather than forcing a crawl.
 - **FR-14.** `install-ae-shortcut.sh` MUST create `ae` as a **symlink on PATH**, never a
@@ -223,6 +232,7 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-14** | Asked about a need AAE lacks (e.g. "run my agent on a schedule"), `aae-scout` answers BUILD or WAIT, and lists the sources it searched and the date | To write (`claude plugin eval` case) |
 | **AC-15** | With the watcher's state removed and the script missing from PATH and the plugin directories, `aae-scout` reports that `aae-docs-watch` isn't installed and doesn't claim the docs are current | To write |
 | **AC-16** | `--full --skip-if-ran-today`: with no marker it crawls and writes `last-full-run`; a second call the same day exits `20` and leaves `report.json` unchanged; with yesterday's date in the marker it crawls; with `--quick` it exits `1` | **Verified** (2026-10-09) |
+| **AC-18** | Asked a question answered only in `aae-knowledge`, `aae-guide` (Claude Code) loads the skill from the installed plugin, reads the overlay, reads only the reference files the question touches, and cites them | **Verified** (2026-10-10) |
 | **AC-17** | `install` copies the watcher to the fixed path and the plist points at the copy; `status` reports `current`, then `OUT OF DATE` after the copy is edited, then `MISSING` after it is deleted; `uninstall` removes the copy | **Verified** (2026-10-09) |
 
 **Install verification (not automatable, must be done once before delivery):**
@@ -232,14 +242,24 @@ guide skill (Codex) is listed, the skills are discoverable, and the hook fires â
 Codex only after the user trusts it. **Neither host has executed this path yet.** It is
 the highest-risk unknown in the project.
 
+Progress on 2026-10-10:
+- **Claude Code:** done. Installed from the marketplace, the subagent and skills are
+  listed, and `aae-guide` loads `aae-knowledge` (AC-18).
+- **Codex:** partly done. The marketplace adds from GitHub, both plugins install, and all
+  six skills reach the model prompt with absolute paths. This was checked with
+  `codex-cli` 0.162.1 in an isolated `CODEX_HOME` via `codex debug prompt-input`.
+- **Still open:** a real Codex conversation, and the hook firing after trust. Codex sets
+  `CLAUDE_PLUGIN_ROOT` for plugin hooks (per its plugin docs), so the hook command should
+  resolve.
+
 ## Explicit non-goals
 
 Stated so they are not mistaken for omissions:
 
 - **No CLI auto-upgrade** (FR-9). Detect and report only.
 - **No private/internal sources in v1.0.** Design retained, no code.
-- **No MCP server in v1.0.** The `mcp` tag must be removed from the marketplace entry â€”
-  it currently overclaims.
+- **No MCP server in v1.0.** The marketplace entries carry no `mcp` tag, so none is
+  claimed.
 - **No chat/Slack watching, ever.** Product channels are human escalation surfaces,
   not release feeds; watching them yields noise indistinguishable from signal.
 - **No evaluation of AAE itself.** This watches the product's surface, not its quality.

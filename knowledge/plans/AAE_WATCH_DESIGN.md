@@ -141,6 +141,10 @@ rather than default.
 
 ## What does the job produce?
 
+**Status (2026-10-10):** only the docs report is built, and it lives in
+`${AAE_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/aae-docs-watch}`, not
+`~/.aae-watch/`. The digest, delta and history below are still a plan.
+
 ```
 ~/.aae-watch/
   CURRENT.md          Durable digest — "state of AAE as of <date>". Both tools read it.
@@ -238,8 +242,8 @@ Report the release **`body`**, not just the version number — it is the only pu
 CLI changelog that exists. The docs site has no release notes: `/release-notes/` is a
 301 redirect loop, `/changelog/` and `/whats-new/` are 404.
 
-Related, verified: `self-update --auto` is **not configured** on this machine (no
-`~/.agentengine/` exists). Leave it that way.
+Related: leave `self-update --auto` off. An unattended CLI upgrade is exactly the
+unannounced change this design exists to surface.
 
 ## Is there a second consumer of the same detection?
 
@@ -278,7 +282,7 @@ deployed watcher has to follow.
 | MEMORY.md region writer | To build | Marker-bounded, fail-fast |
 | MCP server | To build | On-demand read interface |
 | Claude Code hook + skill | Partially exists | `SessionStart` hook exists for docs-watch |
-| Codex plugin + hook + skill | To build | **Untestable here — Codex not installed** |
+| Codex plugin + hook + skill | **Exists** (0.2.0) | Manifests shipped; not yet loaded by a Codex install |
 
 ## Phasing
 
@@ -292,8 +296,8 @@ and what it costs per night. Everything before this point works without it.
 **Phase 3 — memory region + MCP server.** The marker-bounded MEMORY.md writer and the
 on-demand read interface.
 
-**Phase 4 — Codex parity.** Plugin, hook, skill. Cannot be verified until Codex is
-installed on a machine.
+**Phase 4 — Codex parity.** Plugin, hook, skill. Manifests shipped in 0.2.0; still to
+be verified by a real Codex install.
 
 ## Open questions
 
@@ -321,12 +325,11 @@ installed on a machine.
 
 | Fact | Status |
 |---|---|
-| `docs/agentengine/llms.txt` → HTTP 200, 196 entries | **Verified today** |
-| Site-wide `docs/llms.txt` has zero agentengine entries — irrelevant, the watcher uses the scoped one | **Verified today** |
+| `docs/agentengine/llms.txt` → HTTP 200, 196 entries | **Verified 2026-10-06** |
+| Site-wide `docs/llms.txt` has zero agentengine entries — irrelevant, the watcher uses the scoped one | **Verified 2026-10-06** |
 | `api.github.com/repos/mongodb/agent-engine-client-libraries/releases/latest` → 200, unauthenticated | **Verified** |
 | Latest CLI = 0.1.118, published 2026-09-30; local = 0.1.118 | **Verified** |
 | `agentengine version --json` emits `schema_version: agentic.cli/v1` | **Documented** |
 | GitHub releases as a *supported* distribution channel | **Not documented — do not assume** |
 | CLI version pins local runner images; orchestrator/memory-server track platform independently | **Inferred** from `version --json` |
 | No CLI↔platform compatibility statement exists | **Verified absent** — a gap, not a guarantee |
-| `self-update --auto` not configured locally | **Verified** — no `~/.agentengine/` |

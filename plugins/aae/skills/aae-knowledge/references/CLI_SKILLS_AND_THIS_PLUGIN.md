@@ -21,7 +21,7 @@ description: "How the aae plugin relates to the skills the agentengine CLI insta
   them, read the relevant one first, then apply this plugin's knowledge on top.
 - What the plugin adds, in order of value: **a dated memory of what the docs don't say**
   (this skill), **utilities the CLI doesn't ship** (add or tear down one agent, docs
-  change detection, a prior-art check), and **agents rather than only skills** (a
+  change detection, a prior-art check), and **a subagent rather than only skills** (a
   specialist with its own context and a personal memory overlay).
 
 ## Which skills does the agentengine CLI install, and where?
@@ -77,11 +77,11 @@ learned by running the platform:
 |---|---|
 | `aae-add-agent` | `agentengine create` scaffolds a whole new project; nothing adds one agent to an existing monorepo |
 | `aae-delete-agent` | `workspace delete` alone leaves secrets, sessions and the database user behind |
-| `aae-docs-watch` | Nothing tells you the docs changed; this crawls them nightly and reports diffs at session start |
+| `aae-docs-watch` | Nothing tells you the docs changed; this crawls them (nightly, if you schedule it) and reports diffs at session start |
 | `aae-scout` | Checks whether the platform, CLI, SDK, official examples or your own repo already do what you're about to build, with a dated verdict |
 | `ae` shortcut | A short command name that also works for commands issued by an agent |
 
-**3. Agents, not only skills.** In Claude Code, `aae-guide` is a subagent: it runs in its
+**3. A subagent, not only skills.** In Claude Code, `aae-guide` is a subagent: it runs in its
 own context window, so a long investigation doesn't flood the main conversation. It also
 keeps a **personal memory overlay** (`~/.claude/agent-memory/aae-guide/MEMORY.md`) for the
 user's project IDs and their own drift notes, read on top of this baseline.

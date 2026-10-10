@@ -6,6 +6,8 @@ description: Dated log of observed drift between the Atlas Agent Engine docs and
 # AAE drift log
 
 - [Summary](#summary)
+- [2026-10-10 — CLI 0.1.119 release notes are ahead of the docs](#2026-10-10--cli-01119-release-notes-are-ahead-of-the-docs)
+- [2026-10-10 — the SDK reference and the guides disagree on names](#2026-10-10--the-sdk-reference-and-the-guides-disagree-on-names)
 - [2026-10-10 — custom memory types are rejected by the live platform](#2026-10-10--custom-memory-types-are-rejected-by-the-live-platform)
 - [2026-10-10 — per-agent `dev up` cannot see monorepo `shared/` path dependencies](#2026-10-10--per-agent-dev-up-cannot-see-monorepo-shared-path-dependencies)
 - [2026-10-10 — the scaffold still writes the deprecated top-level `network.egress`](#2026-10-10--the-scaffold-still-writes-the-deprecated-top-level-networkegress)
@@ -43,6 +45,38 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Only `deploy list` and `deploy get <id>` are read-only.** Every other `deploy` form,
   including a typo, starts a real deployment.
 - **Fetch egress IPs live.** There are two pairs for two purposes.
+
+## 2026-10-10 — CLI 0.1.119 release notes are ahead of the docs
+
+- **Docs say** (re-crawled 2026-10-10): the service-account memory-identity limitation is
+  unconditional ("The platform ignores any end-user `user_id` value"); the install page says
+  runtime images come from MongoDB's private Amazon ECR registry; the memory sample lists
+  `entity` as a valid extraction type; only LangGraph and Google ADK adapters are documented.
+- **Observed:** `agentengine` **0.1.119** was released on 2026-10-08 on the public GitHub
+  releases of `mongodb/agent-engine-client-libraries` (binaries attached; the docs only
+  describe the signed-in download page). Its notes include "Gate invoke user_id delegation
+  behind per-project opt-in", "Propagate parent user_id to A2A child executions", "Prevent
+  projects from enabling entity memory extraction", "make public GHCR the unconditional
+  default" for images, and an OpenAI Agents adapter marked "[After PubPreview]". None of these
+  is in the guides yet. The OpenAPI spec has run-level `user_id` / invoker fields described
+  as "the delegation target the run executed as", but no opt-in setting was found.
+- **Resolution:** untested; the card was checked on 0.1.118. Keep prescribing the
+  standalone-memory workaround for per-user memory until a doc or a test shows the opt-in.
+  Do not enable `entity` extraction. Re-check after upgrading to 0.1.119.
+
+## 2026-10-10 — the SDK reference and the guides disagree on names
+
+- **Deep-agent backend:** `/build/build-deep-agent.md` calls the default backend
+  `AgentEngineToolSandboxBackend` (import path
+  `agent_engine_sdk_langgraph.backends.tool_sandbox`); the Python and TypeScript SDK API
+  references call it `AgentEngineToolPodBackend`. Check the installed package before importing.
+- **TypeScript package:** the SDK reference now names `@mongodb-js/agent-engine-sdk-langgraph`
+  (npm `latest` 0.11.8). The Python packages `agent-engine-sdk-langgraph`, `-sdk-adk`,
+  `-sdk-memory` and `agent-engine-runner-shared` are all 0.11.8 on public PyPI.
+- **`agent.yaml` keys the card lacked:** the contract table also lists `name`,
+  `description`, `features.guardrails`, `features.deep_agent`, `artifact_repositories` and
+  `scaling.agent_idle_ttl_seconds` (1–86400, default 600). `language` and `framework` appear
+  in create-project, not in the contract table.
 
 ## 2026-10-10 — custom memory types are rejected by the live platform
 
@@ -95,6 +129,10 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Resolution:** no invoke-only role is visible in `--help`, so a client that only needs
   to invoke still gets build and deploy rights through `AGENT_DEVELOPER`. Say so when
   recommending it.
+- **Update 2026-10-10:** the OpenAPI spec and `/manage/inspect-traces.md` ("Agent Developer")
+  know the role, but `/api-keys-service-accounts.md` still lists only `PROJECT_OWNER` /
+  `PROJECT_READ_ONLY` and `ORG_GROUP_CREATOR` / `ORG_READ_ONLY`, and says a project account
+  needs `PROJECT_OWNER` to invoke.
 
 ## 2026-10-09 — the local-mode memory package is now `agent-engine-sdk-memory`
 
@@ -103,8 +141,11 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Observed** (docs re-crawl, 2026-10-09): both pages now name `agent-engine-sdk-memory` for
   local mode too, including the install command. Anchor IDs still say `agentic-platform-memory`.
 - **Resolution:** one package for local and hosted. The `aae-guide` card's "local mode uses
-  `agentic-platform-memory`" line is stale. Not yet checked: what `Memory(base_url=...)` now
-  imports from.
+  `agentic-platform-memory`" line was stale and was corrected on 2026-10-10.
+- **Update 2026-10-10:** the SDK reference imports `Memory` from `agent_engine_sdk_memory` in
+  every mode, but `/add-features/memory-only.md`'s local-mode snippet still says
+  `from agentic_platform_memory import Memory, MemoryRequestContext` right after installing
+  `agent-engine-sdk-memory`. That import is the stale part; use `agent_engine_sdk_memory`.
 
 ## 2026-10-08 — there are two egress IP pairs, one per lane
 
@@ -122,6 +163,8 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
   never contained the documented one. That conflated the two lanes. Neither pair is stale.
 - **Resolution:** Atlas IP list ← `agentengine atlas setup-ip-access` (or the `egress-ips`
   endpoint). External services ← `agent-egress-ips`. Fetch both live; never hardcode.
+- **Re-checked 2026-10-10:** both endpoints return the same pairs; the docs still list only
+  the non-Atlas pair.
 
 ## 2026-10-08 — the agent contract now marks `sandboxes` as required
 
@@ -150,7 +193,9 @@ From `--help`:
   requires `--project-scope`.
 - `context current` now describes its "Source" as a tier: `--context` flag or directory pin.
 - The claim that `atlas setup` grants its DB user `readWriteAnyDatabase` is **not** stated in
-  `/deploy/atlas-setup.md`. Unverified; check the user's role in Atlas before repeating it.
+  `/deploy/atlas-setup.md`. **Resolved 2026-10-10:** `/reference/limitations.md` ("Database
+  Access") states it, and says to create a narrower user scoped to `MDB_AGENTIC_STORE_DB` and
+  `MONGOMEM_DB_NAME` and store it as a `MONGODB_URI` workspace secret.
 
 ## 2026-10-08 — `api-key` is deprecated in favor of `service-account`
 
@@ -233,6 +278,8 @@ From `--help`:
   2026-10-05) lists "semantic, episodic, taxonomic, **entity**, **preferences**, procedural".
   On 2026-10-08 `/add-features/memory.md` carried the same six-type comment in its sample.
 - **Resolution:** unresolved and untested. Do not promise `entity` or `preferences`.
+- **Update 2026-10-10:** CLI 0.1.119's release notes include "Prevent projects from enabling
+  entity memory extraction", while `/add-features/memory.md` still lists `entity` as valid.
 
 ## 2026-10-05 — a typo'd `deploy` subcommand runs a real deploy
 

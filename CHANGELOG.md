@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-10
+
+Plugin versions: `aae` 0.4.2, `aae-docs-watch` 0.3.1.
+
+### Changed
+
+- `aae-guide`'s card is re-verified against the live docs, OpenAPI spec and CLI 0.1.118 on 2026-10-10: `agent.yaml` keys and per-sandbox egress, `app.llm(llm_id=)`, the memory SDK package for local mode, role details, trace export and install channels are corrected; claims with no doc source are marked unverified.
+- The drift log and doc-contradiction list are updated with the 2026-10-10 findings, including CLI 0.1.119 release notes running ahead of the docs.
+- The README summary states the plugins' two aims, lists each plugin's resources in its own table, and drops the "card last checked 2026-10-04" caveat; the "Why the differences exist" design FAQ is removed from the README.
+- The plugin and marketplace descriptions mention the guide's bundled knowledge base.
+- The README and user guide drop the manual first-baseline crawl; the first scheduled or on-demand check records it.
+- The Codex install steps use `codex plugin add`, verified with codex-cli 0.162.1.
+- The behaviour spec requires the two-layer knowledge read (FR-23) and dated, organization-neutral knowledge entries (FR-24), and records the 2026-10-10 install checks on both hosts.
+
+### Fixed
+
+- The user guide's Claude Code install steps include the `aae` plugin, and the guide lists `aae-scout` and its shared ledger location.
+- The README calls the scheduled docs crawl daily (10:00 by default), not nightly.
+- Docs no longer describe the plugin as shipping several agents, or the Codex manifests and `mcp` tag as still pending.
+
 ## [0.5.1] - 2026-10-10
 
 Plugin versions: `aae` 0.4.1, `aae-docs-watch` 0.3.1.
@@ -125,7 +145,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.0...v0.4.1
