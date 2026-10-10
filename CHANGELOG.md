@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - The behaviour spec no longer refers to developer, devops or QA guides; the user guide is the repo's only usage guide.
-
 - The README and user guide state up front that docs change detection is a deterministic hash check costing no AI tokens; the model reads only the diffs of changed pages.
 - The README explains that the daily docs crawl is a `launchd` job on your own machine (the macOS equivalent of cron), where it's installed, and when it runs.
 
