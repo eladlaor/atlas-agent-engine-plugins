@@ -44,6 +44,13 @@ The watcher is `${PLUGIN_DIR}/scripts/aae-docs-watch.sh`.
 
 # Force another full crawl today. Use only when the user asks to re-run.
 "${PLUGIN_DIR}/scripts/aae-docs-watch.sh" --full
+
+# Opt-in: also apply any changes found to the knowledge base, unattended.
+"${PLUGIN_DIR}/scripts/aae-docs-watch.sh" --full --skip-if-ran-today --update-kb
+
+# Apply the existing changes report to the knowledge base without crawling
+# (for example to retry after kb-update-error).
+"${PLUGIN_DIR}/scripts/aae-docs-watch.sh" --kb-update-only
 ```
 
 Exit codes: `0` no changes, `10` changes detected, `20` skipped because today's full
@@ -56,6 +63,30 @@ already ran (the time is in `last-full-run`), then report from the existing
 because the baseline has already moved. Force with `--full` alone only when the user
 explicitly asks to run it again. Use `--quick` only for a fast "anything new?". The first run on a fresh machine records a baseline and reports no
 changes — say so rather than implying the docs are unchanged.
+
+### `--update-kb`: apply the changes to the knowledge base
+
+**Only when the user asks for it.** With `--update-kb`, a run that finds changes starts
+an AI runner without anyone present (`claude -p`, or `codex exec`). The runner follows
+the `aae-kb-update` skill in docs mode with `--auto`: it edits the knowledge base without
+asking, then writes a summary to `kb-update.md`. Without the flag the watcher only
+reports, which is the default. When the user just wants to review and apply the changes
+with you, run the `aae-kb-update` skill in docs mode yourself instead; it proposes first.
+
+Settings, all optional, read from the environment:
+
+| Variable | Meaning |
+|---|---|
+| `AAE_KB_REPO` | A git clone of the plugin repository. Reference-file and guide-card edits go there. Unset: they go to the notes as `baseline candidate` entries |
+| `AAE_KB_RUNNER` | `claude` or `codex`. Default: `claude` if on `PATH`, else `codex` |
+| `AAE_KB_NOTES` | The personal notes file. Default `~/.claude/agent-memory/aae-guide/MEMORY.md` |
+| `AAE_KB_MAX_USD` | Spending cap for one `claude` run. Default `2` |
+| `AAE_KB_MODEL` | Model for the `claude` runner. Default `sonnet` |
+
+A runner failure never changes the crawl's exit code. It is written to
+`kb-update-error`, and the session-start notice reports it. On exit `10`, check that
+file and `kb-update.md`, and tell the user which one you found. The Codex runner is
+untested.
 
 ## Reporting what changed
 
@@ -71,6 +102,13 @@ Codex alike:
 | `pages/<slug>` | Current markdown snapshot of each page |
 | `manifest.tsv` | `url <TAB> sha256` baseline |
 | `last-full-run` | Local date and time of the last completed full crawl |
+| `kb-update.md` | With `--update-kb`: what the last automatic knowledge-base update changed. Its first line is a one-sentence summary |
+| `kb-update-processed` | One line per report applied to the knowledge base: its `checked_at`, the date, the mode |
+| `kb-update-error` | Time and message of a failed automatic update; removed by the next successful one |
+| `kb-update-runner.log` | The runner's full output from the last automatic update |
+| `kb-update-notes-before.md` | Copy of the personal notes taken before the last automatic update |
+| `notes-pending.md` | The runner's notes updates; the watcher appends them to the notes after a successful run. Present only if that append failed |
+| `kb-update-skill.md`, `kb-baseline/` | Inputs staged for the runner: the skill, and a read-only knowledge-base copy when no clone is set |
 
 To explain a change: read the relevant `diffs/*.diff`, then summarise the
 behavioural impact — a new config key, a changed CLI flag, a revised limit —
@@ -91,13 +129,15 @@ between sessions runs from launchd (macOS only):
 
 ```bash
 "${PLUGIN_DIR}/scripts/install-schedule.sh" install   # daily at 10:00 local time
+"${PLUGIN_DIR}/scripts/install-schedule.sh" install --update-kb   # and update the knowledge base on changes
 "${PLUGIN_DIR}/scripts/install-schedule.sh" status    # incl. whether the job's copy is current
 "${PLUGIN_DIR}/scripts/install-schedule.sh" uninstall
 ```
 
-The job runs a copy of the watcher from `~/.local/share/aae-docs-watch/bin/`, because the
-plugin's own folder is versioned and an update can delete it. If `status` reports the
-copy as out of date or missing, tell the user and re-run `install`.
+The job runs a copy of the watcher from `~/.local/share/aae-docs-watch/bin/`, with a copy
+of the `aae-kb-update` skill beside it, because the plugin's own folder is versioned and
+an update can delete it. If `status` reports either copy as out of date or missing, tell
+the user and re-run `install` (with `--update-kb` again if they had it on).
 
 The `SessionStart` hook then reports any pending result once, and marks it
 acknowledged so it does not repeat every session.
@@ -106,4 +146,4 @@ acknowledged so it does not repeat every session.
 
 For anything beyond "what changed" — writing the agent contract, debugging a
 deploy, memory identity, guardrails — hand off to **aae-guide** (a subagent in Claude Code, a skill in Codex; it ships in
-the `aae` plugin), which owns the platform's behaviour and failure modes.
+this plugin), which owns the platform's behaviour and failure modes.

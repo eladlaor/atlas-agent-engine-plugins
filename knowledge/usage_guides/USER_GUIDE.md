@@ -5,6 +5,9 @@
 - [How do I install it?](#how-do-i-install-it)
 - [What does the guide already know, and where does it keep what it learns?](#what-does-the-guide-already-know-and-where-does-it-keep-what-it-learns)
 - [How do I ship what I learned to every user of the plugin?](#how-do-i-ship-what-i-learned-to-every-user-of-the-plugin)
+- [The docs changed. How do I bring the knowledge base up to date?](#the-docs-changed-how-do-i-bring-the-knowledge-base-up-to-date)
+- [Can the knowledge base update itself when the docs change?](#can-the-knowledge-base-update-itself-when-the-docs-change)
+  - [Why does the automatic update write my notes through a staging file?](#why-does-the-automatic-update-write-my-notes-through-a-staging-file)
 - [How do I type `ae` instead of `agentengine`?](#how-do-i-type-ae-instead-of-agentengine)
 - [Why a symlink instead of a shell alias?](#why-a-symlink-instead-of-a-shell-alias)
 - [How do I know when the AAE docs change?](#how-do-i-know-when-the-aae-docs-change)
@@ -19,12 +22,14 @@
 
 ## Summary
 
-Two plugins for working with MongoDB Atlas Agent Engine (AAE), in Claude Code or
-Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-kb-read` base, the
-`aae-scout` prior-art check, the add-agent / delete-agent skills and an `ae` shortcut;
-`aae-docs-watch` tells you when AAE documentation pages change. Install
-`aae-docs-watch` and optionally schedule it with launchd; the first check records a
-baseline, and your host tells you at session start whenever the docs have moved.
+One plugin, `aae`, for working with MongoDB Atlas Agent Engine (AAE), in Claude Code or
+Codex. It carries the `aae-guide` specialist, its bundled `aae-kb-read` base, the
+`aae-kb-update` skill, the `aae-scout` prior-art check, the add-agent / delete-agent
+skills, an `ae` shortcut, and the docs watcher that tells you when AAE documentation
+pages change. Install `aae` and optionally schedule the watcher with launchd; the first
+check records a baseline, and your host tells you at session start whenever the docs have
+moved. Opt in to `--update-kb` and a changed page also updates the knowledge base, with a
+summary in the same notice.
 
 Change detection is deterministic and costs no AI tokens: a script hashes every page
 and compares the hashes with the last run. The model reads only the diffs of the pages
@@ -32,15 +37,16 @@ that changed, and nothing at all on a day with no changes.
 
 ## What is this plugin?
 
-Two plugins that belong together.
+One plugin, `aae`, with two halves that belong together.
 
-**`aae`** centres on **`aae-guide`**, the specialist for Atlas Agent Engine — the
+**The guide.** It centres on **`aae-guide`**, the specialist for Atlas Agent Engine — the
 runtime model, the SDK surface, the config contract, and the failure modes. In Claude
 Code it is a subagent; in Codex, a skill. Alongside it: the `aae-kb-read` base, the
-`aae-scout` skill, and the `aae-add-agent` / `aae-delete-agent` skills.
+`aae-kb-update` skill that keeps it current, the `aae-scout` skill, and the
+`aae-add-agent` / `aae-delete-agent` skills.
 
-**`aae-docs-watch`** is a skill plus a background watcher that answers "did the
-AAE docs change?" mechanically instead of by guessing. AAE is in Public Preview
+**The docs watcher.** The `aae-docs-watch` skill, a session-start hook and an optional
+daily job answer "did the AAE docs change?" mechanically instead of by guessing. AAE is in Public Preview
 and its own docs warn that formats may change without a backward-compatible
 migration path, so stale knowledge is the default failure mode here.
 
@@ -51,7 +57,6 @@ See the repository README for both hosts. In Claude Code:
 ```bash
 /plugin marketplace add eladlaor/atlas-agent-engine-plugins
 /plugin install aae@atlas-agent-engine-plugins
-/plugin install aae-docs-watch@atlas-agent-engine-plugins
 ```
 
 In Codex:
@@ -59,13 +64,13 @@ In Codex:
 ```bash
 codex plugin marketplace add eladlaor/atlas-agent-engine-plugins
 codex plugin add aae@atlas-agent-engine-plugins
-codex plugin add aae-docs-watch@atlas-agent-engine-plugins
 ```
 
 Then **trust the plugin's hook when prompted**: Codex skips plugin hooks until you do.
 
 The first docs check, scheduled or on demand, records the baseline and reports no
 changes by design: there is nothing to compare against yet.
+
 
 ## What does the guide already know, and where does it keep what it learns?
 
@@ -90,8 +95,8 @@ so the guide still verifies version-specific details against the live docs or `-
 
 ## How do I ship what I learned to every user of the plugin?
 
-Run the **`aae-kb-update`** skill ("update the kb") with a local clone of this repository.
-It reads your personal notes, picks out the entries that hold for every AAE user, strips
+Run the **`aae-kb-update`** skill in **notes mode** ("promote my AAE notes") with a local
+clone of this repository. It reads your personal notes, picks out the entries that hold for every AAE user, strips
 anything project-specific (IDs, hostnames, names, local paths), and shows you each
 proposed entry and the reference file it would go into. It edits the clone only after you
 approve, and adds a `CHANGELOG.md` line. Committing and releasing stay with you.
@@ -99,6 +104,83 @@ approve, and adds a `CHANGELOG.md` line. Committing and releasing stay with you.
 **The misunderstanding to avoid:** expecting the guide to update the shipped knowledge
 base on its own. It writes only to your personal notes. Moving a finding into the public
 baseline is always a deliberate, reviewed step.
+
+## The docs changed. How do I bring the knowledge base up to date?
+
+Run **`aae-kb-update` in docs mode** ("apply the docs changes to the kb"), ideally with a
+clone of this repository. It reads the watcher's latest report and the diffs, and for
+each changed, added or removed page:
+
+1. finds the knowledge entries that rest on it: the `aae-kb-read` reference files, the
+   `aae-guide` card, and your personal notes;
+2. decides whether each is **confirmed**, **stale**, or missing a **new fact** worth
+   recording;
+3. proposes the edits in one table, and applies the ones you approve.
+
+Generic platform facts go into the matching reference file in your clone (`DRIFT_LOG.md`,
+`VERIFIED_DETAILS.md`, `DOC_CONTRADICTIONS.md` and so on), stale claims in the guide card
+are fixed in the clone, and consequences for your own setup go into your notes. Every
+entry is dated and cites the docs page. Without a clone, what would have gone into the
+reference files goes into your notes, marked `baseline candidate`, so notes mode can ship
+it later.
+
+It records each report it has applied in `kb-update-processed` in the watcher's state
+directory, so running it twice on the same report changes nothing.
+
+**The misunderstanding to avoid:** expecting docs mode to copy your notes into the public
+files. In docs mode the shipped files receive only facts from the public docs pages; your
+notes are read only to see which of your entries a change affects.
+
+## Can the knowledge base update itself when the docs change?
+
+Yes, if you opt in with `--update-kb`. After a crawl that found changes, the watcher
+starts an AI runner without anyone present, which runs `aae-kb-update` in docs mode with
+`--auto`: the same procedure as above, minus the approval step. It then writes a short
+summary to `kb-update.md`, and the next session-start notice says
+"Knowledge base updated:" with the summary's first line.
+
+```bash
+# Once, on demand:
+AAE_KB_REPO=~/code/atlas-agent-engine-plugins <aae-plugin-dir>/scripts/aae-docs-watch.sh --full --update-kb
+# Every day, via the schedule:
+AAE_KB_REPO=~/code/atlas-agent-engine-plugins <aae-plugin-dir>/scripts/install-schedule.sh install --update-kb
+```
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `AAE_KB_REPO` | Your git clone of this repository; reference-file and guide-card edits go there | Unset: those edits go to your notes as `baseline candidate` |
+| `AAE_KB_RUNNER` | `claude` or `codex` | `claude` if on `PATH`, else `codex` |
+| `AAE_KB_MAX_USD` | Spending cap for one `claude` run | `2` |
+| `AAE_KB_MODEL` | Model for the `claude` runner | `sonnet` |
+| `AAE_KB_NOTES` | Your personal notes file | `~/.claude/agent-memory/aae-guide/MEMORY.md` |
+
+The model is started only when the hash check found a change, so a quiet day costs
+nothing. The `claude` runner gets file tools only (no shell, no web, no MCP servers),
+runs on Sonnet by default, and has a spending cap and a 15-minute limit. It can read and
+write only the watcher's state directory and your clone (`acceptEdits`, with every other
+access denied because nobody is there to approve it); the skill, a snapshot of your notes
+and, without a clone, a copy of the shipped knowledge base are copied into the state
+directory first. It never edits your notes itself: it writes `notes-pending.md`, and the
+watcher appends that to your notes under a dated line after a successful run, keeping the
+pre-run copy in `kb-update-notes-before.md`. The `codex` runner (`codex exec` in its
+workspace-write sandbox over the same two directories) is untested.
+
+If the update fails (no runner found, a timeout, the cap reached), the crawl's own result
+is unaffected. The error goes to `kb-update-error`, the session-start notice reports it,
+and you can retry without crawling: `aae-docs-watch.sh --kb-update-only`. The runner's
+full output is in `kb-update-runner.log`.
+
+**The misunderstanding to avoid:** thinking this publishes anything. The edits land in your
+clone and your notes; you review, commit and release them.
+
+### Why does the automatic update write my notes through a staging file?
+
+Because an unattended model must not hold unconfined file-edit rights. It reads external
+docs text, and text can carry instructions (prompt injection). The narrow grant, "edit
+only these folders", can't cover your notes: Claude Code protects `~/.claude/`, where
+`MEMORY.md` lives, and a scoped grant can't reach it. So the model writes only inside the
+watcher's state folder and your clone, and the shell script, with no AI involved, appends
+the staged `notes-pending.md` to `MEMORY.md`.
 
 ## How do I type `ae` instead of `agentengine`?
 
@@ -186,7 +268,7 @@ the absence is real. When the docs later change, the scout rechecks earlier BUIL
 verdicts, because a workaround the platform has made obsolete is debt you don't know you
 have.
 
-It needs `aae-docs-watch` installed for the freshness check, and it never changes anything.
+It uses the docs watcher in the same plugin for the freshness check, and it never changes anything.
 It is a skill in both hosts; its verdict and utility-candidate ledgers live in
 `~/.local/state/aae-scout/`, shared by Claude Code and Codex.
 
@@ -226,18 +308,23 @@ Neither Claude Code nor Codex plugins can declare cron or scheduled work. For ch
 that run while your host is closed, the plugin ships a launchd wrapper:
 
 ```bash
-<plugin-dir>/scripts/install-schedule.sh install            # daily 10:00 local time
-<plugin-dir>/scripts/install-schedule.sh install --hour 7   # daily 07:00
-<plugin-dir>/scripts/install-schedule.sh status
-<plugin-dir>/scripts/install-schedule.sh uninstall
+<aae-plugin-dir>/scripts/install-schedule.sh install              # daily 10:00 local time
+<aae-plugin-dir>/scripts/install-schedule.sh install --hour 7     # daily 07:00
+<aae-plugin-dir>/scripts/install-schedule.sh install --update-kb  # and update the knowledge base on changes
+<aae-plugin-dir>/scripts/install-schedule.sh status
+<aae-plugin-dir>/scripts/install-schedule.sh print-plist --update-kb   # show the job, change nothing
+<aae-plugin-dir>/scripts/install-schedule.sh uninstall
 ```
 
-`install` copies the watcher to `~/.local/share/aae-docs-watch/bin/`, writes
+`install` copies the watcher, and the `aae-kb-update` skill beside it, to
+`~/.local/share/aae-docs-watch/bin/`, writes
 `~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist` pointing at that copy, and
-loads it. **Re-run `install` after updating the plugin**: `status` says when the copy is
-out of date. Logs go to `~/Library/Logs/aae-docs-watch/`. The time is the Mac's local time.
-If the Mac is asleep at that time, launchd runs the job when it wakes; if it is powered
-off, that day is skipped.
+loads it. **Re-run `install` after updating the plugin**, with `--update-kb` again if you
+use it: `status` says when either copy is out of date. Logs go to `~/Library/Logs/aae-docs-watch/`. The time is the Mac's local time.
+If that run fails, the job tries again every hour until one succeeds that day; after a
+success the later attempts exit at once without touching the network. If the Mac is
+asleep at that time, launchd runs the job when it wakes, and the watcher retries its
+first request for a few minutes in case the network isn't up yet.
 
 ### Why does the schedule run a copy of the watcher?
 
@@ -275,6 +362,15 @@ plugin updates and is shared by Claude Code, Codex and the launchd job.
 | `urls.txt` | Page-inventory baseline, used for added/removed detection |
 | `acknowledged` | Marker that the current report has been shown |
 | `last-full-run` | Local date and time of the last completed full crawl |
+| `last-error` | Time and message of the last failed run; removed by the next successful full crawl |
+| `health-acknowledged` | Date the "watcher is failing" notice was last shown (once a day) |
+| `kb-update.md` | Summary of the last automatic knowledge-base update (`--update-kb`); its first line is one sentence |
+| `kb-update-processed` | One line per report applied to the knowledge base, so none is applied twice |
+| `kb-update-error` | Time and message of a failed automatic update; removed by the next successful one |
+| `kb-update-runner.log` | The runner's full output from the last automatic update |
+| `kb-update-notes-before.md` | Copy of your notes taken before the last automatic update, to undo a bad edit |
+| `notes-pending.md` | The runner's notes updates; appended to your notes after a successful run, so you see it only if that append failed |
+| `kb-update-skill.md`, `kb-baseline/` | Inputs copied in for the runner: the skill, and a read-only copy of the shipped knowledge base when no clone is set |
 
 Override the location with `AAE_WATCH_STATE_DIR` — useful for testing against a
 throwaway directory.
@@ -289,9 +385,12 @@ Work through these in order:
    `report.json`; delete the `acknowledged` file to re-show it.
 3. **Nothing actually changed.** `status=clean` means the crawl succeeded and
    every hash matched.
-4. **Nothing is scheduled.** Without launchd, state only refreshes when you run
+4. **The watcher is failing.** You'd get a once-a-day notice saying so, also when only
+   the automatic knowledge-base update failed. Check `install-schedule.sh status` (it
+   prints the last error of each) and `~/Library/Logs/aae-docs-watch/err.log`.
+5. **Nothing is scheduled.** Without launchd, state only refreshes when you run
    the watcher or invoke the skill. Check `install-schedule.sh status`.
-5. **The hook is not loaded.** Confirm the plugin is installed and run
+6. **The hook is not loaded.** Confirm the plugin is installed and run
    `/reload-plugins` (Claude Code). In Codex, check that you trusted the hook; an
    update that changes it asks again.
 

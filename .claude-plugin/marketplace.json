@@ -11,8 +11,8 @@
     {
       "name": "aae",
       "source": "./plugins/aae",
-      "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex) with its bundled, dated knowledge base, the aae-scout prior-art and freshness check, skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
-      "version": "0.5.0",
+      "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex) with its bundled, dated knowledge base, docs-change detection (a hash-based docs watcher, a session-start notice and an optional daily schedule that can also update the knowledge base), the aae-scout prior-art and freshness check, skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
+      "version": "0.6.0",
       "author": {
         "name": "Elad Laor"
       },
@@ -23,25 +23,8 @@
         "atlas",
         "agent-engine",
         "agentengine",
-        "langgraph"
-      ]
-    },
-    {
-      "name": "aae-docs-watch",
-      "source": "./plugins/aae-docs-watch",
-      "description": "Detects when MongoDB Atlas Agent Engine documentation pages change, by content hashing, and tells you once at session start, with per-page diffs. Built for a Public Preview product whose docs move weekly.",
-      "version": "0.3.1",
-      "author": {
-        "name": "Elad Laor"
-      },
-      "license": "MIT",
-      "category": "developer-tools",
-      "tags": [
-        "mongodb",
-        "atlas",
-        "agent-engine",
-        "docs-watch",
-        "changelog"
+        "langgraph",
+        "docs-watch"
       ]
     }
   ]

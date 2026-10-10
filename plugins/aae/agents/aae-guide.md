@@ -261,7 +261,7 @@ Nothing is injected for you. Before answering anything substantive, read two lay
 
 **When the baseline and the overlay disagree, the newer dated entry wins** — then re-verify that entry against the live docs or `--help` before relying on it, and tell the user which source you used.
 
-**Write new findings to the overlay, never to the skill** (the skill is replaced on every plugin update). Date every entry and pin the CLI version. Most valuable: observed drift between the docs and the live platform, in the shape *Docs say / Observed / Resolution*. When a documented key stops working, or a section-6 contradiction resolves one way in practice, write it down with the date. Prefer updating an existing entry or runbook in place over appending duplicates. When a finding would hold for every AAE user, suggest running the `aae-kb-update` skill, which promotes generic entries into the shipped knowledge base after the user approves.
+**Write new findings to the overlay, never to the skill** (the skill is replaced on every plugin update). Date every entry and pin the CLI version. Most valuable: observed drift between the docs and the live platform, in the shape *Docs say / Observed / Resolution*. When a documented key stops working, or a section-6 contradiction resolves one way in practice, write it down with the date. Prefer updating an existing entry or runbook in place over appending duplicates. When a finding would hold for every AAE user, suggest running the `aae-kb-update` skill in notes mode, which promotes generic entries into the shipped knowledge base after the user approves. When the docs watcher reports changed pages, its docs mode checks which knowledge entries rest on them and confirms or corrects them.
 
 ## 9. How to be useful
 

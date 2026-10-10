@@ -143,7 +143,10 @@ rather than default.
 
 **Status (2026-10-10):** only the docs report is built, and it lives in
 `${AAE_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/aae-docs-watch}`, not
-`~/.aae-watch/`. The digest, delta and history below are still a plan.
+`~/.aae-watch/`. The digest, delta and history below are still a plan. What exists
+instead, opt-in, is `aae-docs-watch.sh --update-kb`: a run with changes starts an AI
+runner that applies them with `aae-kb-update` in docs mode and writes `kb-update.md`
+(see the behaviour spec, FR-25 and FR-27 to FR-29).
 
 ```
 ~/.aae-watch/
@@ -159,6 +162,11 @@ continuously-corrected statement of what is true about AAE right now.
 ## How is the agent memory updated without destroying curated notes?
 
 This is the risky part of the design and it is bounded deliberately.
+
+**Status (2026-10-10):** not built as designed. The opt-in `--update-kb` runner takes a
+different path: an AI run edits the notes in place, adding dated entries that cite the docs
+page, and the watcher copies the notes to `kb-update-notes-before.md` before each run.
+There is no marker region yet; the rules below still describe the stricter design.
 
 The job writes **only** between explicit markers in
 `~/.claude/agent-memory/aae-guide/MEMORY.md`:
@@ -272,7 +280,8 @@ deployed watcher has to follow.
 
 | Component | Status | Notes |
 |---|---|---|
-| `aae-docs-watch.sh` | **Exists** | Tier 1. Reuse unchanged |
+| `aae-docs-watch.sh` | **Exists** | Tier 1. Since 2026-10-10 in the `aae` plugin, with opt-in `--update-kb` |
+| Docs-to-knowledge runner | **Exists** (2026-10-10) | `--update-kb` starts `claude -p` or `codex exec` on `aae-kb-update` docs mode; Codex untested |
 | `install-schedule.sh` | **Exists** | launchd wrapper. Extend to schedule the collector |
 | `install-ae-shortcut.sh` | **Exists** | Unrelated; shipped today |
 | `aae-watch` collector | To build | Orchestrates the tiers, writes state |
@@ -281,7 +290,7 @@ deployed watcher has to follow.
 | `CURRENT.md` writer | To build | Digest generation |
 | MEMORY.md region writer | To build | Marker-bounded, fail-fast |
 | MCP server | To build | On-demand read interface |
-| Claude Code hook + skill | Partially exists | `SessionStart` hook exists for docs-watch |
+| Claude Code hook + skill | Partially exists | `SessionStart` hook and `aae-docs-watch` skill exist in the `aae` plugin |
 | Codex plugin + hook + skill | **Exists** (0.2.0) | Manifests shipped; not yet loaded by a Codex install |
 
 ## Phasing

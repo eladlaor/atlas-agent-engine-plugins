@@ -77,7 +77,7 @@ learned by running the platform:
 |---|---|
 | `aae-add-agent` | `agentengine create` scaffolds a whole new project; nothing adds one agent to an existing monorepo |
 | `aae-delete-agent` | `workspace delete` alone leaves secrets, sessions and the database user behind |
-| `aae-docs-watch` | Nothing tells you the docs changed; this crawls them (nightly, if you schedule it) and reports diffs at session start |
+| `aae-docs-watch` | Nothing tells you the docs changed; this crawls them (daily, if you schedule it) and reports diffs at session start. Opt-in, it also applies the changes to this knowledge base through `aae-kb-update` |
 | `aae-scout` | Checks whether the platform, CLI, SDK, official examples or your own repo already do what you're about to build, with a dated verdict |
 | `ae` shortcut | A short command name that also works for commands issued by an agent |
 

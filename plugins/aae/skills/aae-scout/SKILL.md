@@ -36,18 +36,24 @@ either host's config, so Claude Code and Codex share one ledger. Create it on fi
 
 ## 1. Freshness gate (always first)
 
-**Docs.** The `aae-docs-watch` plugin keeps its state in
+**Docs.** The docs watcher ships in this plugin and keeps its state in
 `${AAE_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/aae-docs-watch}`.
 
 1. Read `report.json` there and check its modification time.
 2. If it is missing or older than 24 hours, run the watcher's `--quick` mode. To find the
-   script: `find ~/.claude/plugins ~/.codex -name aae-docs-watch.sh 2>/dev/null | head -1`.
-   **If the script isn't found, stop the gate and tell the user to install
-   `aae-docs-watch`.** Don't crawl by hand instead.
-3. If the report says `changes`, read the `diffs/*.diff` files relevant to the question.
+   script, take the newest installed copy of this plugin's:
+   `find ~/.claude/plugins/cache ~/.codex -path '*/aae/*/scripts/aae-docs-watch.sh' 2>/dev/null | xargs ls -t 2>/dev/null | head -1`.
+   In a clone of the plugin repository it is `plugins/aae/scripts/aae-docs-watch.sh`.
+   **If the script isn't found, stop the gate and tell the user the `aae` plugin install
+   looks incomplete.** Don't crawl by hand instead.
+3. If `kb-update.md` there is newer than `report.json`, the opt-in automatic update has
+   already applied this report to the knowledge base; its first line says what changed.
+   If `kb-update-error` exists, that update failed: say so, and don't assume the
+   knowledge base reflects the change.
+4. If the report says `changes`, read the `diffs/*.diff` files relevant to the question.
    Lead with them, describing the change in behaviour (a new key, a changed flag, a
    revised limit), not the raw diff.
-4. A `baseline` status means **nothing was compared**. Say exactly that; never say "no
+5. A `baseline` status means **nothing was compared**. Say exactly that; never say "no
    changes".
 
 **CLI.**

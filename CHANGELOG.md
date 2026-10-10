@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-10
+
+Plugin version: `aae` 0.6.0. The `aae-docs-watch` plugin is merged into `aae`.
+
+### Added
+
+- `aae-docs-watch.sh --update-kb` (opt-in): after a run that found changes, an AI runner (`claude -p`, or `codex exec`) applies them to the knowledge base with `aae-kb-update` in docs mode, writes a summary to `kb-update.md`, and records the report in `kb-update-processed`; a runner failure goes to `kb-update-error` and never changes the crawl's exit code. Settings: `AAE_KB_REPO`, `AAE_KB_RUNNER`, `AAE_KB_NOTES`, `AAE_KB_MAX_USD`, `AAE_KB_MODEL`.
+- The `--update-kb` runner reads and writes only the watcher state directory and the repo clone (`claude` in `acceptEdits` with file tools only; `codex` in its `workspace-write` sandbox); its inputs are staged into the state directory, and it never edits your notes: its notes updates go to `notes-pending.md`, which the watcher appends to the notes after a successful run, keeping a pre-run copy.
+- `aae-docs-watch.sh --kb-update-only` applies the existing changes report without crawling, to retry a failed update.
+- `aae-kb-update` docs mode: for each changed, added or removed docs page, finds the reference-file, guide-card and notes entries that rest on it, and confirms, corrects or extends them, interactively by default or with `--auto`.
+- `install-schedule.sh install --update-kb` turns the automatic update on in the daily job; `print-plist` shows the job without installing it; `install` copies the `aae-kb-update` skill beside the watcher copy, and `status` reports whether it is current.
+- The session-start notice says when the knowledge base was updated from the current report, with the summary's first line, and reports a failed automatic update in its once-a-day health notice.
+
+### Changed
+
+- The README is leaner: how the docs watcher, the daily check and `--update-kb` work now lives in `plugins/aae/skills/aae-docs-watch/HOW_IT_WORKS.md`.
+- **Breaking:** the `aae-docs-watch` plugin is merged into `aae`: the watcher scripts, the session-start hook and the `aae-docs-watch` skill now ship in `aae`.
+- `aae-kb-update` has two named modes; the existing behaviour is notes mode, unchanged.
+- The daily job's `PATH` includes `~/.local/bin`, where the `claude` CLI installs.
+- A watcher health problem and a pending changes report now appear in the same session-start notice instead of on successive sessions.
+- `aae-scout` finds the watcher in the `aae` plugin and reports the automatic update's result or failure.
+
+### Removed
+
+- The separate `aae-docs-watch` plugin and its marketplace entries.
+
+### Fixed
+
+- The scheduled docs check no longer loses the day when it starts before the network is up (for example during a brief maintenance wake): the first request is retried for a few minutes, and the schedule retries hourly until a run succeeds that day. Re-run `install-schedule.sh install` to pick this up.
+- A failing or stalled docs watcher is now announced at session start, once a day, instead of looking like "no changes"; failed runs record the error in `last-error`, and log lines carry timestamps.
+
 ## [0.6.0] - 2026-10-10
 
 Plugin versions: `aae` 0.5.0, `aae-docs-watch` 0.3.1.
@@ -162,7 +193,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.0...v0.5.1

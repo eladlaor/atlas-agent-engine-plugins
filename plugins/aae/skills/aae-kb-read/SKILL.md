@@ -52,5 +52,6 @@ Resolution: <what to do>
 ```
 
 Findings that hold for every AAE user reach this knowledge base only through the
-`aae-kb-update` skill, which proposes them with project details stripped and edits a clone
-of the plugin repository after the user approves.
+`aae-kb-update` skill. In notes mode it proposes them with project details stripped and
+edits a clone of the plugin repository after the user approves. In docs mode it applies the
+docs watcher's changes report to the entries that rest on the changed pages.

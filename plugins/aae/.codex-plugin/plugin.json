@@ -1,7 +1,7 @@
 {
   "name": "aae",
-  "version": "0.5.0",
-  "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex) with its bundled, dated knowledge base, the aae-scout prior-art and freshness check, skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
+  "version": "0.6.0",
+  "description": "MongoDB Atlas Agent Engine toolkit: the aae-guide specialist (a subagent in Claude Code, a skill in Codex) with its bundled, dated knowledge base, docs-change detection (a hash-based docs watcher, a session-start notice and an optional daily schedule that can also update the knowledge base), the aae-scout prior-art and freshness check, skills that add an agent to an existing monorepo and tear one down cleanly, and an 'ae' shortcut for the agentengine CLI.",
   "author": {
     "name": "Elad Laor"
   },
@@ -13,14 +13,16 @@
     "atlas",
     "agent-engine",
     "agentengine",
-    "langgraph"
+    "langgraph",
+    "docs-watch"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Atlas Agent Engine",
-    "shortDescription": "MongoDB Atlas Agent Engine toolkit",
+    "shortDescription": "MongoDB Atlas Agent Engine toolkit, with docs-change detection",
     "developerName": "Elad Laor",
     "category": "Developer Tools",
     "websiteURL": "https://github.com/eladlaor/atlas-agent-engine-plugins"
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }
