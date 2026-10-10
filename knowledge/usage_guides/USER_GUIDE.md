@@ -2,6 +2,7 @@
 
 - [What is this plugin?](#what-is-this-plugin)
 - [How do I install it?](#how-do-i-install-it)
+- [What does the guide already know, and where does it keep what it learns?](#what-does-the-guide-already-know-and-where-does-it-keep-what-it-learns)
 - [How do I type `ae` instead of `agentengine`?](#how-do-i-type-ae-instead-of-agentengine)
 - [Why a symlink instead of a shell alias?](#why-a-symlink-instead-of-a-shell-alias)
 - [How do I know when the AAE docs change?](#how-do-i-know-when-the-aae-docs-change)
@@ -15,8 +16,8 @@
 ## Summary
 
 Two plugins for working with MongoDB Atlas Agent Engine (AAE), in Claude Code or
-Codex. `aae` carries the `aae-guide` specialist and the add-agent / delete-agent
-skills; `aae-docs-watch` tells you when AAE documentation pages change. Install
+Codex. `aae` carries the `aae-guide` specialist, its bundled `aae-knowledge` base, and
+the add-agent / delete-agent skills; `aae-docs-watch` tells you when AAE documentation pages change. Install
 `aae-docs-watch`, run the watcher once to record a baseline, optionally schedule it
 with launchd, and your host will tell you at session start whenever the docs have
 moved.
@@ -55,6 +56,27 @@ Then record a baseline once:
 
 The first run reports no changes by design: there is nothing to compare against
 until a baseline exists.
+
+## What does the guide already know, and where does it keep what it learns?
+
+It ships with a knowledge base, the **`aae-knowledge`** skill, and keeps your own notes
+separately.
+
+- **The baseline** (`plugins/aae/skills/aae-knowledge/`) is the same for every user, in
+  Claude Code and Codex: a dated drift log of where the live platform and CLI disagree
+  with the docs, verified details the guides omit, doc contradictions, numbered runbooks
+  and symptom-first troubleshooting. Every entry carries the date and the CLI or SDK
+  version it was checked on. A plugin update replaces it.
+- **Your overlay** (Claude Code only) is `~/.claude/agent-memory/aae-guide/MEMORY.md`. The
+  guide writes your project IDs, your cluster and gateway, runbooks that worked for you,
+  and drift you observe there. A plugin update never touches it.
+
+When the two disagree, the newer dated entry wins, and the guide re-checks the live docs
+before relying on it.
+
+**The misunderstanding to avoid:** treating the baseline as current documentation. It is
+a dated record of what was true when checked. AAE is in Public Preview and moves weekly,
+so the guide still verifies version-specific details against the live docs or `--help`.
 
 ## How do I type `ae` instead of `agentengine`?
 

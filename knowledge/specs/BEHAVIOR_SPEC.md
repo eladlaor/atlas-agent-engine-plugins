@@ -120,7 +120,7 @@ source list, project key, or query.
   or declared as an alias/function in a shell rc file, and MUST prompt before shadowing
   it. A collision with no TTY available MUST be a hard error, never a silent overwrite.
 - **FR-16.** `uninstall` MUST refuse to remove anything that is not its own symlink.
-- **FR-17.** The `aae-scout` agent MUST be read-only. It MUST NOT run any mutating
+- **FR-17.** The `aae-scout` skill MUST be read-only. It MUST NOT run any mutating
   `agentengine` command; the only `deploy` forms it may run are `deploy list` and
   `deploy get <id>`.
 - **FR-18.** `aae-scout` MUST open every answer with a freshness line built from the

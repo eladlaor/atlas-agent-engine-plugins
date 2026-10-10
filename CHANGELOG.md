@@ -7,13 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-10
+
+Plugin versions: `aae` 0.4.0, `aae-docs-watch` 0.3.1.
+
 ### Added
 
 - `aae-guide` knows how an external client connects to a deployed workspace (service account, OAuth token, `invokeStream`, custom-header forwarding) and knows the `AGENT_DEVELOPER` service-account role.
+- `aae-knowledge` skill in the `aae` plugin: the guide's bundled, dated AAE knowledge base (drift log, verified details, doc contradictions, CLI targeting, monorepo and build rules, SDK adapters, identity, cost accounting, capability gaps, runbooks, troubleshooting), available in both Claude Code and Codex.
+
+### Changed
+
+- `aae-guide` reads two layers before answering, the bundled `aae-knowledge` baseline and the user's own memory overlay, lets the newer dated entry win, and says so when either is missing.
+- `aae-guide` consults the drift log before trusting its 2026-10-04 snapshot sections.
+- The Codex `aae-guide` skill reads the `aae-knowledge` references too, so Codex users get the same baseline.
+- README and user guide explain that the baseline ships to both hosts and only the personal overlay is Claude Code-only.
+
+### Removed
+
+- `knowledge/CONTRIBUTION_IDEAS.md` is no longer published; the README no longer links it.
+- The `aae-scout` subagent: `aae-scout` is now only a skill, in both hosts. Its instructions moved into the skill, and its ledgers moved from the Claude Code agent-memory directory to `~/.local/state/aae-scout/`, shared by both hosts.
 
 ### Fixed
 
 - `aae-guide` now reads its `MEMORY.md` explicitly instead of assuming it is injected.
+- `aae-guide` no longer calls the documented egress IPs stale: it distinguishes the Atlas-lane pair from the pair external services must allowlist.
+- The `aae-guide` and `aae-add-agent` skill frontmatter is valid YAML again (the `description` is now quoted), so GitHub renders it and strict parsers load it.
 
 ## [0.4.1] - 2026-10-09
 
@@ -94,7 +113,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.2.0...v0.3.0

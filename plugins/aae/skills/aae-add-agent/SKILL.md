@@ -1,6 +1,6 @@
 ---
 name: aae-add-agent
-description: Add one new MongoDB Atlas Agent Engine agent to an EXISTING monorepo — scaffold it, transplant it under agents/<slug>, list it in the root agent.yaml, and register exactly one new workspace without touching the other agents. Use when the user says "add an agent", "new agent in this repo", "add agent to the monorepo", "scaffold another agent", "second agent", or wants another AAE agent alongside existing ones rather than a brand-new project. Arguments: <name> [--from <existing-agent>] [--llm <provider> ...create flags] [--register] [--context <name>].
+description: "Add one new MongoDB Atlas Agent Engine agent to an EXISTING monorepo — scaffold it, transplant it under agents/<slug>, list it in the root agent.yaml, and register exactly one new workspace without touching the other agents. Use when the user says \"add an agent\", \"new agent in this repo\", \"add agent to the monorepo\", \"scaffold another agent\", \"second agent\", or wants another AAE agent alongside existing ones rather than a brand-new project. Arguments: <name> [--from <existing-agent>] [--llm <provider> ...create flags] [--register] [--context <name>]."
 ---
 
 # AAE Add Agent

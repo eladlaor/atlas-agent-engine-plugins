@@ -23,7 +23,7 @@ a model of the product that was correct last week.
 
 | Plugin | Contents |
 |---|---|
-| **`aae`** | `aae-guide`, the AAE specialist: the runtime model, the agent contract, config, and the known failure modes. It checks the live docs before asserting any API detail. **`aae-scout`**, a cheap first check to run before building anything on AAE: it confirms the docs and CLI are current, then checks whether the platform, CLI, SDK, official examples or your own repo already do what you're about to build. It answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence, and keeps a list of recurring needs worth turning into plugin utilities. Plus skills: **`aae-add-agent`** adds an agent to an existing AAE monorepo, because `agentengine create` only scaffolds whole new projects. **`aae-delete-agent`** tears one down completely, because `workspace delete` alone leaves secrets, sessions and the database user behind. |
+| **`aae`** | `aae-guide`, the AAE specialist: the runtime model, the agent contract, config, and the known failure modes. It checks the live docs before asserting any API detail. **`aae-scout`** (a skill), a cheap first check to run before building anything on AAE: it confirms the docs and CLI are current, then checks whether the platform, CLI, SDK, official examples or your own repo already do what you're about to build. It answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence, and keeps a list of recurring needs worth turning into plugin utilities. Plus skills: **`aae-add-agent`** adds an agent to an existing AAE monorepo, because `agentengine create` only scaffolds whole new projects. **`aae-delete-agent`** tears one down completely, because `workspace delete` alone leaves secrets, sessions and the database user behind. **`aae-knowledge`** is the guide's bundled knowledge base: a dated log of where the live platform has drifted from the docs, verified details the guides omit, runbooks, and troubleshooting. Every entry carries the date and CLI version it was checked on. |
 | **`aae-docs-watch`** | Detects AAE documentation changes by hashing every page's markdown, shows per-page diffs, and tells you once at session start when something moved. |
 
 They are separate so you can take the guide and skills without anything running at
@@ -54,10 +54,11 @@ it and you get no notices.
 | Component | Claude Code | Codex |
 |---|---|---|
 | `aae-guide` | A **subagent**: runs in its own context window, on its own model, and Claude delegates to it | A **skill**: the same instructions, loaded into your main conversation |
-| `aae-guide` memory across sessions | Yes: a per-user memory directory it reads and writes | **No** |
-| `aae-scout` | A **subagent** (runs on a smaller model, to stay cheap), with memory for its verdict and utility-candidate lists | A **skill**: same instructions; the lists appear in the answer instead of being saved |
+| `aae-guide` bundled knowledge (`aae-knowledge` skill: drift log, verified details, runbooks, troubleshooting) | Yes | Yes, the same files |
+| `aae-guide` personal memory across sessions (your project IDs, your own drift notes) | Yes: a per-user memory directory it reads and writes | **No** |
+| `aae-scout` | A **skill**, with its verdict and utility-candidate ledgers in `~/.local/state/aae-scout/` | Same, sharing the same ledgers |
 | `aae-scout` freshness gate | Reads the `aae-docs-watch` state; needs that plugin installed | Same |
-| `aae-add-agent`, `aae-delete-agent`, `aae-docs-watch` skills | Yes | Yes, the same files |
+| `aae-add-agent`, `aae-delete-agent`, `aae-knowledge`, `aae-docs-watch` skills | Yes | Yes, the same files |
 | Session-start notice that the docs changed | Runs automatically | Runs **only after you trust the hook**, and again after each update that changes it |
 | Scheduled nightly docs crawl | Opt-in, via macOS `launchd` | Same: opt-in, via macOS `launchd` |
 
@@ -72,11 +73,21 @@ and lives in one file, `plugins/aae/agents/aae-guide.md`. What Codex loses is
 conversation instead of a separate context that hands back only the answer. In Claude
 Code the skill sees that the `aae-guide` subagent exists and delegates to it instead.
 
-**Why does the guide remember things only in Claude Code?** Per-agent memory is a
-Claude Code subagent feature. That memory is where the guide records what the docs
-can't: your project IDs, runbooks that worked, and observed drift between the docs and
-the live platform. Codex has no plugin equivalent, so in Codex the guide starts fresh
-every session.
+**Why does the guide remember some things only in Claude Code?** The guide works from
+two layers. The **baseline** is the `aae-knowledge` skill: a dated drift log, verified
+details, runbooks and troubleshooting, shipped with the plugin. Skills work in both
+hosts, so Codex gets the same baseline. The **personal overlay** is a per-user memory
+directory where the guide records what is specific to you: your project IDs, runbooks
+that worked for you, and drift you observed. Per-agent memory is a Claude Code subagent
+feature with no Codex plugin equivalent, so in Codex only the overlay is missing: the
+guide starts each session with the baseline but without your personal notes. When the
+two layers disagree, the newer dated entry wins and the guide re-checks the live docs.
+
+**Why is the knowledge a skill rather than part of the agent file?** Skills are the
+one component both hosts load, and a loaded skill tells the model where its files live,
+so the guide can read the reference files the question touches instead of carrying all
+of them in its instructions. Updating the plugin updates the baseline; your overlay is
+never touched.
 
 **Why does the Codex hook need my approval?** Codex deliberately skips hooks bundled
 in plugins until a user reviews and trusts them. Trust is tied to a hash of the hook
@@ -113,19 +124,19 @@ ones.
 
 ## Status and caveats
 
-- **Version 0.2.0, not yet install-tested end to end on either host.** The Claude Code
-  manifests pass `claude plugin validate`. The Codex manifests follow the
+- **Version 0.5.0. Installed and in use in Claude Code**; the manifests pass
+  `claude plugin validate`. The Codex manifests follow the
   [Codex plugin docs](https://developers.openai.com/codex/plugins/build) but have not
   been loaded by a Codex install yet.
 - Atlas Agent Engine is in **Public Preview**: *"intended for evaluation and
   prototyping purposes only"*, with no SLAs. These plugins inherit that.
-- `aae-guide` was last checked against the live docs on 2026-10-04, using
-  `agentengine` CLI 0.1.118.
+- `aae-guide`'s card was last checked against the live docs on 2026-10-04, and its
+  `aae-knowledge` baseline through 2026-10-10, using `agentengine` CLI 0.1.118 and SDK
+  0.11.8. Each knowledge entry carries its own date.
 - Not affiliated with or endorsed by MongoDB.
 
 Docs: [user guide](knowledge/usage_guides/USER_GUIDE.md) ·
 [behaviour spec](knowledge/specs/BEHAVIOR_SPEC.md) ·
-[watcher design](knowledge/plans/AAE_WATCH_DESIGN.md) ·
-[ideas](knowledge/CONTRIBUTION_IDEAS.md) · [changelog](CHANGELOG.md)
+[watcher design](knowledge/plans/AAE_WATCH_DESIGN.md) · [changelog](CHANGELOG.md)
 
 MIT licensed.
