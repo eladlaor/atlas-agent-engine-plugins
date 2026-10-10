@@ -114,6 +114,14 @@ plugins/aae-docs-watch/scripts/install-schedule.sh install # daily docs crawl (m
 
 Uninstalling a plugin does not remove these. Each script has an `uninstall`.
 
+The daily docs crawl is a scheduled job **on your own machine**, like a cron entry.
+On macOS it uses `launchd` (the macOS equivalent of cron): `install` writes
+`~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist`, which runs the docs check
+every day at 10:00 (change it with `--hour` / `--minute`). If the Mac is asleep at that
+time, it runs on wake; if it's off, that day is skipped. Nothing runs in the cloud.
+Check it with `install-schedule.sh status`. On Linux, add an equivalent cron entry
+yourself.
+
 The `ae` shortcut is a symlink on `PATH`, not a shell alias. Aliases only exist in
 interactive shells, and Claude Code and Codex run their commands in non-interactive
 ones.

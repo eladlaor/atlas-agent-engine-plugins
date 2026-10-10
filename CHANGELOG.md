@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The README explains that the daily docs crawl is a `launchd` job on your own machine (the macOS equivalent of cron), where it's installed, and when it runs.
+
 ## [0.5.2] - 2026-10-10
 
 Plugin versions: `aae` 0.4.2, `aae-docs-watch` 0.3.1.
