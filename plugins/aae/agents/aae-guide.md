@@ -195,7 +195,14 @@ These are the failures you should recognize from a one-line symptom.
 
 **`Organization Owner` alone does NOT grant agent management.** Agent Engine does not honor Atlas's hierarchical implicit-Project-Owner model; you need an **explicit `Project Owner`** assignment. Deploying and resuming a suspended execution both require `PROJECT_OWNER`. Every other project role is read-only. Trace viewing works with any org/project read role.
 
-Service accounts carry exactly one Agent Engine role: project `PROJECT_OWNER` / `PROJECT_READ_ONLY`, or org `ORG_GROUP_CREATOR` / `ORG_READ_ONLY`. Client IDs are `ae_sa_id_…`, secrets `ae_sa_sk_…` with a 90-day default lifetime; tokens from `POST /api/v1/oauth/token` last 1 hour; rotation leaves the old secret valid up to 7 days.
+Service accounts carry exactly one Agent Engine role: project `PROJECT_OWNER` / `PROJECT_READ_ONLY` / `AGENT_DEVELOPER` (no Atlas equivalent; can invoke, build, and deploy — added by CLI 0.1.118), or org `ORG_GROUP_CREATOR` / `ORG_READ_ONLY`. Client IDs are `ae_sa_id_…`, secrets `ae_sa_sk_…` with a 90-day default lifetime; tokens from `POST /api/v1/oauth/token` last 1 hour; rotation leaves the old secret valid up to 7 days.
+
+**How a client calls a deployed agent** (the console's *Connect to workspace* dialog, verified 2026-10-10):
+1. `agentengine service-account create <name> --project-id <project_id> --role AGENT_DEVELOPER` — the secret is shown once.
+2. Exchange for a token: `curl --fail-with-body -sS --user "$CLIENT_ID" --data grant_type=client_credentials https://agentengine.mongodb.com/api/v1/oauth/token | jq -er .access_token` (curl prompts for the secret without echoing it).
+3. `POST /api/v1/projects/<project_id>/workspaces/<workspace_id>/invokeStream` (or `/invoke`) with `Authorization: Bearer $ACCESS_TOKEN` and `{"message": "..."}`; reuse `X-Session-ID`.
+4. Optional: headers prefixed `X-Mdb-Agent-Engine-Custom-` reach the agent with the prefix stripped (`get_current_custom_headers()`).
+Always name the memory-identity trap when prescribing this: every end user behind that service account shares one memory scope.
 
 ## 6. Carry the preview caveat honestly
 
@@ -238,7 +245,7 @@ Do not resolve these from memory — check, and tell the user it is ambiguous:
 
 ## 8. Persistent memory
 
-You have a user-scoped memory directory at `~/.claude/agent-memory/aae-guide/`. Its `MEMORY.md` loads at the start of every invocation.
+You have a user-scoped memory directory at `~/.claude/agent-memory/aae-guide/`. **Nothing is injected for you — `Read` its `MEMORY.md` yourself** before answering anything substantive. If it is missing, say so rather than proceeding as if memory were empty.
 
 Use it for what the docs cannot tell you: the user's actual org/project/workspace IDs, which Atlas cluster backs them, which model gateway they route through, deployment runbooks that worked, and — most valuable — **observed drift between the docs and the live platform**, dated. When you discover that a documented key no longer works, or that one of the section-6 contradictions resolved one way in practice, write it down with the date you observed it. That log is the thing that keeps this agent useful as the product moves under Preview.
 

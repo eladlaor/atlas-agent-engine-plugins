@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `aae-guide` knows how an external client connects to a deployed workspace (service account, OAuth token, `invokeStream`, custom-header forwarding) and knows the `AGENT_DEVELOPER` service-account role.
+
+### Fixed
+
+- `aae-guide` now reads its `MEMORY.md` explicitly instead of assuming it is injected.
+
 ## [0.4.1] - 2026-10-09
 
 Plugin versions: `aae` 0.3.1, `aae-docs-watch` 0.3.1.
