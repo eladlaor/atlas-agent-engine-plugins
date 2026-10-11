@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Knowledge base: how to limit memory-extraction cost (documented levers, a provider-side cap through a dedicated extraction key, and what is inferred but unmeasured), plus a drift entry for the undocumented, untested per-type `extraction.<type>.prompt` with a two-arm test plan.
+
 ## [0.7.0] - 2026-10-10
 
 Plugin version: `aae` 0.6.0. The `aae-docs-watch` plugin is merged into `aae`.

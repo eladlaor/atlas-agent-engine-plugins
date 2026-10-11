@@ -6,6 +6,7 @@ description: Dated log of observed drift between the Atlas Agent Engine docs and
 # AAE drift log
 
 - [Summary](#summary)
+- [2026-10-11 — a per-type extraction prompt exists only in the CLI template](#2026-10-11--a-per-type-extraction-prompt-exists-only-in-the-cli-template)
 - [2026-10-10 — CLI 0.1.119 release notes are ahead of the docs](#2026-10-10--cli-01119-release-notes-are-ahead-of-the-docs)
 - [2026-10-10 — the SDK reference and the guides disagree on names](#2026-10-10--the-sdk-reference-and-the-guides-disagree-on-names)
 - [2026-10-10 — custom memory types are rejected by the live platform](#2026-10-10--custom-memory-types-are-rejected-by-the-live-platform)
@@ -45,6 +46,30 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Only `deploy list` and `deploy get <id>` are read-only.** Every other `deploy` form,
   including a typo, starts a real deployment.
 - **Fetch egress IPs live.** There are two pairs for two purposes.
+
+## 2026-10-11 — a per-type extraction prompt exists only in the CLI template
+
+**Status: NOT TESTED.** Treat the key as unconfirmed until the test below passes.
+
+- **Docs say** (`/add-features/memory.md`, checked 2026-10-11): the only extraction control
+  is `memory.extraction.enabled`, on or off per type for the whole project. No prompt,
+  threshold or filter.
+- **Observed** (CLI 0.1.118): the `project-config.yaml` template built into the binary says
+  "Each type may also take an optional 'prompt' to override the system default", shown as
+  `extraction: { semantic: { prompt: "..." } }`. `agent-engine-sdk-memory` 0.11.8 has no
+  delete or update for taxonomic terms, so a generic term, once extracted, stays.
+- **Resolution: open.** To test it, run two arms, each with fresh terms:
+  1. **Control, no prompt.** Hold a conversation that defines one generic industry term
+     and one invented, project-specific term. Wait past `stale_minutes`, then confirm
+     both were stored as taxonomic memory. If the generic term isn't stored, the test
+     proves nothing.
+  2. **With the prompt.** Set `extraction.taxonomic.prompt` to skip general industry
+     terms, then run `agentengine memory configure` (does it accept the key?) and
+     `agentengine memory apply`. Repeat with a new generic term and a new invented term.
+     Pass: only the invented term is stored.
+
+  Extraction is an LLM call, so one run per arm is weak evidence. Update this entry with
+  the result.
 
 ## 2026-10-10 — CLI 0.1.119 release notes are ahead of the docs
 

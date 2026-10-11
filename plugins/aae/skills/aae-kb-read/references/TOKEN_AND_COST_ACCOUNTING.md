@@ -1,6 +1,6 @@
 ---
 name: aae-token-and-cost-accounting
-description: How Atlas Agent Engine tracks LLM tokens and cost - automatic capture at app.llm(), the cost/dashboard endpoint, gateway pricing gaps, A2A roll-up by root_session_id, and unverified retention. Verified 2026-10-08.
+description: How Atlas Agent Engine tracks LLM tokens and cost - automatic capture at app.llm(), the cost/dashboard endpoint, gateway pricing gaps, A2A roll-up by root_session_id, unverified retention, and how to limit memory-extraction cost. Verified 2026-10-08, extraction section 2026-10-11.
 ---
 
 # Token and cost accounting
@@ -12,6 +12,7 @@ description: How Atlas Agent Engine tracks LLM tokens and cost - automatic captu
 - [Where do I read it from?](#where-do-i-read-it-from)
 - [How does an A2A fan-out roll up?](#how-does-an-a2a-fan-out-roll-up)
 - [Who bills what?](#who-bills-what)
+- [How do I limit what memory extraction costs?](#how-do-i-limit-what-memory-extraction-costs)
 - [How do I keep history before it ages out?](#how-do-i-keep-history-before-it-ages-out)
 
 ## Summary
@@ -105,6 +106,53 @@ AAE bills infrastructure, not your tokens. `cost_usd` and `total_cost_usd` are A
 **estimate** of your provider spend, not an AAE invoice line. The provider or gateway bills
 the tokens; the Atlas cluster bills separately. **No dollar-denominated budget or alert
 exists**: Policy Engine caps are token counts.
+
+## How do I limit what memory extraction costs?
+
+Checked 2026-10-11 against `/add-features/memory.md`, `/add-features/memory-types.md`,
+`/manage/governance/policy-engine.md`, CLI 0.1.118 and `agent-engine-sdk-memory` 0.11.8.
+
+**Why it costs.** Background extraction is a separate LLM: the memory service reads finished
+conversation chunks ("snapshots") and asks `extraction_llm` what to store. "Each enabled type
+runs its own extraction handler." It bills on **your** provider or gateway key, and every
+stored long-term document is billed by AAE per 1,000.
+
+**Why the platform won't cap it.** Policy Engine token caps exclude extraction: "Tokens that
+memory extraction consumes do not count toward the `MAX_TOKENS_PER_EXECUTION` or
+`MAX_TOKENS_PER_SESSION` values." Session `total_tokens` excludes them too. No setting limits
+how often extraction runs.
+
+**Documented levers** (all in `project-config.yaml`, all project-wide):
+
+| Lever | Effect |
+|---|---|
+| `memory.extraction.enabled` | Fewer types, fewer handlers per snapshot. `[]` extracts nothing; **removing the line re-enables all types**. |
+| `background_extraction.snapshot.max_messages` (default 20) / `stale_minutes` (default 3) | Bigger or later snapshots mean fewer extraction runs per conversation. |
+| `background_extraction.snapshot.topic_shift_enabled` (default `false`) | Keep it off unless you need it. Its exact effect is undocumented. |
+| `extraction_llm.model` | A cheaper model for extraction than for the agents. |
+| `features.memory: false` in an agent's `agent.yaml` | Stops recording for that agent, but also removes `app.memory`, so it can't read memory either. |
+
+**Hard cap: do it at the provider.** Point `extraction_llm.api_key_secret` at its own
+provider-named secret (e.g. `ANTHROPIC_API_KEY`) instead of the agents' shared `LLM_API_KEY`.
+Extraction spend then shows on its own bill line, and you can set a budget or rate limit on
+that key at the provider or gateway.
+
+**Inferred, not measured:**
+
+- How many LLM calls one snapshot produces per enabled type.
+- In a multi-agent project, whether each memory-enabled agent records the same exchange,
+  which would multiply extraction for one user question.
+
+**Undocumented, NOT TESTED: a per-type extraction prompt.** The `project-config.yaml`
+template built into CLI 0.1.118 says: "Each type may also take an optional 'prompt' to
+override the system default", e.g. `extraction: { taxonomic: { prompt: "..." } }`. The web
+docs never mention it. Nobody has confirmed that `memory configure` accepts it or that the
+memory server honors it. If it works, it narrows **what** gets stored (e.g. "skip general
+industry terms such as SDLC"). It does not change **how often** the LLM runs. A test plan
+is in [DRIFT_LOG.md](DRIFT_LOG.md#2026-10-11--a-per-type-extraction-prompt-exists-only-in-the-cli-template).
+
+**What's already stored stays.** The SDK can delete only procedural memories, and no public
+REST memory operation deletes anything. Prune at the source.
 
 ## How do I keep history before it ages out?
 

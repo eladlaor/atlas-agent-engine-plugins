@@ -141,6 +141,9 @@ reference.
 - CLI 0.1.118 has `agentengine memory status`. `memory configure --help` shows no
   deprecation, although the docs say it will be removed.
 - Custom memory types: see the 2026-10-10 entry in [DRIFT_LOG.md](DRIFT_LOG.md).
+- Undocumented and **untested**: a per-type `extraction.<type>.prompt`, mentioned only in
+  the CLI 0.1.118 template. See the 2026-10-11 entry in [DRIFT_LOG.md](DRIFT_LOG.md). To limit
+  extraction cost, see [TOKEN_AND_COST_ACCOUNTING.md](TOKEN_AND_COST_ACCOUNTING.md#how-do-i-limit-what-memory-extraction-costs).
 
 ## Where does the Voyage key for memory come from?
 
