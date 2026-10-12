@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Knowledge base: `WHY_WATCH_THE_DOCS.md`, the measured rationale for watching the Agent Engine docs — a dated one-week change census taken from the public `mongodb/docs` git history, the finding that no release-notes or `Last-Modified` surface is published, and the recommendation to trigger on change rather than daily and to source from git rather than page hashing.
 - Knowledge base: `CONFIG_FIELDS.md`, a field-by-field reference for `agent.yaml` and `project-config.yaml`, merged from the docs, the SDK source, the API schema and the CLI validator, including fields the guides omit (`features.durable_workflow`, per-type extraction prompts, metadata partition keys, memory-server capacity).
 - Knowledge base: how to limit memory-extraction cost (documented levers, a provider-side cap through a dedicated extraction key, and what is inferred but unmeasured), plus a drift entry for the undocumented, untested per-type `extraction.<type>.prompt` with a two-arm test plan.
 
