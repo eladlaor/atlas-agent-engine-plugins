@@ -38,7 +38,8 @@ Decided 2026-10-06. These close previously open questions; do not reopen without
 | Decision | Choice | Consequence |
 |---|---|---|
 | **Scope** | Tiers 1–2: public docs + CLI releases | No credentials, no tokens, usable by any AAE user |
-| **Private sources (tier 3)** | Deferred past v1.0 | Design retained in `AAE_WATCH_DESIGN.md`; no code, no config keys |
+| **Private sources (tier 3)** | Deferred past v1.0 | No code, no config keys |
+| **Detection source** (2026-10-13) | Git history of the publishing repository is the scheduled default; page hashing stays available via `AAE_WATCH_IMPL=hash` | Both write the same `report.json`, state layout and exit codes, so no consumer depends on which one ran. Needs `git` and a one-time blobless clone |
 | **Codex** | Supported from 0.2.0 (2026-10-06) | Same plugin directories, a `.codex-plugin/plugin.json` beside each `.claude-plugin/plugin.json`; the subagent ships to Codex as a skill. Gaps are listed in the repo README, not hidden |
 | **Session-start behaviour** | Notify once per change, else silent | No network at session start by default; no startup latency |
 | **Scheduling** | Opt-in, prompted after install | Install never registers a background job by itself |
@@ -68,14 +69,26 @@ source list, project key, or query.
 
 ### Tier 1 — documentation watch (built)
 
+Two detectors satisfy this tier. `aae-docs-watch-git.sh` reads the git history of the
+public repository the docs are published from, and is what the schedule runs.
+`aae-docs-watch.sh` hashes the published pages, and is selected with `AAE_WATCH_IMPL=hash`.
+**FR-7 onwards bind both**: the requirement is the artifact they produce, not the method —
+which is what lets either one run without a downstream consumer noticing.
+
 - **FR-1.** The watcher MUST read the page inventory from
   `https://www.mongodb.com/docs/agentengine/llms.txt` and derive one `.md` URL per page.
-- **FR-2.** It MUST detect change by SHA-256 of each page's markdown body. Conditional
-  GETs are unavailable — the `.md` responses carry no `Last-Modified` and no `ETag`,
-  and no sitemap publishes a `lastmod`. Hashing is therefore the only dependable
-  method, not an over-engineered one.
+  The git-sourced detector derives the equivalent inventory from the source tree at a
+  commit, and MUST map each source path to the page's published URL.
+- **FR-2.** Detecting change from the published site MUST use the SHA-256 of each page's
+  markdown body. Conditional GETs are unavailable — the `.md` responses carry no
+  `Last-Modified` and no `ETag`, and no sitemap publishes a `lastmod` — so hashing is the
+  only dependable method *against the site*, not an over-engineered one. Reading the
+  publishing repository's history sidesteps the limitation, and MUST additionally report
+  the commit, its date, its author, and the pages a changed shared include or a change to
+  the publishing configuration fans out to.
 - **FR-3.** It MUST support two modes: `--quick` (inventory only; detects pages added,
-  removed or retitled) and `--full` (per-page content hashing; also detects body edits).
+  removed or retitled) and `--full` (also detects body edits — by per-page hashing, or by
+  the diff between the baseline commit and the current one).
 - **FR-4.** It MUST write a unified diff per changed page.
 - **FR-5.** The first run against empty state MUST record a baseline and report
   `status=baseline`, NOT report every page as added.

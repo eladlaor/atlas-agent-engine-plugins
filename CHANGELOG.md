@@ -14,11 +14,29 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Added
 
+- `tests/cases/manifests.sh`: eight tests pinning the four manifests to each other. This repo
+  is two marketplaces over one plugin — Claude Code and Codex each hardcode where they look —
+  so name, version, license and description exist in three copies with nothing keeping them
+  in step. The tests assert the versions agree, that the shipped version has a changelog
+  entry, that the descriptions are identical and do not advertise the replaced detector, that
+  a declared license has a file behind it, that Codex is not asked to authenticate on
+  install, and that every referenced path exists.
 - Drift log: three entries dated 2026-10-13 on the deep-agent surface — `deepagents` 0.7.16
   ships no planner and no default system prompt, a custom `backend` is accepted despite the
   page saying it is rejected, and a missing `features.deep_agent` fails at run time rather
   than at build time. They landed in the tree before this release was cut and are recorded
   here after the fact.
+
+### Changed
+
+- The behaviour spec now describes both detectors. It had no mention of the git-sourced one
+  at all, while that is what the schedule runs, and it asserted that hashing was the only
+  dependable method — true of the published site, not of the repository behind it. FR-1 to
+  FR-3 now state what each source must produce, and the artifact contract is named as the
+  thing that binds them.
+- The user guide and `HOW_IT_WORKS.md` no longer imply that the knowledge-base update or the
+  daily schedule belongs to the hashing watcher; both detectors support `--update-kb`, and
+  the git-sourced one is what the schedule runs.
 
 ### Removed
 
@@ -27,6 +45,12 @@ is why their headers carry a separate "Plugin version:" line.
   authenticate on install bought nothing and cost trust.
 - `knowledge/plans/GIT_SOURCED_DOCS_WATCH.md`: the git-sourced detector shipped in 0.8.0, so
   the plan that described building it is now history. What it decided is recorded above.
+- `knowledge/plans/AAE_WATCH_DESIGN.md`, and with it the `knowledge/plans/` directory. The
+  parts that were built are described in `HOW_IT_WORKS.md` and the user guide; the rest was
+  phasing and open questions, which are not what a reader of this repository needs.
+- `LICENSE`, and with it the `license` field in all three manifests and the README's
+  license line, so nothing claims a grant the repository no longer carries. Without a
+  license file, default copyright applies.
 - The "second consumer" section of `AAE_WATCH_DESIGN.md`, which described a separate
   deployment rather than anything in this repository, and had drifted into asserting that the
   git detector was not yet the scheduled default — which it has been since 2026-10-13.

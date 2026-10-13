@@ -27,17 +27,17 @@ The plugin adds two things:
    readers. The plugin keeps an assistant from answering confidently from a picture of the
    product that is no longer true.
 
-**Token-efficient by design.** Checking the docs costs no AI tokens, because detection is
-a plain script with no AI in it. Two detectors ship: the scheduled default reads the git
-history of the public repository the docs are published from, which gives commit dates,
-authorship, history from before the tool first ran, and the pages a changed shared
-include or a site-wide config edit affects. The original detector, which fetches every
-docs page and compares a SHA-256 per page, remains available for machines where the
-clone is unwelcome and for the opt-in `--update-kb` flow. Only when a check finds a change does the AI model see anything, and
-then only the diffs of the pages that changed. On a day with no changes the model reads
-nothing and the session-start notice stays silent. The same holds with the opt-in
-`--update-kb` flag: the model that updates the knowledge base is started only when the
-check finds a change.
+**Token-efficient by design.** Checking the docs costs no AI tokens: both detectors are
+plain scripts with no AI in them. The scheduled default reads the git history of the
+public repository the docs are published from, which gives commit dates, authorship,
+history from before the tool first ran, and the pages a changed shared include or a
+site-wide config edit affects. The original detector, which fetches every docs page and
+compares a SHA-256 per page, remains available for machines where a clone is unwelcome.
+Both support the opt-in `--update-kb` flag.
+
+A model is started only behind that flag, only after a check has found a change, and it
+then reads only the diffs of the pages that changed. On a day with no changes nothing
+starts and the session-start notice stays silent.
 
 ## What's inside
 
@@ -149,6 +149,4 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
 Docs: [user guide](knowledge/usage_guides/USER_GUIDE.md) ·
 [behaviour spec](knowledge/specs/BEHAVIOR_SPEC.md) ·
 [how the docs watcher works](plugins/aae/skills/aae-docs-watch/HOW_IT_WORKS.md) ·
-[watcher design](knowledge/plans/AAE_WATCH_DESIGN.md) · [changelog](CHANGELOG.md)
-
-MIT licensed.
+[changelog](CHANGELOG.md)

@@ -159,8 +159,8 @@ AAE_KB_REPO=~/code/atlas-agent-engine-plugins <aae-plugin-dir>/scripts/install-s
 | `AAE_KB_MODEL` | Model for the `claude` runner | `sonnet` |
 | `AAE_KB_NOTES` | Your personal notes file | `~/.claude/agent-memory/aae-guide/MEMORY.md` |
 
-The model is started only when the hash check found a change, so a quiet day costs
-nothing. The `claude` runner gets file tools only (no shell, no web, no MCP servers),
+The model is started only when a check found a change, whichever detector ran, so a quiet
+day costs nothing. The `claude` runner gets file tools only (no shell, no web, no MCP servers),
 runs on Sonnet by default, and has a spending cap and a 15-minute limit. It can read and
 write only the watcher's state directory and your clone (`acceptEdits`, with every other
 access denied because nobody is there to approve it); the skill, a snapshot of your notes
@@ -301,9 +301,10 @@ pages. Conditional GETs (`If-Modified-Since` / `If-None-Match`) therefore cannot
 work here — the server will return a full 200 every time.
 
 This is the misunderstanding worth heading off: the obvious cheap approach is
-unavailable, and content hashing is not an over-engineered choice but the only
-dependable one. The cost is modest — a full crawl is about 40 seconds and 2.4 MB
-at 8 parallel requests.
+unavailable, so content hashing is not an over-engineered choice but the only
+dependable one *against the published site*. The cost is modest — a full crawl is about
+40 seconds and 2.4 MB at 8 parallel requests. Reading the publishing repository's git
+history avoids the question entirely, which is why that is now the default.
 
 If you only want to know about pages being **added, removed, or retitled**, the
 `--quick` mode fetches the inventory alone and finishes in about a second.

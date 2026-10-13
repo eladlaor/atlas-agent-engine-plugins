@@ -25,9 +25,9 @@ the result of the last crawl.
 
 | Piece | Runs | Does |
 |---|---|---|
-| **The crawl** (`aae-docs-watch.sh`) | Daily at 10:00 via `launchd` if you [schedule it](../../../../README.md#optional-extras), retried hourly until it succeeds; or when you ask | Fetches every docs page, compares hashes with the baseline, writes `report.json` and per-page diffs. With `--update-kb`, then starts the knowledge-base update if anything changed |
+| **The git-sourced check** (`aae-docs-watch-git.sh`) | Daily at 10:00 via `launchd` if you [schedule it](../../../../README.md#optional-extras), retried hourly until it succeeds; or when you ask. **This is what the schedule runs** | Fetches the publishing repository, resolves the changed pages from the commit range, writes `report.json`, per-page diffs and a `changes-summary.md`. With `--update-kb`, then starts the knowledge-base update if anything changed. See [below](#why-read-git-history-instead-of-the-pages) |
 | **The session-start hook** | When a session starts | Reads `report.json`. If it says `changes` and you haven't been told yet, shows a one-line notice, once, including the update's summary when there was one. Also warns, once a day, if the watcher or the update is failing |
-| **The git-sourced check** (`aae-docs-watch-git.sh`) | Daily, and when you ask. The scheduled default | Fetches the publishing repository, resolves the changed pages from the commit range, writes the same `report.json` plus a `changes-summary.md`. See [below](#why-read-git-history-instead-of-the-pages) |
+| **The hashing crawl** (`aae-docs-watch.sh`) | Only if you select it with `AAE_WATCH_IMPL=hash`, or when you ask | Fetches every docs page and compares hashes with the baseline, writing the same `report.json` and per-page diffs. Also supports `--update-kb`. Useful where a clone is unwelcome |
 | **The `aae-docs-watch` skill** | When you ask ("check the AAE docs") | Runs a check on demand and explains the diffs |
 
 Without a schedule or a request, nothing new is detected; the hook keeps reading the old
