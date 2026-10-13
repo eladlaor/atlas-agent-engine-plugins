@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+**One version number.** From 0.8.0 on, the repository release and the `aae` plugin carry
+the same version: a release header here is also the version in `plugins/aae/.claude-plugin/plugin.json`
+and in the marketplace manifests. Releases up to and including 0.7.0 ran two counters, which
+is why their headers carry a separate "Plugin version:" line.
+
 ## [Unreleased]
 
 ### Added
@@ -24,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **The scheduled job now runs the git-sourced detector by default.** `install-schedule.sh` selects it unless `AAE_WATCH_IMPL=hash` is set, which keeps the original page-hashing watcher.
 - `--update-kb` and `--kb-update-only` now work on both detectors. The knowledge-base update machinery moved to `plugins/aae/scripts/lib/kb-update.sh`, which both watchers source, so there is one implementation rather than two. `install-schedule.sh` copies the library beside the scheduled watcher and reports it in `status`; a watcher with no library beside it fails loudly instead of quietly losing the flag.
+- The repository release version and the `aae` plugin version are now one counter, set to `0.8.0`. They previously ran separately — release 0.7.0 shipped plugin 0.6.0 — so the same number meant two different things depending on where it was read.
 - `aae-docs-watch.sh` gains an `AAE_WATCH_DOCS_BASE` test seam so the behavioural contract can be exercised against a local fixture server. It defaults to the live docs site; nothing but the test suite should set it.
 
 ### Fixed
