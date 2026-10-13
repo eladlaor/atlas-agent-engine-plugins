@@ -10,6 +10,7 @@ description: Doc- and spec-verified Atlas Agent Engine facts that the guides omi
 - [Limits beyond the card](#limits-beyond-the-card)
 - [OTLP trace export exists in the API](#otlp-trace-export-exists-in-the-api)
 - [Policy Engine: seven policy types](#policy-engine-seven-policy-types)
+- [Where are policies and guardrails authored?](#where-are-policies-and-guardrails-authored)
 - [The `a2a:` block is not the A2A wire protocol](#the-a2a-block-is-not-the-a2a-wire-protocol)
 - [Stream chunks change when guardrails are on](#stream-chunks-change-when-guardrails-are-on)
 - [Memory scoping and config keys the card omits](#memory-scoping-and-config-keys-the-card-omits)
@@ -93,6 +94,33 @@ Verified 2026-10-05 against `/manage/governance/policy-engine.md`.
   the callee) is inbound-only.
 - Unverified: whether `invoke_a2a_agent` is matched by `AUTHORIZED_TOOLS`.
 
+## Where are policies and guardrails authored?
+
+**In the console or over REST. There is no code path, and no CLI path.** Verified 2026-10-13
+on CLI 0.1.118: there is no `policy` and no `guardrail` command group (`agentengine policy` and
+`agentengine guardrail` both return `unknown command`), and no key in `agent.yaml` or
+`project-config.yaml` declares either. `features.guardrails` is only an on/off switch for the
+agent.
+
+- **Policies** are authored at **org or project** scope, and merge most-restrictively
+  (allowlists intersect, numeric caps take the lower value). Types are listed in the section
+  above.
+- **Guardrails** are project-scoped. The only type is `output_validation`, whose rules are
+  regexes under `config.match_patterns`; actions rank `block` > `require_review` > `modify` >
+  `log_only`.
+- **For GitOps, script the REST API rather than looking for a config file:**
+  `GET|PUT /api/v1/projects/{id}/policies`, `/policies/effective`,
+  `POST /api/v1/organizations/{orgId}/policies/preview` — a dry run that names the projects
+  whose effective allowlist would become empty, worth running before narrowing an org
+  allowlist — and `/policies/rollout`.
+- **Timing:** policy changes take about a minute to propagate and each execution snapshots
+  policy at start, so a cap can be overshot by one call. Guardrail changes apply from the next
+  execution.
+
+**The expectation to head off:** that governance should be declarative beside the agent. The
+separation is deliberate — these are admin-plane controls set *over* the developer, so editing
+`agent.yaml` cannot relax them.
+
 ## The `a2a:` block is not the A2A wire protocol
 
 Verified 2026-10-05 against `/add-features/agent-to-agent.md`.
@@ -131,6 +159,15 @@ reference.
 - Scopes: private (user identity) for semantic, episodic and procedural; project-wide for
   taxonomic.
 - No delete endpoint is listed among the public REST memory operations.
+- **The CLI cannot read, edit or delete memories.** `agentengine memory` has exactly three
+  subcommands — `configure`, `apply`, `status` (0.1.118, re-checked 2026-10-13) — and all
+  three manage the memory *service*, not its contents.
+- **The Atlas collections are storage, not an edit surface.** The memory store is visible in
+  Data Explorer or Compass as the database `mdb_memory_<project_id>`, so you can read what was
+  stored. Editing a document's text there bypasses the memory service, which leaves the stored
+  embedding describing the **old** text, so search keeps matching the thing you just changed.
+  Combined with the missing delete endpoint and the SDK's delete-procedural-only support, there
+  is no safe documented way to correct or bulk-remove a user's memories.
 - Config keys beyond the card: `short_term.embed_on_write`;
   `background_extraction.snapshot.{max_messages: 20, stale_minutes: 3, embed_stm_before_promotion,
   topic_shift_enabled, topic_shift_threshold: 0.35, delete_promoted: false, ttl_days: 30}`;

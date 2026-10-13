@@ -49,8 +49,9 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Trust `--help` over the web docs**, and the OpenAPI spec over both for endpoints.
 - **Absence in the guides proves only "undocumented"**, never "unbuilt". Check the OpenAPI
   JSON before declaring a capability missing.
-- **Only `deploy list` and `deploy get <id>` are read-only.** Every other `deploy` form,
-  including a typo, starts a real deployment.
+- **`deploy list`, `deploy get <id>` and `deploy logs <id>` are read-only** (corrected
+  2026-10-13 on 0.1.118; an earlier version of this rule omitted `logs`). `deploy cancel` is
+  mutating, and any form outside those four — including a typo — starts a real deployment.
 - **Fetch egress IPs live.** There are two pairs for two purposes.
 - **A `validate` pass proves almost nothing.** It enforces an egress policy and little else —
   not `entrypoint`, not `sandboxes`, not unknown keys.
@@ -245,6 +246,10 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
   know the role, but `/api-keys-service-accounts.md` still lists only `PROJECT_OWNER` /
   `PROJECT_READ_ONLY` and `ORG_GROUP_CREATOR` / `ORG_READ_ONLY`, and says a project account
   needs `PROJECT_OWNER` to invoke.
+- **Re-confirmed 2026-10-13** (`service-account create --help`, 0.1.118): `--role` still takes
+  `PROJECT_OWNER`, `PROJECT_READ_ONLY`, `AGENT_DEVELOPER` for projects and
+  `ORG_GROUP_CREATOR`, `ORG_READ_ONLY` for orgs, with the same stored-name mapping. The doc
+  lag above is unchanged.
 
 ## 2026-10-09 — the local-mode memory package is now `agent-engine-sdk-memory`
 
@@ -399,8 +404,13 @@ From `--help`:
 - **Observed:** `agentengine deploy events <deployment-id>` (there is no `events`
   subcommand) did **not** error. The CLI fell through to bare `agentengine deploy` and started
   a live deployment during what was meant to be a read-only investigation.
-- **Resolution:** **the only safe `deploy` verbs are `deploy list` and `deploy get <id>`.**
-  `deploy get <id>` already prints the Conditions block with the failure reason.
+- **Resolution:** **the safe `deploy` verbs are `deploy list`, `deploy get <id>` and
+  `deploy logs <id>`.** `deploy get <id>` already prints the Conditions block with the failure
+  reason; `deploy logs <id>` prints the full event log. `deploy cancel` is the fourth
+  subcommand and is mutating. Anything else falls through.
+- **Corrected 2026-10-13** (`agentengine deploy --help`, 0.1.118): this entry previously named
+  only `list` and `get`, which wrongly pushed `deploy logs` — a documented, read-only
+  subcommand — out of the safe set during diagnosis.
 
 ## 2026-10-05 — `agentengine status` summary lags `deploy list`
 

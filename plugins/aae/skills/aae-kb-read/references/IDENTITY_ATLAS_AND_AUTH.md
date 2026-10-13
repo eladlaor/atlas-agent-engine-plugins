@@ -10,6 +10,7 @@ description: How Atlas Agent Engine projects and orgs relate to Atlas ones, the 
 - [Which org ID do I pass where?](#which-org-id-do-i-pass-where)
 - [Does `atlas setup` need an Atlas service account?](#does-atlas-setup-need-an-atlas-service-account)
 - [Must the database be Atlas, or just MongoDB?](#must-the-database-be-atlas-or-just-mongodb)
+- [Which "service account" is meant?](#which-service-account-is-meant)
 - [Which role should a service account get?](#which-role-should-a-service-account-get)
 
 ## Summary
@@ -79,6 +80,29 @@ MongoDB is required. Atlas specifically is **not established**. Verified 2026-10
 - **Memory needs Atlas Search and Vector Search**, so memory does need Atlas, Flex or larger.
   The CLI refuses free/shared tiers for deployment.
 - Untested: deploying against a self-managed MongoDB.
+
+## Which "service account" is meant?
+
+Two unrelated credentials share the name, and mixing them up wastes a whole debugging session.
+
+| | Atlas service account | AAE service account |
+|---|---|---|
+| Created in | Atlas: project → Identity & Access → **Applications** | `agentengine service-account create` |
+| ID / secret shape | Atlas client ID and secret | `ae_sa_id_…` / `ae_sa_sk_…` |
+| Authenticates against | the Atlas Admin API | the Agent Engine API (`POST /api/v1/oauth/token`) |
+| Needed for | `agentengine atlas …`, non-interactively above all | invoking a deployed agent, CI builds and deploys, read-only automation |
+
+They are not interchangeable, and holding one tells you nothing about the other.
+
+**Why AAE has its own at all:** it carries roles with no Atlas counterpart. `AGENT_DEVELOPER`
+("can invoke, build, and deploy agents") does not map onto Atlas's role model at all. The docs
+also distinguish projects "that the Atlas Agent Engine manages" from **Atlas-backed** projects
+— an org-scoped `ORG_GROUP_CREATOR` account can invoke only in the former — so AAE can own
+projects Atlas does not. That is about project *ownership*, not about where MongoDB runs.
+
+**The mistake to avoid:** reading AAE service accounts as a fallback for "we have no Atlas".
+The opposite holds — `MONGODB_URI` is required for every deploy, and memory additionally needs
+Atlas Search and Vector Search on Flex or larger.
 
 ## Which role should a service account get?
 

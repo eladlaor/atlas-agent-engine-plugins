@@ -11,6 +11,7 @@ description: Symptom-first Q&A for Atlas Agent Engine failures - misleading erro
 - [Why does `app.llm()` report "Connection error" when a direct request works?](#why-does-appllm-report-connection-error-when-a-direct-request-works)
 - [Why does invoke return 503 while `status` says healthy?](#why-does-invoke-return-503-while-status-says-healthy)
 - [Why did my deploy fail with `OENotReady`?](#why-did-my-deploy-fail-with-oenotready)
+- [What does a deploy success rate below 100% tell me?](#what-does-a-deploy-success-rate-below-100-tell-me)
 - [Why does the deploy hang at `Memory: waiting`?](#why-does-the-deploy-hang-at-memory-waiting)
 - [Why does `atlas setup` say "no workspace registered under context"?](#why-does-atlas-setup-say-no-workspace-registered-under-context)
 - [Why does `--context` say my context is "not found"?](#why-does---context-say-my-context-is-not-found)
@@ -84,6 +85,36 @@ The misunderstanding to head off: "CrashLoopBackOff is terminal, so a redeploy i
 Kubernetes keeps retrying with backoff; an immutable `failed` deployment record is not a
 live state.
 
+## What does a deploy success rate below 100% tell me?
+
+Very little on its own. It is a console tile that appears in **no doc page, no `llms.txt`
+entry and no OpenAPI schema**, computed over deployment records that are immutable. Treat it
+as a UI aggregate and never build an SLO on it.
+
+**Why it is structurally never 100%.** A deployment record never flips back to succeeded: one
+fired into a bad window (a resuming cluster, a missing secret) stays `failed` forever, even
+when the identical next deploy of the same build succeeds. So **retrying a transient failure
+lowers the rate**. See
+[DRIFT_LOG.md](DRIFT_LOG.md#2026-10-05--deploying-while-the-cluster-resumes-fails-the-orchestration-engine-self-heals).
+
+**The signal is the individual failed deployment, not the ratio.** Inspect in this order, all
+read-only:
+
+1. `agentengine deploy list` — which deployment is actually live (`agentengine status`'s
+   summary line lags).
+2. `agentengine deploy get <id>` — the `Conditions` block carries the failure reason.
+3. `agentengine deploy logs <id>` — the full event log. API equivalent:
+   `GET /api/v1/projects/{id}/deployments/{deployment_id}/events`.
+4. `agentengine logs --since 30m --source agent|tool` — runtime errors.
+
+**What a failure means operationally:** the previous deployment keeps serving, so a failed
+deploy does not take the agent down. The converse also holds — `succeeded` plus `healthy` is
+not proof the agent answers. Invoke it.
+
+The likeliest causes each have their own entry here: a paused or still-electing Atlas cluster
+(`OENotReady`), a missing project or workspace secret, a `Memory: waiting` hang, and an egress
+policy that rejects the LLM gateway host.
+
 ## Why does the deploy hang at `Memory: waiting`?
 
 The memory service cannot build its Search and Vector Search indexes on your cluster. Usually
@@ -99,6 +130,11 @@ directory with no `agent.yaml` above it: it walks the prompts, creates the conte
 with `no agent.yaml found in current directory or any parent`. Fix: `cd` into the agent
 directory and run `agentengine init --context <the-created-name>`. `pin` is not a substitute.
 
+The second cause is a **non-interactive `deploy`**. A bare `deploy` binds the workspace for you
+only on an interactive terminal; under CI, a redirect, a pipe, `--json` or `--all` it just
+prints the missing setup. See
+[CLI_TARGETING_AND_CONTEXTS.md](CLI_TARGETING_AND_CONTEXTS.md#why-does-deploy-do-more-on-my-laptop-than-in-ci).
+
 ## Why does `--context` say my context is "not found"?
 
 You passed the `ctx_…` ID. `--context` takes the display name. Map one to the other in
@@ -106,9 +142,12 @@ You passed the `ctx_…` ID. `--context` takes the display name. Map one to the 
 
 ## Why did a read-only investigation start a deployment?
 
-An unknown `deploy` subcommand (for example `deploy events <id>`) falls through to a bare
-`deploy` and starts a real one (observed 2026-10-05, CLI 0.1.118). Only `deploy list` and
-`deploy get <id>` are read-only.
+An unknown `deploy` subcommand (for example `deploy events <id>`, which does not exist) falls
+through to a bare `deploy` and starts a real one (observed 2026-10-05, CLI 0.1.118).
+
+`agentengine deploy` has exactly four subcommands (re-checked 2026-10-13 on 0.1.118):
+`list`, `get`, `logs` and `cancel`. **`list`, `get <id>` and `logs <id>` are read-only;
+`cancel` is mutating.** Anything outside those four deploys.
 
 ## Why does the hosted runtime fail an Atlas SRV lookup when my URI is right?
 

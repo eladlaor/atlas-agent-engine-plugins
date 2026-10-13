@@ -43,6 +43,24 @@ Verified 2026-10-05.
 - `project-config.yaml` is project-scoped (memory, Voyage, extraction config). Its position
   at the root says nothing about whether the repo is a monorepo.
 
+**Which template, and what it gives you** (verified 2026-10-13 on CLI 0.1.118, from
+`create --help` and by probing an invalid `--template`):
+
+- `--template` defaults to **`insurance-agent`** — a worked LangGraph Python agent with tools,
+  lookups, optional memory and a human-review node. **Not a hello-world.** Pass
+  `--template hello-world-agent` when the goal is to study the contract rather than read a
+  worked example.
+- The seven supported values are `hello-world-agent`, `hello-world-agent-ts`,
+  `hello-world-agent-adk`, `insurance-agent`, `insurance-agent-ts`, `insurance-agent-adk` and
+  `chatbot-client`. An unsupported value fails and prints the full list.
+- **`chatbot-client` is not an agent.** It scaffolds a Next.js chat UI for an
+  already-deployed workspace, and has no `agent.yaml`, so the usual `init` / `build` /
+  `deploy` sequence does not apply to it.
+- `create` does **no** platform login, registers nothing and bills nothing — registration is
+  `agentengine init`. It is not entirely offline, though: it runs `git init` in the new
+  directory and fetches the template with your local Git credentials, so a credential or proxy
+  problem surfaces here rather than at deploy.
+
 ## How do I tell a monorepo from a single agent?
 
 Look for a root `agent.yaml` containing `agents:`. That is the only signal.

@@ -13,6 +13,7 @@ description: How the agentengine CLI resolves its target (contexts, pins, worksp
 - [Can I pin instead of re-running `init`?](#can-i-pin-instead-of-re-running-init)
 - [Is running `init` from the monorepo root safe?](#is-running-init-from-the-monorepo-root-safe)
 - [Which commands are safe while diagnosing?](#which-commands-are-safe-while-diagnosing)
+- [Why does `deploy` do more on my laptop than in CI?](#why-does-deploy-do-more-on-my-laptop-than-in-ci)
 
 ## Summary
 
@@ -24,7 +25,11 @@ Verified 2026-10-08 against the docs and CLI **0.1.118**.
   registration of one agent; only `init` creates it.
 - `--context` takes the **display name**, not the `ctx_` ID.
 - Explicit target flags are **all four or nothing**, and never combined with `--context`.
-- **Only `deploy list` and `deploy get <id>` are read-only `deploy` forms.**
+- **`deploy list`, `deploy get <id>` and `deploy logs <id>` are the read-only `deploy` forms**
+  (re-checked 2026-10-13 on 0.1.118). `deploy cancel` is real and mutating, and an *unknown*
+  subcommand still falls through to a real deploy.
+- `deploy` does more on an interactive terminal than in CI, and decides by whether stdout is a
+  TTY, not by a flag.
 
 ## What is the difference between a login, a context, a pin and a workspace?
 
@@ -94,13 +99,51 @@ state.json retain their current workspace registration."*
 
 ## Which commands are safe while diagnosing?
 
-- **`deploy`**: only `deploy list` and `deploy get <id>` are read-only. Any other form,
-  **including a typo'd subcommand**, falls through to a real deploy (observed 2026-10-05).
-  There is no `deploy events`; `deploy get <id>` already prints the Conditions block with the
-  failure reason.
+- **`deploy`**: `agentengine deploy --help` on 0.1.118 lists four subcommands —
+  `cancel`, `list`, `get`, `logs` (re-checked 2026-10-13). **`list`, `get <id>` and
+  `logs <id>` are read-only;** `logs <id>` prints the deployment's event log, and
+  `get <id>` already prints the Conditions block with the failure reason. **`cancel` is
+  mutating.** Any form that is *not* one of those four — including a typo'd subcommand such
+  as the non-existent `deploy events` — falls through to a real deploy (observed 2026-10-05).
+  *This corrects an earlier rule here that named only `list` and `get`.*
 - `status` is for health. Its summary line can lag; trust `deploy list` for which deployment
   is live.
 - Read-only and useful: `context current`, `atlas status`, `egress`, `secret list`
   (names and versions only), `logs --source agent|tool --since 30m`, `deploy get <id> --json`,
   `build list`, `workspace list`, `dev status`.
 - `--help` on any command is non-mutating and has repeatedly been fresher than the docs.
+
+## Why does `deploy` do more on my laptop than in CI?
+
+Because `agentengine deploy` bootstraps missing setup **only on an interactive terminal**, and
+there is no flag for it: the CLI decides by whether stdout is a TTY. Verified against
+`agentengine deploy --help`, CLI 0.1.118, 2026-10-13.
+
+**Interactively**, a bare `deploy` checks login, workspace binding, a declared egress policy,
+local `.env` entries against project and workspace secrets, the last successful build, and
+Atlas setup — and then fixes what is missing: it **runs `agentengine init` when no workspace is
+bound**, **runs the combined build-and-deploy path when the workspace has no successful
+image**, **offers to store each missing `.env` value** with `agentengine secret set`, and
+**runs `agentengine atlas setup`** when Atlas is unlinked.
+
+**Non-interactively it does none of that.** `--help`: *"Non-interactive deploy, redirected
+stdout, `--json`, and `--all` never prompt, run init, start a build, or provision Atlas. They
+print the missing setup and the commands to fix it."* `--no-wait` never starts a build either,
+and `--workspace`/`--all` merely print `agentengine build` when no image exists.
+
+Consequences worth stating out loud:
+
+- **A pipe or a redirect is enough to lose it.** `agentengine deploy | tee deploy.log` and
+  `agentengine deploy > out.txt` take the non-interactive path; the same command alone in your
+  terminal takes the interactive one. A CI runner has no TTY, so every step there is
+  non-interactive whether or not you meant it to be.
+- **CI must sequence the steps itself:** `agentengine init` → `agentengine build` →
+  `agentengine deploy`. Drop the first two and the job fails on setup rather than performing
+  it.
+- **Atlas setup and secrets are prerequisites in CI**, not something the pipeline can
+  provision. `--yes` only accepts billed Flex defaults and Atlas IP access-list changes
+  *during* an interactive `atlas setup`; `--help` states it "is not implied by a TTY", and it
+  does not make a non-interactive run provision anything.
+- This is a common origin of `no workspace registered under context "…"`: the step that would
+  have bound the workspace was skipped because the command was not interactive. See
+  [TROUBLESHOOTING.md](TROUBLESHOOTING.md#why-does-atlas-setup-say-no-workspace-registered-under-context).

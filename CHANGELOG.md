@@ -14,6 +14,10 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Added
 
+- `aae-kb-update`: a third mode, `direct`, which takes a finding stated in the invocation
+  itself, verifies it against the docs, the CLI or the OpenAPI spec, works out which
+  reference file owns it, and files it there after approval. Until now the only route for a
+  finding was to write it to the personal notes first and promote it with notes mode.
 - `tests/cases/manifests.sh`: eight tests pinning the four manifests to each other. This repo
   is two marketplaces over one plugin — Claude Code and Codex each hardcode where they look —
   so name, version, license and description exist in three copies with nothing keeping them
@@ -21,6 +25,19 @@ is why their headers carry a separate "Plugin version:" line.
   entry, that the descriptions are identical and do not advertise the replaced detector, that
   a declared license has a file behind it, that Codex is not asked to authenticate on
   install, and that every referenced path exists.
+- CLI targeting: why `deploy` bootstraps missing setup on an interactive terminal and not in
+  CI, and how a pipe or a redirect silently switches it off.
+- Troubleshooting: what a deploy success rate below 100% does and does not mean.
+- Verified details: policies and guardrails have no CLI or config-file path, only the console
+  and REST; the CLI cannot read or delete memories, and the Atlas memory collections are
+  storage rather than an edit surface.
+- A2A and capability gaps: how to approximate agent groups inside one project, and what agent
+  code can and cannot see of its own A2A call tree.
+- Identity and auth: Atlas service accounts versus Agent Engine service accounts, and why the
+  latter exist.
+- Monorepo and build: `agentengine create` defaults to `insurance-agent`, the seven templates,
+  and that `chatbot-client` is not an agent.
+- First deploy: what `dev up` actually runs — the whole platform stack, not just the agent.
 - Drift log: three entries dated 2026-10-13 on the deep-agent surface — `deepagents` 0.7.16
   ships no planner and no default system prompt, a custom `backend` is accepted despite the
   page saying it is rejected, and a missing `features.deep_agent` fails at run time rather
@@ -54,6 +71,13 @@ is why their headers carry a separate "Plugin version:" line.
 - The "second consumer" section of `AAE_WATCH_DESIGN.md`, which described a separate
   deployment rather than anything in this repository, and had drifted into asserting that the
   git detector was not yet the scheduled default — which it has been since 2026-10-13.
+
+### Fixed
+
+- `deploy logs <id>` is read-only, and `deploy cancel` exists and is mutating. The drift log,
+  the CLI-targeting reference and the troubleshooting reference all stated that only
+  `deploy list` and `deploy get` were safe, which pushed a documented read-only subcommand out
+  of the safe set exactly when it is most useful — reading a failed deployment's event log.
 
 ## [0.8.0] - 2026-10-13
 

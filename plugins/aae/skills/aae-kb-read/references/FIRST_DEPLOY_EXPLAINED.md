@@ -10,6 +10,7 @@ description: Q&A teaching write-up of how the pieces of a first Atlas Agent Engi
 - [Why did `init` fail from my home folder, and why is the path doubled?](#why-did-init-fail-from-my-home-folder-and-why-is-the-path-doubled)
 - [What exactly does `agentengine atlas setup` do?](#what-exactly-does-agentengine-atlas-setup-do)
 - [Why does the agent need a cluster at all if memory is off?](#why-does-the-agent-need-a-cluster-at-all-if-memory-is-off)
+- [What is `dev up` actually running?](#what-is-dev-up-actually-running)
 - [Why did it add two IP addresses to Atlas, and why those two?](#why-did-it-add-two-ip-addresses-to-atlas-and-why-those-two)
 - [Where do secrets live: `.env` or the platform?](#where-do-secrets-live-env-or-the-platform)
 - [What files do `init` and `atlas setup` leave in my agent folder?](#what-files-do-init-and-atlas-setup-leave-in-my-agent-folder)
@@ -80,6 +81,19 @@ pass `--yes`. Picking an existing cluster costs nothing extra.
 The platform stores session state and execution records in **your** cluster, and requires
 `MONGODB_URI` for every deploy regardless of memory. Local `dev up` does not need it: it runs
 its own MongoDB container.
+
+## What is `dev up` actually running?
+
+Not your agent — a local copy of the **platform**. The Docker Compose stack it brings up holds
+the Orchestration Engine, the agent runtime, the tool sandbox, a guardrails service, a local
+MongoDB and the Playground UI. That is why `app.llm()`, `@app.tool()` and the checkpointer
+behave locally the way they do deployed.
+
+The useful consequence: because the runtime contract is the same, **"works locally, fails
+deployed" is almost always network, secrets or Atlas — not your graph code.** The local stack
+cannot tell you anything about the deployed sandbox's egress, which leaves from AAE's fixed
+public addresses, nor about platform secrets, which local dev never reads (it reads `.env`
+only).
 
 ## Why did it add two IP addresses to Atlas, and why those two?
 
