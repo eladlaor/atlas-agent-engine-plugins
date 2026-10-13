@@ -1,6 +1,6 @@
 ---
 name: aae-config-fields
-description: Field-by-field reference for agent.yaml and project-config.yaml, merged from the docs, the SDK source, the OpenAPI spec and the CLI validator, with each field's source and what the guides omit. Verified 2026-10-11 on CLI 0.1.118 and SDK 0.11.8.
+description: Field-by-field reference for agent.yaml and project-config.yaml, merged from the docs, the SDK source, the OpenAPI spec and the CLI validator, with each field's source and what the guides omit. Verified 2026-10-13 on CLI 0.1.118 and SDK 0.11.8.
 ---
 
 # Config field reference: `agent.yaml` and `project-config.yaml`
@@ -20,6 +20,7 @@ description: Field-by-field reference for agent.yaml and project-config.yaml, me
   - [Read by the SDK, absent from the docs](#read-by-the-sdk-absent-from-the-docs)
 - [`agent.yaml`, monorepo root](#agentyaml-monorepo-root)
 - [`project-config.yaml`](#project-configyaml)
+  - [Top-level keys](#top-level-keys)
   - [`memory` top level](#memory-top-level)
   - [`memory.voyage`](#memoryvoyage)
   - [`memory.short_term`](#memoryshort_term)
@@ -34,8 +35,11 @@ description: Field-by-field reference for agent.yaml and project-config.yaml, me
 
 ## Summary
 
-Verified 2026-10-11 on CLI **0.1.118** and SDK **0.11.8**. No single source lists every field.
-This file merges four of them and marks where each field comes from:
+Verified 2026-10-13 on CLI **0.1.118** and SDK **0.11.8**. All four sources were re-read in
+full on that date: `agent_config.py` class by class, every `memoryconfig.*` OpenAPI schema,
+the five doc pages listed below, and the CLI's own scaffolds plus fresh `agent validate`
+probes. No single source lists every field. This file merges four of them and marks where
+each field comes from:
 
 - **Docs**: the `agent.yaml` table on `/reference/agent-contract.md`, plus the egress and
   A2A pages.
@@ -56,6 +60,11 @@ The big points:
    metadata partition keys, memory-server replicas and a retry brake exist only in the
    API schema.
 4. **`features.durable_workflow` exists only in the SDK source.**
+5. **`memory:` is not the only top-level key in `project-config.yaml`.** `memory_only` is a
+   second one, written by `agentengine create --memory-only`. It appears in no doc page and
+   in no API schema.
+6. **`agent validate` enforces one thing hard: an egress policy.** A manifest with no
+   `entrypoint` and no `sandboxes` passes, despite the docs marking both required.
 
 ## Where each file's truth lives
 
@@ -68,17 +77,28 @@ The big points:
 
 ## Validation behavior
 
-Observed 2026-10-11 with `agentengine agent validate <path>` (CLI 0.1.118, read-only):
+Re-probed 2026-10-13 with `agentengine agent validate <path>` on minimal manifests
+(CLI 0.1.118, read-only):
 
 | Input | Result |
 |---|---|
 | Unknown top-level key (`bogus_top: 1`) | **Passes** |
 | Unknown feature flag (`features.bogus_flag: true`) | **Passes** |
+| Unknown sandbox name (`sandboxes.bogus_sandbox`) | Fails: `field bogus_sandbox not found in type agentconfig.SandboxesConfig` |
 | Wrong type (`features.memory: {types: [...]}`) | Fails: `cannot unmarshal !!map into bool` |
+| `entrypoint` violating the documented regex (`not-valid entry!point`) | **Passes.** The regex is documented but enforced by neither the validator nor the SDK. |
+| `entrypoint` and `sandboxes` both absent | **Passes**, though the docs mark both required |
+| No egress policy anywhere | Fails: `agent.yaml must declare a network egress policy` |
 | Bad egress destination (IP, CIDR, `localhost`, bare `*`, non-leading wildcard) | Fails, per the egress docs |
 
+An egress policy is the only thing the validator insists on, and its error message offers
+the deprecated top-level forms (`network.egress_mode`, `network.egress`) alongside
+`sandboxes`, so the CLI does not treat them as deprecated.
+
 The SDK reads `features`, `mcp` and `required_secrets` with `extra="ignore"` (unknown keys
-dropped) and `a2a` with `extra="forbid"`. Run `agent validate` before every deploy, then
+dropped) and `a2a` with `extra="forbid"`. A subsection written with no value
+(`features:` and nothing under it, likewise `a2a`, `mcp`, `required_secrets`, `connectors`)
+is coerced to empty rather than rejected. Run `agent validate` before every deploy, then
 read your diff for typos the validator can't see.
 
 ## `agent.yaml`, single agent
@@ -89,7 +109,7 @@ Source column: **D** docs, **S** SDK source, **C** CLI behavior.
 
 | Field | Type | Req. | Default | Notes | Src |
 |---|---|---|---|---|---|
-| `entrypoint` | string | yes | — | `module.path:attribute`, regex `^[\w.]+:[\w]+$` | D, S |
+| `entrypoint` | string | yes | — | `module.path:attribute`. The docs give regex `^[\w.]+:[\w]+$`, but nothing enforces it: the SDK types the field as an optional non-empty string, and `agent validate` accepts a violating value (tested 2026-10-13). | D |
 | `name` | string | no | — | Lowercase alphanumerics and hyphens, no leading or trailing hyphen. In a monorepo, also the workspace name and the A2A discovery name. | D |
 | `description` | string | no | — | Up to 500 characters | D |
 | `language` | string | no | — | `python` \| `typescript`. In the create-project docs, not the contract table. | S, C |
@@ -122,6 +142,12 @@ All plain booleans; `null` or omitted means the platform default. Allowlist from
 | `agent_idle_ttl_seconds` | int | 600 | 1–86400 | How long an idle session keeps its agent sandbox | D |
 | `tool_idle_ttl_seconds` | int | = agent TTL | 1–86400 | Same, for the tool sandbox | D |
 
+**Docs defect on `agent_idle_ttl_seconds` (live 2026-10-13).** The contract page's row for
+this field ends: "`scaling.agent_idle_ttl_seconds` is a legacy alias for this field" — the
+field declares itself its own alias. The real legacy name is therefore unknowable from the
+docs. If you inherit a manifest with an older TTL key, keep it and test, rather than
+assuming this sentence tells you what it was.
+
 ### `sandboxes`
 
 Exactly two names are allowed: `agent` (required) and `tool`. A tool assigned to both is
@@ -138,6 +164,14 @@ rejected; a tool that matches neither runs in `agent`.
 Egress changes apply at deploy time. `agentengine agent egress add|remove|mode` edits the
 file for you. A top-level `network.egress` is the deprecated form; run
 `agentengine migrate sandboxes` to move it.
+
+**The CLI's own scaffold still writes the deprecated form** (checked 2026-10-13 on 0.1.118):
+`agentengine create` emits a top-level `network.egress` with the chosen LLM host, and
+`--open-egress` emits a top-level `network.egress_mode: allow_all`. `agent validate` honors
+both and counts the rules. So a freshly created project starts out needing
+`agentengine migrate sandboxes`. Note also that the create-project docs describe
+`--open-egress` as writing `network.egress_mode` into `project-config.yaml`; it writes it
+into `agent.yaml` — `project-config.yaml` has no `network` block.
 
 ### `network`
 
@@ -161,18 +195,41 @@ Unknown keys are **rejected** here (`extra="forbid"`).
 
 | Field | Type | Default | Notes | Src |
 |---|---|---|---|---|
-| `mcp.servers.<name>.transport` | enum | — | `streamable_http` only | D, S |
-| `.url` | string | — | Endpoint | D, S |
-| `.headers` | map | `{}` | Static headers | D, S |
-| `.auth.type` | enum | — | Docs: `bearer_env`, `oauth`. SDK also accepts `none` and `client_credentials`. | D, S |
+| `mcp.servers.<name>.transport` | enum | `streamable_http` | `streamable_http` only | D, S |
+| `.url` | string | — | Endpoint. Must be an absolute `http(s)` URL; `http` is rejected unless `auth.type` is `none`. The **only** field in `agent.yaml` where `${VAR}` is substituted (see below). | D, S |
+| `.headers` | map | `{}` | Static headers. The SDK rejects the credential headers `authorization`, `cookie` and `proxy-authorization` — use `auth.token_env` instead. | D, S |
+| `.auth.type` | enum | `none` (SDK) | Docs: `bearer_env`, `oauth`, and mark the field **required**. SDK also accepts `none` and `client_credentials`, and defaults to `none`. | D, S |
 | `.auth.token_env` | string | — | For `bearer_env`; the variable must be set in `.env` | D, S |
 | `.auth.scope`, `.auth.client_name` | string | — | For `oauth` | D, S |
 | `.auth.redirect_uri` | string | — | Loopback redirect for interactive OAuth. SDK only. | S |
-| `.auth.token_url`, `.auth.client_id_env`, `.auth.client_secret_env` | string | — | For `client_credentials`. SDK only. | S |
-| `.allowed_tools` | list[string] | all | Allowlist of remote tools | D, S |
-| `.timeout_seconds` | int | 30 | Per tool call | D, S |
+| `.auth.token_url`, `.auth.client_id_env`, `.auth.client_secret_env` | string | — | For `client_credentials`. SDK only. `token_url` must be an absolute **https** URL. | S |
+| `.allowed_tools` | list[string] | all | Fail-closed allowlist of remote tools | D, S |
+| `.timeout_seconds` | int | 30 | Per tool call, and for discovery. Must be > 0. | D, S |
 
 An MCP server listed here still needs its hostname in egress.
+
+**Per-type auth field matrix (SDK, `extra="ignore"` but validated).** Each `auth.type`
+declares both required and allowed fields, and a field that is merely *unsupported* for the
+chosen type is rejected, not ignored:
+
+| `auth.type` | Required | Also allowed |
+|---|---|---|
+| `none` | — | — |
+| `bearer_env` | `token_env` | — |
+| `oauth` | — | `redirect_uri`, `client_name`, `scope` |
+| `client_credentials` | `client_id_env`, `client_secret_env` | `token_url`, `scope` |
+
+`token_env`, `client_id_env` and `client_secret_env` may not name a platform-owned
+environment variable; the SDK rejects it with "Please use a different environment variable
+name", so tenant YAML cannot redirect a platform secret to an outbound server.
+
+**`${VAR}` interpolation.** The SDK substitutes `${VAR}` at exactly one allowlisted YAML
+path, `mcp.servers.*.url`, from a tenant-owned subset of the environment — never raw
+`os.environ`. Everywhere else (prompts included) a literal `${...}` passes through
+untouched. Only the braced form is recognised; bare `$name` is left alone so URLs with real
+`$` characters survive. A malformed marker (`${VAR` unclosed, `${}`, `${1bad}`,
+`${VAR with spaces}`) and an unset variable both raise, naming the YAML path. There is no
+escape for a literal `${...}` at that path.
 
 ### `artifact_repositories`
 
@@ -201,6 +258,23 @@ Parsed by `agent_config.py`. Behavior unverified; don't rely on them without a t
 | `required_secrets.disable_restriction` | "Parsed for compatibility; ignored at enforcement." |
 | `connectors[].source` | Path to a connector `tool.yaml`, relative to `agent.yaml` |
 
+The SDK reads nothing else from `agent.yaml`. `name`, `description`, `version`, `scaling`,
+`sandboxes`, `network`, `agent_card` and `artifact_repositories` are consumed by the CLI and
+the platform at build and deploy time, never by the runtime.
+
+Which file it reads is resolved in a fixed order: an explicit path argument, then
+`AGENTIC_AGENT_CONFIG_PATH` (baked into runtime images), then `AGENTIC_AGENT_WORKDIR` (set
+by generated local-dev stacks), then the current directory. A missing file is treated as an
+empty config rather than an error, so a unit test that constructs `App` outside an agent
+directory silently gets defaults.
+
+**No OpenAPI schema describes `agent.yaml`.** The manifest-shaped schemas in the spec
+(`main.WorkspaceDTO`, `main.WorkspaceFeatures`, `main.AgentCard`, `main.AgentSkill`) are
+server-side projections of a *deployed* workspace, not the authoring contract, and they
+lag it: `main.WorkspaceFeatures` carries only `memory`, `guardrails`, `playground` and
+`use_custom_parser`, omitting `deep_agent` and `durable_workflow`. Do not read field
+coverage for `agent.yaml` out of them.
+
 Deprecated: `services:` (moved to `dev.yaml`) and the flat single-directory project layout.
 
 ## `agent.yaml`, monorepo root
@@ -222,7 +296,26 @@ only at startup (`agentengine memory apply`). Endpoints:
 
 Source column: **A** API schema, **D** docs sample, **C** CLI template.
 
+### Top-level keys
+
+`memory:` is **not** the only one. `agentengine create --memory-only` writes a second key,
+and it is absent from every doc page and from the OpenAPI schema.
+
+| Field | Type | Default | Notes | Src |
+|---|---|---|---|---|
+| `memory` | mapping | — | The only block uploaded by `agentengine memory configure`. Everything in the sections below lives under it. | A, D, C |
+| `memory_only` | bool | omitted | **CLI-local, undocumented.** Written as `true` by `agentengine create --memory-only`. Tells `agentengine dev up` to start only the Orchestration Engine and the memory server, with no agent. It is also the "memory-only project marker" that `agentengine memory configure` walks up to when resolving which `project-config.yaml` to upload. Not part of the uploaded document, so the platform never sees it. | C |
+
+No other top-level key appears in either CLI template, in the docs samples, or in the API
+schema. In particular there is no project name, version, or defaults block, and no
+`network:` block — despite the create-project page saying `--open-egress` writes
+`network.egress_mode` here (it writes it to `agent.yaml`).
+
 ### `memory` top level
+
+`log_level` is the only scalar directly under `memory:`. Every other member of
+`memoryconfig.MemoryConfigSchema` is a nested mapping or list, each covered by a section
+below (verified against all eleven properties of that schema, 2026-10-13).
 
 | Field | Type | Notes | Src |
 |---|---|---|---|
@@ -261,7 +354,7 @@ sample; the API schema gives types only.
 | Field | Type | Default | Notes | Src |
 |---|---|---|---|---|
 | `max_messages` | int | 20 | Promote a snapshot after this many messages | A, D |
-| `stale_minutes` | int | 3 | …or after this much idle time | A, D |
+| `stale_minutes` | int | 3 | …or after this much idle time. The docs sample ships `3`, the CLI scaffold ships `1` (both checked 2026-10-13); the API schema gives no default, so which one the server falls back to when the key is omitted is **unverified**. | A, D, C |
 | `embed_stm_before_promotion` | bool | `true` | Batch-embed short-term turns before the promotion check | A, D |
 | `topic_shift_enabled` | bool | `false` | Exact effect undocumented | A, D |
 | `topic_shift_threshold` | number | 0.35 | Used when topic shift is on | A, D |
@@ -331,4 +424,7 @@ Because the key is permanent, test it in a scratch project first.
    OpenAPI JSON.
 3. Diff `agent_config.py` in a fresh agent `.venv` against the SDK version above.
 4. Re-read `/reference/agent-contract.md` and `/add-features/memory.md`.
-5. Update the date in the description and the summary.
+5. Scaffold throwaway projects and diff the templates: `agentengine create --memory-only`
+   and `agentengine create --open-egress` each emit keys the other scaffold does not.
+6. Update the date in the description and the summary, and say which sources you actually
+   re-read if it was not all four.
