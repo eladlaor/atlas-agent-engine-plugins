@@ -188,19 +188,17 @@ The original framing was "build the mechanism so we only need to ask for the key
 no key.** The detection side needs no permission at all: `mongodb/docs` is public and the
 commits API answers unauthenticated.
 
-| Thing | Who grants it | Needed for |
-|---|---|---|
-| Nothing | — | Building, testing and running everything in Phases 0–2 |
-| Slack incoming webhook | MongoDB IT | The internal deployed watcher's notifications — unrelated to this plugin |
-| A hearing with the docs owners | The Agent Engine team | Phase 3's ask only |
-| Publishing a change feed | The Agent Engine team | The thing we are asking for, and cannot build for them |
+| Thing | Needed for |
+|---|---|
+| Nothing | Building, testing and running everything in Phases 0–2 |
+| Publishing a change feed | The suggestion in Phase 3 — something only the docs owners can do, and which this plugin cannot build for them |
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
 | **`snooty.toml` is an invisible global fan-out** — a one-line edit changes up to 196 published pages while touching zero source `.txt` files | A naive `source/**/*.txt` filter silently misses the largest possible change | Work item 1.5 treats it as a special case. A test asserts it |
-| Shipped docs assert the hashing rationale as settled — `SKILL.md` says "do not propose an If-Modified-Since approach"; `AAE_WATCH_DESIGN.md` pins the rules as shared with the internal deployed watcher | The repo contradicts itself in front of the people we are pitching | 1.9 revises them in the same change. The internal watcher's spec card must be updated in step |
+| Shipped docs assert the hashing rationale as settled — `SKILL.md` says "do not propose an If-Modified-Since approach" | The repo contradicts itself for anyone reading both | 1.9 revises them in the same change |
 | `report.json` is parsed textually by `grep`/`sed` | A formatting change breaks two code paths silently | 0.4 asserts compactness |
 | A future `git mv` of `content/agentengine/` | Path-filtered detection silently returns nothing | Pin on `--follow`, or on the `snooty.toml` `name` field. A zero-commits-ever result must fail loudly, never report "clean" |
 | Root tree API response is truncated for this repo | Naive `trees/<HEAD>?recursive=1` returns incomplete data | Walk down to the `agentengine` subtree; never trust an untruncated flag without checking it |
@@ -211,7 +209,7 @@ commits API answers unauthenticated.
 
 | # | Question | Blocking? |
 |---|---|---|
-| O1 | Does the internal deployed watcher switch to git sourcing too, or keep hashing? Its spec card pins the rules as shared | Not blocking Phase 0–2; must be resolved before 1.9 |
+| O1 | Do downstream consumers of the hashing rationale need updating in step with 1.9? | Not blocking Phase 0–2; must be resolved before 1.9 |
 | O2 | Where does the CLI guard's result surface — own exit code, or additive `cli` object? | Blocks 2.4 only |
 | O3 | Does the gap report go to the docs owners, the product team, or both? Different asks land differently | Blocks 3.3 |
 | O4 | Is `agentengine docs generate` output stable across versions, or does formatting churn produce false drift? | Blocks 2.2; test across two CLI versions |
