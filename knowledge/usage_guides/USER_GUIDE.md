@@ -14,6 +14,8 @@
 - [How do I check I'm not rebuilding something AAE already does?](#how-do-i-check-im-not-rebuilding-something-aae-already-does)
 - [How does change detection actually work?](#how-does-change-detection-actually-work)
 - [Why does it crawl every page instead of checking a timestamp?](#why-does-it-crawl-every-page-instead-of-checking-a-timestamp)
+- [Can I detect changes from git history instead?](#can-i-detect-changes-from-git-history-instead)
+- [How do I check the published CLI reference against my binary?](#how-do-i-check-the-published-cli-reference-against-my-binary)
 - [How do I schedule the check?](#how-do-i-schedule-the-check)
   - [Why does the schedule run a copy of the watcher?](#why-does-the-schedule-run-a-copy-of-the-watcher)
   - [Why didn't my check run again today?](#why-didnt-my-check-run-again-today)
@@ -31,9 +33,12 @@ check records a baseline, and your host tells you at session start whenever the 
 moved. Opt in to `--update-kb` and a changed page also updates the knowledge base, with a
 summary in the same notice.
 
-Change detection is deterministic and costs no AI tokens: a script hashes every page
-and compares the hashes with the last run. The model reads only the diffs of the pages
-that changed, and nothing at all on a day with no changes.
+Change detection is deterministic and costs no AI tokens. Two detectors ship: the
+scheduled default, `aae-docs-watch-git.sh`, reads the git history of the public
+repository the docs are published from, which also gives commit dates and authorship;
+`aae-docs-watch.sh` hashes every page instead, and stays available for machines where
+the clone is unwelcome and for the `--update-kb` flow. The model reads only the
+diffs of the pages that changed, and nothing at all on a day with no changes.
 
 ## What is this plugin?
 
@@ -274,7 +279,8 @@ It is a skill in both hosts; its verdict and utility-candidate ledgers live in
 
 ## How does change detection actually work?
 
-Three facts about the docs site make this reliable:
+The default watcher compares the published pages with its own copy of them. Three facts
+about the docs site make that reliable:
 
 1. `https://www.mongodb.com/docs/agentengine/llms.txt` is a machine-readable
    inventory listing every documentation page (~195) as a `.md` URL.
@@ -301,6 +307,70 @@ at 8 parallel requests.
 
 If you only want to know about pages being **added, removed, or retitled**, the
 `--quick` mode fetches the inventory alone and finishes in about a second.
+
+This reasoning holds for the published site. It is not the only source available —
+see the next section.
+
+## Can I detect changes from git history instead?
+
+Yes. `aae-docs-watch-git.sh` reads the git history of the public repository the AAE docs
+are published from, rather than hashing the published pages. The repository is public, so
+it needs no token, no account and no permission:
+
+```bash
+# Full check. The first run clones (~30s, ~165 MB on disk); later runs just fetch.
+<aae-plugin-dir>/scripts/aae-docs-watch-git.sh --full --skip-if-ran-today
+
+# New commits only, without resolving the changed pages. ~2s.
+<aae-plugin-dir>/scripts/aae-docs-watch-git.sh --quick
+
+# Force another full check today.
+<aae-plugin-dir>/scripts/aae-docs-watch-git.sh --full
+```
+
+Exit codes and state are the same as the hashing watcher's: `0` no changes, `10` changes,
+`20` skipped because today's check already ran, `1` error, and the same `report.json` in
+the same state directory. Everything that reads that state — the session-start notice,
+`aae-scout`, `install-schedule.sh status` — works with either detector's output.
+
+What it reports that hashing cannot:
+
+| | |
+|---|---|
+| Provenance | The commit time, author and message behind each change |
+| History from before you started | A hashing baseline begins at its own first run; git history goes back further, and catches a page that was edited and reverted between two runs |
+| Shared includes | A changed include file is not a page. The detector resolves every page that transcludes it, at the commit being reported |
+| Site-wide changes | A one-line edit to the publishing configuration changes the banner or a substituted constant on up to all ~196 pages while touching no page source. This is the one change a naive "page sources only" filter would miss entirely |
+| Less noise | Commits that touch no published page, such as a taxonomy file, are classified out |
+
+It also writes `changes-summary.md` next to `report.json`: a readable digest that collapses
+a CLI-reference regeneration — roughly 37 `cli/` pages changing together from a single
+release — into one line. `report.json` still lists every page, so nothing downstream sees
+less.
+
+Two limits worth knowing. It needs `git` on your `PATH` and keeps a 165 MB clone under
+`docs-repo/` in the state directory. And **`--update-kb` / `--kb-update-only` are not
+implemented for it** — those live on the hashing watcher. Installing the schedule with
+`--update-kb` while the git detector is selected is refused with that explanation, rather
+than failing later when the docs first change. To keep the automatic knowledge-base
+update, install the schedule with `AAE_WATCH_IMPL=hash`.
+
+## How do I check the published CLI reference against my binary?
+
+Run `aae-cli-docs-check.sh`. The CLI reference pages are generated from the
+`agentengine` binary's own command tree, so the binary is the authority and any
+disagreement is drift that nothing else announces:
+
+```bash
+<aae-plugin-dir>/scripts/aae-cli-docs-check.sh            # silent when they agree
+<aae-plugin-dir>/scripts/aae-cli-docs-check.sh --summary  # also print the summary line
+```
+
+Exit `0` means they agree, `30` means divergence (the diverging commands and flags are
+printed), `1` is an error. It compares the command set and each command's flags, including
+short forms. Measured on 2026-10-13 at CLI 0.1.118: 117 commands, zero flag drift. **A
+clean run is the expected result** — this is a regression guard, not a discovery tool, so
+treat any non-zero exit as news.
 
 ## How do I schedule the check?
 
@@ -358,8 +428,11 @@ plugin updates and is shared by Claude Code, Codex and the launchd job.
 | `report.json` | Last result: status, counts, and the changed/added/removed URL lists |
 | `diffs/<slug>.diff` | Unified diff for each changed page |
 | `pages/<slug>` | Current markdown snapshot of each page |
-| `manifest.tsv` | `url <TAB> sha256` baseline |
+| `manifest.tsv` | `url <TAB> sha256` baseline, written by the hashing watcher |
 | `urls.txt` | Page-inventory baseline, used for added/removed detection |
+| `last-commit` | The commit the git-sourced detector last reported on — its entire baseline |
+| `changes-summary.md` | Readable digest from the git-sourced detector: the commits in range, include and site-wide fan-out, and a CLI regeneration collapsed to one line |
+| `docs-repo/` | The git-sourced detector's clone of the publishing repository (~165 MB) |
 | `acknowledged` | Marker that the current report has been shown |
 | `last-full-run` | Local date and time of the last completed full crawl |
 | `last-error` | Time and message of the last failed run; removed by the next successful full crawl |

@@ -36,7 +36,24 @@ readonly PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 readonly LOG_DIR="${HOME}/Library/Logs/aae-docs-watch"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly WATCHER="${SCRIPT_DIR}/aae-docs-watch.sh"
+
+# Which detector the scheduled job runs.
+#
+#   git  (default) read the publishing repository's history. Exact commit
+#        dates and messages, history from before the first run, shared-include
+#        and site-config fan-out, and no per-page crawl.
+#   hash           the original: fetch all ~196 pages and compare SHA-256.
+#
+# Both write the same report.json, so the session notice, the knowledge-base
+# updater and this script's own `status` read either without caring. Switch
+# with AAE_WATCH_IMPL=hash if the git clone is unwelcome on a given machine
+# (it costs roughly 165 MB of state).
+readonly WATCH_IMPL="${AAE_WATCH_IMPL:-git}"
+case "$WATCH_IMPL" in
+  git) readonly WATCHER="${SCRIPT_DIR}/aae-docs-watch-git.sh" ;;
+  hash) readonly WATCHER="${SCRIPT_DIR}/aae-docs-watch.sh" ;;
+  *) printf 'AAE_WATCH_IMPL must be "git" or "hash", got: %s\n' "$WATCH_IMPL" >&2; exit 1 ;;
+esac
 readonly STATE_DIR="${AAE_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/aae-docs-watch}"
 readonly BIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/aae-docs-watch/bin"
 readonly SCHEDULED_WATCHER="${BIN_DIR}/aae-docs-watch.sh"
@@ -82,6 +99,13 @@ xml_escape() {
 # and that a runner is reachable on the job's PATH.
 check_kb_settings() {
   [ -n "$UPDATE_KB" ] || return 0
+  # The automatic knowledge-base update is implemented in the hashing watcher
+  # only; the git-sourced detector does not accept --update-kb. Refuse the
+  # combination at install time rather than letting the scheduled job die on an
+  # unknown argument the first time the docs change.
+  if [ "$WATCH_IMPL" = "git" ]; then
+    die "--update-kb is not available with the git-sourced detector yet. Either install without --update-kb, or run with AAE_WATCH_IMPL=hash to keep the automatic knowledge-base update."
+  fi
   if [ -n "${AAE_KB_REPO:-}" ]; then
     case "$AAE_KB_REPO" in /*) ;; *) die "AAE_KB_REPO must be an absolute path: ${AAE_KB_REPO}" ;; esac
     [ -d "${AAE_KB_REPO}/${KB_REFERENCES_SUBPATH}" ] && [ -e "${AAE_KB_REPO}/.git" ] \

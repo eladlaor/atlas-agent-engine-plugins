@@ -25,12 +25,17 @@ The plugin adds two things:
    change weekly and its CLI ships faster than the docs. The plugin keeps an assistant
    from answering confidently from a picture of the product that is no longer true.
 
-**Token-efficient by design.** Checking the docs costs no AI tokens. A plain script
-hashes every docs page and compares the hashes with the last run. Only when that check
-finds a change does the AI model see anything, and then only the diffs of the pages that
-changed. On a day with no changes the model reads nothing and the session-start notice
-stays silent. The same holds with the opt-in `--update-kb` flag: the model that updates
-the knowledge base is started only when the hash check finds a change.
+**Token-efficient by design.** Checking the docs costs no AI tokens, because detection is
+a plain script with no AI in it. Two detectors ship: the scheduled default reads the git
+history of the public repository the docs are published from, which gives commit dates,
+authorship, history from before the tool first ran, and the pages a changed shared
+include or a site-wide config edit affects. The original detector, which fetches every
+docs page and compares a SHA-256 per page, remains available for machines where the
+clone is unwelcome and for the opt-in `--update-kb` flow. Only when a check finds a change does the AI model see anything, and
+then only the diffs of the pages that changed. On a day with no changes the model reads
+nothing and the session-start notice stays silent. The same holds with the opt-in
+`--update-kb` flag: the model that updates the knowledge base is started only when the
+check finds a change.
 
 ## What's inside
 
@@ -44,7 +49,8 @@ One plugin, `aae`:
 | `aae-scout` | Skill | A cheap check before building anything: confirms the docs and CLI are current, then whether the platform, CLI, SDK, official examples or your repo already do it. Answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence. |
 | `aae-add-agent` | Skill | Adds one agent to an existing AAE monorepo. `agentengine create` only scaffolds whole new projects. |
 | `aae-delete-agent` | Skill | Tears one agent down completely. `workspace delete` alone leaves secrets, sessions and the database user behind. |
-| `aae-docs-watch` | Skill | Checks the AAE docs on demand. Change detection is a deterministic hash comparison with no AI involved; the model reads only the per-page diffs, and only when something changed. |
+| `aae-docs-watch` | Skill | Checks the AAE docs on demand, either by comparing page hashes with the last run or by reading the publishing repository's git history. Detection is deterministic with no AI involved; the model reads only the per-page diffs, and only when something changed. |
+| CLI reference guard | Script | `aae-cli-docs-check.sh` compares the `agentengine` binary's own command tree against the published CLI reference pages and exits non-zero if they disagree. Zero drift across 117 commands at CLI 0.1.118. |
 | Session-start notice | Hook | Tells you once, at session start, when the docs changed, and whether the knowledge base was already updated from them. Also warns, once a day, when the watcher or the automatic update is failing. |
 | Daily docs crawl | `launchd` job (optional, macOS) | Runs the check every day, at 10:00 by default, retried hourly until it succeeds. With `--update-kb`, it also updates the knowledge base when the docs changed. See [Optional extras](#optional-extras). |
 | `ae` | Shell shortcut (optional) | Type `ae` instead of `agentengine`. See [Optional extras](#optional-extras). |
@@ -121,6 +127,13 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
 - **Tested in Claude Code**, including the `--update-kb` runner. In Codex (codex-cli
   0.162.1) the plugin installs and all skills load; a full conversation, the hook-trust
   flow and the `--update-kb` runner are untested.
+- **The git-sourced detector is the scheduled default, and is new.** Its first run clones
+  the publishing repository (~30s, ~165 MB on disk); later runs only fetch. It has a full
+  test suite but no long production record yet. Set `AAE_WATCH_IMPL=hash` when installing
+  the schedule to keep the original page-hashing watcher instead.
+- **`--update-kb` requires the hashing watcher.** The automatic knowledge-base update is
+  not implemented for the git-sourced detector; installing the schedule with both is
+  refused with that explanation rather than failing later.
 - Atlas Agent Engine is in **Public Preview**: *"intended for evaluation and
   prototyping purposes only"*, with no SLAs. This plugin inherits that.
 - Knowledge is checked against the live docs with `agentengine` CLI 0.1.118 and SDK

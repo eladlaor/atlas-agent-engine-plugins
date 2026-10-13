@@ -57,7 +57,7 @@ notification is the lesser half.
 
 | Tier | Source | Verdict | Mechanism |
 |---|---|---|---|
-| 1 | Public docs, 196 pages via `docs/agentengine/llms.txt` | High | SHA-256 content hash per page — **already built** |
+| 1 | Public docs, 196 pages via `docs/agentengine/llms.txt` | High | SHA-256 content hash per page — **already built**. Since 2026-10-13 also available from the publishing repository's git history, with commit-level provenance ([below](#is-there-a-second-consumer-of-the-same-detection)) |
 | 2 | CLI releases, `mongodb/agent-engine-client-libraries` | High | GitHub releases API vs `agentengine version --json` |
 | 3 | Private sources you configure | Varies — yours to judge | Headless agent over an MCP-backed search tool |
 
@@ -276,11 +276,40 @@ pages), and a shared package would force Python on users who today need only bas
 and jq. What must not change silently is the rules above: if they change here, the
 deployed watcher has to follow.
 
+**Update 2026-10-13: the detection rules are no longer the only option, so "same rules"
+needs restating.** A second detector, `aae-docs-watch-git.sh`, now reads the git history
+of the public repository the docs are published from, mapping each changed source file to
+its published URL instead of hashing the published body. It is implemented and tested; it
+is **not** yet the scheduled default, and the hashing watcher is unchanged.
+
+What that means for the second consumer:
+
+- **The artifact contract, not the detection method, is what the two must share.** The git
+  detector writes the same `report.json` keys, the same state layout and the same exit
+  codes, which is why every downstream reader here was untouched. Any second
+  implementation should be pinned to that contract and left free to choose its source.
+- **The hashing rules above remain valid** and remain the fallback: they need no `git`, no
+  clone and no knowledge of how the site is built, and the site still offers no
+  `Last-Modified` or `ETag` to replace them.
+- **The git source reports strictly more**: commit time, author and message, history from
+  before the detector first ran, the pages a changed shared include fans out to, and the
+  site-wide fan-out of a one-line change to the publishing configuration — which is the
+  largest change a source-path filter would otherwise miss entirely.
+- **The costs are different, so the choice is a real one.** Hashing costs a full crawl per
+  run and no disk. The git source costs a one-time clone (~30s, ~165 MB) and then a cheap
+  fetch, and requires `git`.
+
+Whether the second consumer adopts git sourcing is its own decision; nothing here forces
+it. What must not happen is one side changing its *output* contract silently.
+
 ## Component inventory
 
 | Component | Status | Notes |
 |---|---|---|
-| `aae-docs-watch.sh` | **Exists** | Tier 1. Since 2026-10-10 in the `aae` plugin, with opt-in `--update-kb` |
+| `aae-docs-watch.sh` | **Exists** | Tier 1 by page hashing. Since 2026-10-10 in the `aae` plugin, with opt-in `--update-kb`. Selected with `AAE_WATCH_IMPL=hash`; still required for `--update-kb` |
+| `aae-docs-watch-git.sh` | **Exists** (2026-10-13) | Tier 1 from the publishing repository's git history. Same `report.json`, state layout and exit codes; adds commit provenance and `changes-summary.md`. The scheduled default since 2026-10-13; `AAE_WATCH_IMPL=hash` selects the original |
+| `aae-cli-docs-check.sh` | **Exists** (2026-10-13) | Compares the CLI binary's generated command reference with the published `cli/` pages; exit `30` on divergence. Measured clean across 117 commands at CLI 0.1.118 |
+| Test suites | **Exist** (2026-10-13) | `tests/run-tests.sh` (27 tests) and `tests/cli-docs-check/run-tests.sh` (19 tests), dependency-free, offline |
 | Docs-to-knowledge runner | **Exists** (2026-10-10) | `--update-kb` starts `claude -p` or `codex exec` on `aae-kb-update` docs mode; Codex untested |
 | `install-schedule.sh` | **Exists** | launchd wrapper. Extend to schedule the collector |
 | `install-ae-shortcut.sh` | **Exists** | Unrelated; shipped today |
@@ -336,6 +365,9 @@ be verified by a real Codex install.
 |---|---|
 | `docs/agentengine/llms.txt` → HTTP 200, 196 entries | **Verified 2026-10-06** |
 | Site-wide `docs/llms.txt` has zero agentengine entries — irrelevant, the watcher uses the scoped one | **Verified 2026-10-06** |
+| The repository publishing the AAE docs is public and readable unauthenticated | **Verified 2026-10-13** |
+| Source path → published URL maps exactly: 200 of 200 source files | **Verified 2026-10-13** |
+| `llms.txt` is not a complete inventory — it omits 4 published pages | **Verified 2026-10-13** |
 | `api.github.com/repos/mongodb/agent-engine-client-libraries/releases/latest` → 200, unauthenticated | **Verified** |
 | Latest CLI = 0.1.118, published 2026-09-30; local = 0.1.118 | **Verified** |
 | `agentengine version --json` emits `schema_version: agentic.cli/v1` | **Documented** |

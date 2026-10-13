@@ -2,16 +2,20 @@
 
 - [Summary](#summary)
 - [How do the pieces fit together?](#how-do-the-pieces-fit-together)
+- [Why read git history instead of the pages?](#why-read-git-history-instead-of-the-pages)
+- [What does the git-sourced detector cost, and what does it not do?](#what-does-the-git-sourced-detector-cost-and-what-does-it-not-do)
 - [What does `--update-kb` add?](#what-does---update-kb-add)
 - [How does the daily crawl run, and what can I configure?](#how-does-the-daily-crawl-run-and-what-can-i-configure)
 
 ## Summary
 
-A shell script hashes every AAE docs page and compares the hashes with the last run, so
-detecting a change costs no AI tokens. A session-start hook tells you once when something
-changed, and warns once a day if the watcher is failing. Optionally, a daily `launchd`
-job runs the check on your Mac, and the opt-in `--update-kb` flag updates the knowledge
-base when the docs changed. Commands and the state-file layout are in the
+A shell script detects changes to the AAE docs with no AI involved, so detecting a change
+costs no AI tokens. Two detectors exist: the scheduled default reads the git history of
+the public repository the docs are published from, and the original hashes every
+published page and compares the hashes with the last run. A session-start hook tells you once when
+something changed, and warns once a day if the watcher is failing. Optionally, a daily
+`launchd` job runs the check on your Mac, and the opt-in `--update-kb` flag updates the
+knowledge base when the docs changed. Commands and the state-file layout are in the
 [user guide](../../../../knowledge/usage_guides/USER_GUIDE.md).
 
 ## How do the pieces fit together?
@@ -23,7 +27,8 @@ the result of the last crawl.
 |---|---|---|
 | **The crawl** (`aae-docs-watch.sh`) | Daily at 10:00 via `launchd` if you [schedule it](../../../../README.md#optional-extras), retried hourly until it succeeds; or when you ask | Fetches every docs page, compares hashes with the baseline, writes `report.json` and per-page diffs. With `--update-kb`, then starts the knowledge-base update if anything changed |
 | **The session-start hook** | When a session starts | Reads `report.json`. If it says `changes` and you haven't been told yet, shows a one-line notice, once, including the update's summary when there was one. Also warns, once a day, if the watcher or the update is failing |
-| **The `aae-docs-watch` skill** | When you ask ("check the AAE docs") | Runs the crawl on demand and explains the diffs |
+| **The git-sourced check** (`aae-docs-watch-git.sh`) | Daily, and when you ask. The scheduled default | Fetches the publishing repository, resolves the changed pages from the commit range, writes the same `report.json` plus a `changes-summary.md`. See [below](#why-read-git-history-instead-of-the-pages) |
+| **The `aae-docs-watch` skill** | When you ask ("check the AAE docs") | Runs a check on demand and explains the diffs |
 
 Without a schedule or a request, nothing new is detected; the hook keeps reading the old
 result.
@@ -42,6 +47,68 @@ What updates on its own, and what doesn't:
 - **A broken watcher is announced.** If the last check failed, or no check has succeeded
   for over a day while the schedule is installed, the session-start notice says so, once
   a day. Silence therefore means "checked, no changes", never "not checked".
+
+## Why read git history instead of the pages?
+
+Because the history answers questions the pages cannot. Hashing can say only "this page
+differs from the copy I took last time". The docs are published from the public
+repository `mongodb/docs`, path `content/agentengine`, and reading its history gives the
+exact commit time, the author and the commit message, and real file-level diffs.
+
+`aae-docs-watch-git.sh` does that. It keeps a clone of the publishing repository and
+compares the commit it last reported on with the current one, then maps each changed
+source file to its published URL —
+`content/agentengine/source/<path>.txt` → `<docs base>/<path>.md`, exact on 200 of 200
+source files when measured on 2026-10-13.
+
+Five things fall out of that which hashing never had:
+
+| | What the git source adds |
+|---|---|
+| Provenance | The commit timestamp, author and message behind each change |
+| Retroactive history | Changes from **before** the tool was first run. A hashing baseline starts at its own first crawl, and a page edited and reverted between two runs is invisible to it |
+| Include fan-out | A shared include is not a published page. When one changes, the detector resolves every page that transcludes it — at the reported commit, not at the current tree |
+| Site-wide fan-out | A one-line `snooty.toml` edit changes the banner or a substituted constant on up to all ~196 published pages while touching zero source pages. This is the single largest change a naive "source files only" filter would miss, so it is handled as a special case |
+| Noise filtering | Commits that touch no published page — a `facets.toml` taxonomy edit, say — are classified out instead of reported |
+
+It also writes `changes-summary.md` beside `report.json`: a human-readable digest that
+collapses a CLI-reference regeneration — roughly 37 `cli/` pages changing together from
+one release — into a single line. `report.json` still lists every one of those pages, so
+the machine contract is unchanged.
+
+**The misunderstanding to avoid:** reading this as "the hashing approach was wrong". It
+was not. The published site really does send no `Last-Modified` and no `ETag`, so a
+conditional GET against the site still cannot work, and hashing is still the only way to
+detect a change *in the published page itself*. What changed is that the publishing
+repository turned out to be public, which makes a better source available — not a
+correction to the old reasoning about the site.
+
+## What does the git-sourced detector cost, and what does it not do?
+
+A one-time clone of about 30 seconds and 165 MB on disk, under `docs-repo/` in the state
+directory. It is a blobless sparse clone: file contents are fetched on demand and only
+`content/agentengine` is checked out. Every later run is a `git fetch`. It needs `git` on
+`PATH` and no credentials at all — the repository is public.
+
+What it deliberately does not change:
+
+- **The output contract.** It writes the same `report.json` (the same 10 keys, still a
+  compact single line), the same state layout and the same exit codes (`0` no changes,
+  `10` changes, `20` skipped, `1` error). The session-start hook, the `aae-kb-update`
+  runner, the `aae-scout` freshness gate and the `launchd` job are untouched. The test
+  suite proves this by feeding a git-produced report to the real `session-notice.sh` and
+  `install-schedule.sh`.
+- **What runs on a schedule.** The hashing watcher is still present and is still what the
+  `launchd` job runs. Switching the scheduled job over, and removing the hashing path, has
+  not happened yet; until it does, the git detector is something you run explicitly.
+
+Alongside it, `aae-cli-docs-check.sh` guards a different axis: it generates the CLI's own
+command reference from the installed binary and compares it with the published `cli/`
+pages, exiting `30` if they disagree. Measured at zero drift across 117 commands on CLI
+0.1.118, so a clean run is the expected result and anything else is news.
+
+Both are covered by dependency-free shell suites: `tests/run-tests.sh` (27 tests) and
+`tests/cli-docs-check/run-tests.sh` (19 tests).
 
 ## What does `--update-kb` add?
 
