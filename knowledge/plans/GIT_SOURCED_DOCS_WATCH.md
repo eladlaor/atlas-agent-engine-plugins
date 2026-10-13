@@ -7,7 +7,7 @@
 - [Phase 0 — Test harness and fixtures](#phase-0--test-harness-and-fixtures)
 - [Phase 1 — Git-sourced detector](#phase-1--git-sourced-detector)
 - [Phase 2 — CLI regression guard](#phase-2--cli-regression-guard)
-- [Phase 3 — The gap report](#phase-3--the-gap-report)
+- [Phase 3 — The pitch](#phase-3--the-pitch)
 - [Parallel tracks and serialization](#parallel-tracks-and-serialization)
 - [What still needs a greenlight](#what-still-needs-a-greenlight)
 - [Risks](#risks)
@@ -36,7 +36,7 @@ Decided 2026-10-13. Behaviour decisions belong in
 |---|---|---|
 | D1 | Git history **replaces** page hashing; the two do not coexist | One detector to maintain; the hashing path is removed once Phase 1 passes Phase 0's tests |
 | D2 | The artifact contract stays **byte-compatible** | Four downstream consumers are untouched; `report.json` stays compact single-line |
-| D3 | The pitch is a **gap report plus a working reference implementation** | Phase 3 is a deliverable, not an afterthought |
+| D3 | The pitch is a **short self-contained message plus a working reference implementation** | The argument ships in the message, not as a document to link; evidence and delivery guidance stay in the untracked ideas file |
 | D4 | **TDD**: the test harness and the ported acceptance criteria come first | Phase 0 blocks Phase 1 |
 | D5 | Scope is **docs-change detection plus a CLI regression guard**; live-platform conformance probing is out | No live project, no per-run cost, nothing that can affect real resources |
 
@@ -61,7 +61,7 @@ one is later found false, the work item that rests on it is void.
 
 The rationale doc lists "the docs and the CLI drift apart, and nothing announces it" as its
 third justification. **That justification is not supported by measurement and the plan does
-not rest on it.** Corrected in `WHY_WATCH_THE_DOCS.md` in the same change as this plan.
+not rest on it.** The measurement, and the withdrawal of the claim, are recorded in the untracked `knowledge/CONTRIBUTION_IDEAS.md` (idea 6).
 
 | Axis | Detectable how | In scope? |
 |---|---|---|
@@ -151,29 +151,25 @@ Independent of Phases 0–1; can run in parallel.
 | 2.3 | Report shape: silent while in agreement, loud on divergence; record the CLI version on both sides | A run against a deliberately stale generated set reports the exact commands and flags that diverge |
 | 2.4 | Decide where the result surfaces: own exit code, or an additive `cli` object in `report.json` (the spec already reserves this: "Tier 2 adds a `cli` object. It MUST be additive") | Decision recorded in `BEHAVIOR_SPEC.md`; consumers unaffected either way |
 
-## Phase 3 — The gap report
+## Phase 3 — The pitch
 
-Depends on Phase 1 being demonstrable.
+Depends on Phase 1 being demonstrable. **The pitch is not an artifact in this repository.**
+The argument, its evidence and the guidance on how to deliver it live in the untracked
+`knowledge/CONTRIBUTION_IDEAS.md` (idea 6), which is a private working file. What goes to the
+team is a short message that *is* the argument, not a link to one.
 
 | # | Work item | Done when |
 |---|---|---|
-| 3.1 | Re-measure every figure in `WHY_WATCH_THE_DOCS.md` on the day of writing | No stale number; the Oct 12 undercount (below) cannot recur |
-| 3.2 | Correct the third justification — drift is **not** supported by measurement | Done in this change; the doc states the measured 0/117 result instead |
-| 3.3 | Write the report for the Agent Engine docs owners: the missing change-notification surface, its measured cost, the working implementation, and the explicit ask | Reviewed by someone who has not seen this plan and lands the argument |
-| 3.4 | State the ask precisely: publish dated changelog entries and a machine-readable change feed | The ask is separable from the plugin — they can grant it without adopting anything of ours |
+| 3.1 | Re-measure every figure on the day the message is sent | No stale number; the Oct 12 undercount cannot recur |
+| 3.2 | Keep the withdrawn drift claim withdrawn | The message states the measured 117/117 result as credit, never as a complaint |
+| 3.3 | Write the message so it stands alone | A reader who opens no link still gets the gap, the cost and the ask |
+| 3.4 | State the ask precisely: dated changelog entries, or a release-notes page, or a feed | Grantable without adopting anything of ours |
+| 3.5 | Point at code only for verification, never for the argument | Links go to the scripts and the test suite, not to prose |
 
-**The pitch must survive "why not just watch the repo on GitHub?"** The rationale doc already
-answers this and the report must keep that answer prominent: GitHub's watch tells a human
-something moved; it does not produce a delta an assistant has already absorbed. The failure
-mode addressed is an agent confidently answering from a model of the product that was correct
-last week.
-
-### A correction the report must carry
-
-`WHY_WATCH_THE_DOCS.md` claims "Oct 10–12: nothing". Commit `8d14da28` (2026-10-12,
-"DOCSP-65098: Remove agentic platform references") touched 4 agentengine pages — more pages
-than any commit in its own table. The headline "3 commits, 4 pages" undercounts. Re-measure
-before anyone quotes it.
+**The message must survive "why not just watch the repo on GitHub?"** Answer it before it is
+asked: 418 commits to the monorepo since 2026-09-28 against 12 touching `content/agentengine`
+— 2.87%. Repo-watching also reports that a source file moved, not which published page
+changed, and tells a human rather than producing a delta an assistant can absorb.
 
 ## Parallel tracks and serialization
 
