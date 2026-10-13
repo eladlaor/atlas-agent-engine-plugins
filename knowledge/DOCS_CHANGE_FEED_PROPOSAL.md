@@ -70,7 +70,14 @@ They partly can, and this should be said plainly rather than hidden. The publish
 repository is public, so GitHub's watch, the commits feed, and a path-filtered Action all
 provide free change notification.
 
-Two reasons that is not a substitute:
+**And it is noisy.** The Agent Engine docs are one path inside a monorepo that serves many
+products. Since the Agent Engine content was seeded on 2026-09-28, `mongodb/docs` took **418
+commits, of which 12 touched `content/agentengine` — 2.87%.** Watching the repository means
+sifting 418 notifications to find 12. A path-filtered Action narrows that, but only for
+someone who already knows which path, and it still answers "a file moved", not "this
+published page changed".
+
+Three reasons it is not a substitute:
 
 **It asks every consumer to reverse-engineer the publishing pipeline.** To turn a repository
 commit into "which published page changed", a consumer has to know the source layout, the
@@ -133,6 +140,10 @@ checks take about a minute:
 curl -sIL https://www.mongodb.com/docs/agentengine/release-notes | grep -c '^HTTP'
 curl -sS  https://www.mongodb.com/docs/agentengine/llms.txt | grep -c release-notes
 curl -sI  https://www.mongodb.com/docs/agentengine/add-features/memory-only.md | grep -i last-modified
+
+# signal-to-noise, in a clone of mongodb/docs:
+git rev-list --count origin/main --since=2026-09-28
+git rev-list --count origin/main --since=2026-09-28 -- content/agentengine
 ```
 
 A non-looping release-notes page, a non-zero inventory hit, or a `Last-Modified` header each
