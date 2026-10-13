@@ -6,6 +6,9 @@ description: Dated log of observed drift between the Atlas Agent Engine docs and
 # AAE drift log
 
 - [Summary](#summary)
+- [2026-10-13 — `agent validate` does not enforce the required fields](#2026-10-13--agent-validate-does-not-enforce-the-required-fields)
+- [2026-10-13 — `project-config.yaml` has a second top-level key, `memory_only`](#2026-10-13--project-configyaml-has-a-second-top-level-key-memory_only)
+- [2026-10-13 — `--open-egress` writes to `agent.yaml`, not `project-config.yaml`](#2026-10-13----open-egress-writes-to-agentyaml-not-project-configyaml)
 - [2026-10-11 — a per-type extraction prompt exists only in the CLI template](#2026-10-11--a-per-type-extraction-prompt-exists-only-in-the-cli-template)
 - [2026-10-10 — CLI 0.1.119 release notes are ahead of the docs](#2026-10-10--cli-01119-release-notes-are-ahead-of-the-docs)
 - [2026-10-10 — the SDK reference and the guides disagree on names](#2026-10-10--the-sdk-reference-and-the-guides-disagree-on-names)
@@ -46,6 +49,42 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Only `deploy list` and `deploy get <id>` are read-only.** Every other `deploy` form,
   including a typo, starts a real deployment.
 - **Fetch egress IPs live.** There are two pairs for two purposes.
+- **A `validate` pass proves almost nothing.** It enforces an egress policy and little else —
+  not `entrypoint`, not `sandboxes`, not unknown keys.
+
+## 2026-10-13 — `agent validate` does not enforce the required fields
+
+- **Docs say** (`/reference/agent-contract.md`, checked 2026-10-13): `entrypoint` is required
+  and must match `^[\w.]+:[\w]+$`; `sandboxes` is required.
+- **Observed** (CLI 0.1.118, minimal standalone manifests): a **missing** `entrypoint` passes.
+  A **malformed** one (`not-valid entry!point`) passes — neither the CLI nor the SDK enforces
+  the published regex, so it is documentation-only. A missing `sandboxes` block passes.
+  Unknown top-level keys and unknown feature flags pass. An unknown *sandbox name* is
+  rejected. **A missing egress policy is the only hard failure.**
+- **Resolution:** treat a `validate` pass as "the egress policy parses", nothing more. Read
+  the diff for typos yourself; see
+  [CONFIG_FIELDS.md](CONFIG_FIELDS.md#validation-behavior).
+
+## 2026-10-13 — `project-config.yaml` has a second top-level key, `memory_only`
+
+- **Docs say:** nothing. No doc page and no OpenAPI schema mentions it; the guides present
+  `memory:` as the file's only content.
+- **Observed** (CLI 0.1.118): `agentengine create --memory-only` writes `memory_only: true`
+  at the top level. It drives `dev up` to start only the Orchestration Engine and the memory
+  server, and marks the project for stack resolution by `memory configure`. It is not
+  uploaded, so the platform never sees it.
+- **Resolution:** recognize it in a scaffolded file rather than deleting it as a stray key.
+  Effects beyond `dev up` and stack resolution are **unverified**.
+
+## 2026-10-13 — `--open-egress` writes to `agent.yaml`, not `project-config.yaml`
+
+- **Docs say** (`/build/create-project.md`, checked 2026-10-13): `--open-egress` sets
+  `network.egress_mode` in `project-config.yaml`.
+- **Observed** (CLI 0.1.118): it writes `network.egress_mode: allow_all` into **`agent.yaml`**,
+  at the deprecated top level — see
+  [the 2026-10-10 scaffold entry](#2026-10-10--the-scaffold-still-writes-the-deprecated-top-level-networkegress).
+- **Resolution:** look in `agent.yaml`. Editing `project-config.yaml` to chase this changes
+  nothing.
 
 ## 2026-10-11 — a per-type extraction prompt exists only in the CLI template
 
