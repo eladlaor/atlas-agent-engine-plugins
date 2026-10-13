@@ -10,8 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Knowledge base: `WHY_WATCH_THE_DOCS.md`, the measured rationale for watching the Agent Engine docs — a dated one-week change census taken from the public `mongodb/docs` git history, the finding that no release-notes or `Last-Modified` surface is published, and the recommendation to trigger on change rather than daily and to source from git rather than page hashing.
+- Plan: `GIT_SOURCED_DOCS_WATCH.md`, the implementation plan for sourcing docs-change detection from `mongodb/docs` git history instead of page hashing, keeping `report.json` byte-compatible for its four consumers, with a test-first phase that ports the behaviour spec's acceptance criteria into executable tests before the detector changes.
 - Knowledge base: `CONFIG_FIELDS.md`, a field-by-field reference for `agent.yaml` and `project-config.yaml`, merged from the docs, the SDK source, the API schema and the CLI validator, including fields the guides omit (`features.durable_workflow`, per-type extraction prompts, metadata partition keys, memory-server capacity).
 - Knowledge base: how to limit memory-extraction cost (documented levers, a provider-side cap through a dedicated extraction key, and what is inferred but unmeasured), plus a drift entry for the undocumented, untested per-type `extraction.<type>.prompt` with a two-arm test plan.
+
+### Changed
+
+- Knowledge base: `WHY_WATCH_THE_DOCS.md` **withdraws its docs-vs-CLI drift justification**. The `cli/` pages are generated from the binary by `agentengine docs generate`, and a comparison of all 117 commands against the published pages found no missing page and no flag-level divergence, so the axis warrants a silent regression guard rather than an argument. The document gains the measurement, the source-to-URL mapping evidence (200 of 200), and the caveat that a one-line `snooty.toml` edit changes up to 196 published pages while touching zero source files.
+
+### Fixed
+
+- Knowledge base: `WHY_WATCH_THE_DOCS.md` undercounted the week it censused. Commit `8d14da28` landed on 2026-10-12 after the original measurement and touched 4 pages; the census now reads 4 commits and 8 published pages for the seven days to 2026-10-13, with a standing note that every figure must be re-measured on the day it is quoted.
 
 ## [0.7.0] - 2026-10-10
 
