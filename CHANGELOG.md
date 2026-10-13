@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `atlas-cli`, a specialist for the MongoDB Atlas CLI (`atlas`): a subagent in Claude Code with a per-user memory overlay, a skill in Codex. Covers authentication and profiles, clusters, database users, access lists, search indexes, backups, and `atlas api`; verified against `atlascli` 1.59.1. It reads `--help` on the installed binary before prescribing a command, investigates read-only, and never runs a delete, pause, tier change or non-GET `atlas api` operation without explicit confirmation.
 - Knowledge base: `CONFIG_FIELDS.md`, a field-by-field reference for `agent.yaml` and `project-config.yaml`, merged from the docs, the SDK source, the API schema and the CLI validator, including fields the guides omit (`features.durable_workflow`, per-type extraction prompts, metadata partition keys, memory-server capacity).
 - Knowledge base: how to limit memory-extraction cost (documented levers, a provider-side cap through a dedicated extraction key, and what is inferred but unmeasured), plus a drift entry for the undocumented, untested per-type `extraction.<type>.prompt` with a two-arm test plan.
 

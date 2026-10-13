@@ -39,6 +39,7 @@ One plugin, `aae`:
 | Resource | Type | What it does |
 |---|---|---|
 | `aae-guide` | Subagent (a skill in Codex) | The AAE specialist: runtime model, agent contract, config, and known failure modes. Checks the live docs before asserting any API detail. |
+| `atlas-cli` | Subagent (a skill in Codex) | The Atlas CLI specialist: `atlas` authentication and profiles, clusters, database users, access lists, search indexes, backups, and `atlas api`, the generated escape hatch onto the whole Administration API. Reads `--help` on your installed binary before prescribing anything, and investigates read-only. |
 | `aae-kb-read` | Skill | The guide's bundled knowledge base: a dated drift log, verified details the docs omit, runbooks, and troubleshooting. Every entry carries the date and CLI version it was checked on. |
 | `aae-kb-update` | Skill | Updates the knowledge from one of two sources. **Notes mode** promotes the generic findings from your personal notes into `aae-kb-read`, in your clone of this repo, after you approve. **Docs mode** applies the docs watcher's latest changes to the entries that rest on the changed pages. |
 | `aae-scout` | Skill | A cheap check before building anything: confirms the docs and CLI are current, then whether the platform, CLI, SDK, official examples or your repo already do it. Answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence. |
@@ -96,6 +97,7 @@ when asked**. Until you do, Codex skips it and you get no session-start notices.
 | `aae-guide` | A **subagent**: runs in its own context window, on its own model, and Claude delegates to it | A **skill**: the same instructions, loaded into your main conversation |
 | `aae-guide` bundled knowledge (`aae-kb-read` skill: drift log, verified details, runbooks, troubleshooting) | Yes | Yes, the same files |
 | `aae-guide` personal memory across sessions (your project IDs, your own drift notes) | Yes: a per-user memory directory it reads and writes | **No** |
+| `atlas-cli` | A **subagent**, with its own per-user memory directory | A **skill**: the same instructions, loaded into your main conversation, with **no** memory across sessions |
 | `aae-scout` | A **skill**, with its verdict and utility-candidate ledgers in `~/.local/state/aae-scout/` | Same, sharing the same ledgers |
 | `aae-scout` freshness gate | Reads the docs watcher's state | Same |
 | `aae-add-agent`, `aae-delete-agent`, `aae-kb-read`, `aae-kb-update`, `aae-docs-watch` skills | Yes | Yes, the same files |
