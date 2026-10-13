@@ -306,7 +306,7 @@ it. What must not happen is one side changing its *output* contract silently.
 
 | Component | Status | Notes |
 |---|---|---|
-| `aae-docs-watch.sh` | **Exists** | Tier 1 by page hashing. Since 2026-10-10 in the `aae` plugin, with opt-in `--update-kb`. Selected with `AAE_WATCH_IMPL=hash`; still required for `--update-kb` |
+| `aae-docs-watch.sh` | **Exists** | Tier 1 by page hashing. Since 2026-10-10 in the `aae` plugin, with opt-in `--update-kb`. Selected with `AAE_WATCH_IMPL=hash`. Shares the `--update-kb` library with the git detector |
 | `aae-docs-watch-git.sh` | **Exists** (2026-10-13) | Tier 1 from the publishing repository's git history. Same `report.json`, state layout and exit codes; adds commit provenance and `changes-summary.md`. The scheduled default since 2026-10-13; `AAE_WATCH_IMPL=hash` selects the original |
 | `aae-cli-docs-check.sh` | **Exists** (2026-10-13) | Compares the CLI binary's generated command reference with the published `cli/` pages; exit `30` on divergence. Measured clean across 117 commands at CLI 0.1.118 |
 | Test suites | **Exist** (2026-10-13) | `tests/run-tests.sh` (27 tests) and `tests/cli-docs-check/run-tests.sh` (19 tests), dependency-free, offline |

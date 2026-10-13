@@ -133,9 +133,6 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
   the publishing repository (~30s, ~165 MB on disk); later runs only fetch. It has a full
   test suite but no long production record yet. Set `AAE_WATCH_IMPL=hash` when installing
   the schedule to keep the original page-hashing watcher instead.
-- **`--update-kb` requires the hashing watcher.** The automatic knowledge-base update is
-  not implemented for the git-sourced detector; installing the schedule with both is
-  refused with that explanation rather than failing later.
 - Atlas Agent Engine is in **Public Preview**: *"intended for evaluation and
   prototyping purposes only"*, with no SLAs. This plugin inherits that.
 - Knowledge is checked against the live docs with `agentengine` CLI 0.1.118 and SDK

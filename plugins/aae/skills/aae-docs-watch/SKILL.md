@@ -49,13 +49,13 @@ There are two detectors with the same output contract and two different sources.
 **Which to run.** Prefer `aae-docs-watch-git.sh` when the user asks what changed,
 when the answer needs dates or provenance, or when a shared include or the site
 banner may be involved. Use `aae-docs-watch.sh` when git is unavailable, when the
-165 MB clone is unwanted, or when the user relies on `--update-kb`.
+165 MB clone is unwanted.
 
 **The git detector is what the scheduled job installs by default.** The hashing
 watcher is still present and fully supported: installing the schedule with
 `AAE_WATCH_IMPL=hash` selects it instead. `--update-kb` and `--kb-update-only`
-are implemented only on the hashing watcher, and asking for the schedule with
-`--update-kb` while the git detector is selected is refused at install time.
+work identically on both: that machinery lives in a shared library both
+watchers source.
 
 ## Running a check
 

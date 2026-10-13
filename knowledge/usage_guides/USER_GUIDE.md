@@ -349,11 +349,9 @@ release — into one line. `report.json` still lists every page, so nothing down
 less.
 
 Two limits worth knowing. It needs `git` on your `PATH` and keeps a 165 MB clone under
-`docs-repo/` in the state directory. And **`--update-kb` / `--kb-update-only` are not
-implemented for it** — those live on the hashing watcher. Installing the schedule with
-`--update-kb` while the git detector is selected is refused with that explanation, rather
-than failing later when the docs first change. To keep the automatic knowledge-base
-update, install the schedule with `AAE_WATCH_IMPL=hash`.
+`docs-repo/` in the state directory. `--update-kb` and `--kb-update-only` work the same on both detectors: the
+machinery is shared, so switching detector changes what is detected, never what is done
+with it afterwards.
 
 ## How do I check the published CLI reference against my binary?
 

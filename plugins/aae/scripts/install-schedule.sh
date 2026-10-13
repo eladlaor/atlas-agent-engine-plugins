@@ -59,6 +59,10 @@ readonly BIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/aae-docs-watch/bin"
 readonly SCHEDULED_WATCHER="${BIN_DIR}/aae-docs-watch.sh"
 readonly KB_SKILL="${SCRIPT_DIR}/../skills/aae-kb-update/SKILL.md"
 readonly SCHEDULED_KB_SKILL="${BIN_DIR}/aae-kb-update.SKILL.md"
+# Both watchers source the shared --update-kb library relative to their own
+# directory, so the scheduled copy needs it beside the copied script.
+readonly KB_LIB="${SCRIPT_DIR}/lib/kb-update.sh"
+readonly SCHEDULED_KB_LIB="${BIN_DIR}/lib/kb-update.sh"
 # launchd starts jobs with a minimal PATH. ~/.local/bin is where the claude CLI installs.
 readonly JOB_PATH="${HOME}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin"
 # Knowledge-base settings carried into the job's environment when set at install time.
@@ -99,13 +103,6 @@ xml_escape() {
 # and that a runner is reachable on the job's PATH.
 check_kb_settings() {
   [ -n "$UPDATE_KB" ] || return 0
-  # The automatic knowledge-base update is implemented in the hashing watcher
-  # only; the git-sourced detector does not accept --update-kb. Refuse the
-  # combination at install time rather than letting the scheduled job die on an
-  # unknown argument the first time the docs change.
-  if [ "$WATCH_IMPL" = "git" ]; then
-    die "--update-kb is not available with the git-sourced detector yet. Either install without --update-kb, or run with AAE_WATCH_IMPL=hash to keep the automatic knowledge-base update."
-  fi
   if [ -n "${AAE_KB_REPO:-}" ]; then
     case "$AAE_KB_REPO" in /*) ;; *) die "AAE_KB_REPO must be an absolute path: ${AAE_KB_REPO}" ;; esac
     [ -d "${AAE_KB_REPO}/${KB_REFERENCES_SUBPATH}" ] && [ -e "${AAE_KB_REPO}/.git" ] \
@@ -186,6 +183,9 @@ do_install() {
     || die "cannot copy the watcher to ${SCHEDULED_WATCHER}"
   install -m 0644 "$KB_SKILL" "$SCHEDULED_KB_SKILL" \
     || die "cannot copy the aae-kb-update skill to ${SCHEDULED_KB_SKILL}"
+  mkdir -p "$(dirname "$SCHEDULED_KB_LIB")"
+  install -m 0644 "$KB_LIB" "$SCHEDULED_KB_LIB" \
+    || die "cannot copy the kb-update library to ${SCHEDULED_KB_LIB}"
 
   render_plist > "$PLIST" || die "cannot write ${PLIST}"
 
@@ -211,7 +211,7 @@ do_uninstall() {
     printf 'Not installed (no %s)\n' "$PLIST"
   fi
   local copy
-  for copy in "$SCHEDULED_WATCHER" "$SCHEDULED_KB_SKILL"; do
+  for copy in "$SCHEDULED_WATCHER" "$SCHEDULED_KB_SKILL" "$SCHEDULED_KB_LIB"; do
     if [ -f "$copy" ]; then
       rm -f "$copy"
       printf 'Removed %s\n' "$copy"
@@ -239,6 +239,15 @@ do_status() {
     fi
   elif [ -f "$PLIST" ]; then
     printf 'watcher copy: MISSING (%s); re-run install\n' "$SCHEDULED_WATCHER"
+  fi
+  if [ -f "$SCHEDULED_KB_LIB" ]; then
+    if cmp -s "$KB_LIB" "$SCHEDULED_KB_LIB"; then
+      printf 'kb-update library copy: current (%s)\n' "$SCHEDULED_KB_LIB"
+    else
+      printf 'kb-update library copy: OUT OF DATE (%s); re-run install\n' "$SCHEDULED_KB_LIB"
+    fi
+  else
+    printf 'kb-update library copy: MISSING (%s); re-run install\n' "$SCHEDULED_KB_LIB"
   fi
   if [ -f "$SCHEDULED_KB_SKILL" ]; then
     if cmp -s "$KB_SKILL" "$SCHEDULED_KB_SKILL"; then

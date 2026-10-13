@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- **The scheduled job now runs the git-sourced detector by default.** `install-schedule.sh` selects it unless `AAE_WATCH_IMPL=hash` is set, which keeps the original page-hashing watcher. Installing the schedule with `--update-kb` while the git detector is selected is refused at install time with that explanation, because the automatic knowledge-base update is implemented only on the hashing watcher.
+- **The scheduled job now runs the git-sourced detector by default.** `install-schedule.sh` selects it unless `AAE_WATCH_IMPL=hash` is set, which keeps the original page-hashing watcher.
+- `--update-kb` and `--kb-update-only` now work on both detectors. The knowledge-base update machinery moved to `plugins/aae/scripts/lib/kb-update.sh`, which both watchers source, so there is one implementation rather than two. `install-schedule.sh` copies the library beside the scheduled watcher and reports it in `status`; a watcher with no library beside it fails loudly instead of quietly losing the flag.
 - `aae-docs-watch.sh` gains an `AAE_WATCH_DOCS_BASE` test seam so the behavioural contract can be exercised against a local fixture server. It defaults to the live docs site; nothing but the test suite should set it.
 - Knowledge base: `WHY_WATCH_THE_DOCS.md` **withdraws its docs-vs-CLI drift justification**. The `cli/` pages are generated from the binary by `agentengine docs generate`, and a comparison of all 117 commands against the published pages found no missing page and no flag-level divergence, so the axis warrants a silent regression guard rather than an argument. The document gains the measurement, the source-to-URL mapping evidence (200 of 200), and the caveat that a one-line `snooty.toml` edit changes up to 196 published pages while touching zero source files.
 

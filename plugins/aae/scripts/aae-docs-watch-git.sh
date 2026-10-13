@@ -71,16 +71,23 @@ readonly SUMMARY_FILE="${STATE_DIR}/changes-summary.md"
 readonly EXIT_CHANGES=10
 readonly EXIT_SKIPPED=20
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+
 MODE="full"
 SKIP_IF_RAN_TODAY=0
+UPDATE_KB=""
+KB_UPDATE_ONLY=""
 
 # --------------------------------------------------------------------------
 # Logging and failure
 # --------------------------------------------------------------------------
 
+now() { date '+%Y-%m-%d %H:%M:%S %Z'; }
+
 log() {
   [ -n "${AAE_WATCH_QUIET:-}" ] && return 0
-  printf '%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" "$*" >&2
+  printf '%s  %s\n' "$(now)" "$*" >&2
   return 0
 }
 
@@ -94,7 +101,8 @@ die() {
 
 usage() {
   cat <<'USAGE'
-Usage: aae-docs-watch-git.sh [--quick|--full] [--skip-if-ran-today] [-h]
+Usage: aae-docs-watch-git.sh [--quick|--full] [--skip-if-ran-today] [--update-kb] [-h]
+       aae-docs-watch-git.sh --kb-update-only
 
 Detects Agent Engine documentation changes from the git history of the public
 mongodb/docs repository.
@@ -102,6 +110,10 @@ mongodb/docs repository.
   --quick               Compare HEAD only; report whether commits landed.
   --full                Resolve changed pages, write diffs and bodies (default).
   --skip-if-ran-today   Exit 20 if a full run already completed today.
+  --update-kb           After a run that found changes, start an AI runner to
+                        apply them to the knowledge base. Never changes this
+                        script's exit code.
+  --kb-update-only      Apply the existing report without detecting anything.
   -h, --help            This text.
 
 Exit codes: 0 no changes, 10 changes found, 20 skipped, 1 error.
@@ -121,6 +133,8 @@ while [ $# -gt 0 ]; do
     --quick) MODE="quick" ;;
     --full) MODE="full" ;;
     --skip-if-ran-today) SKIP_IF_RAN_TODAY=1 ;;
+    --update-kb) UPDATE_KB=1 ;;
+    --kb-update-only) KB_UPDATE_ONLY=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown argument: $1 (try --help)" ;;
   esac
@@ -128,6 +142,19 @@ while [ $# -gt 0 ]; do
 done
 
 command -v git >/dev/null 2>&1 || die "git is required but not on PATH"
+
+# The --update-kb machinery, shared with aae-docs-watch.sh.
+. "${SCRIPT_DIR}/lib/kb-update.sh"
+
+# Applying an existing report does no detection at all, so it runs before the
+# clone is touched.
+if [ -n "$KB_UPDATE_ONLY" ]; then
+  [ -z "${UPDATE_KB}" ] && [ "$SKIP_IF_RAN_TODAY" -eq 0 ] \
+    || die "--kb-update-only takes no other options"
+  [ -d "$STATE_DIR" ] || die "no state directory: ${STATE_DIR}"
+  run_kb_update && exit 0
+  exit 1
+fi
 
 # --------------------------------------------------------------------------
 # Helpers
@@ -465,6 +492,13 @@ fi
 
 printf 'status=%s added=%s removed=%s changed=%s report=%s\n' \
   "$STATUS" "$n_added" "$n_removed" "$n_changed" "$REPORT_FILE"
+
+# Opt-in, and deliberately incapable of changing the outcome above: `|| true`
+# means a failed knowledge-base update is recorded and announced, never
+# promoted into a failed crawl.
+if [ -n "$UPDATE_KB" ] && [ "$STATUS" = "changes" ]; then
+  run_kb_update || true
+fi
 
 [ "$STATUS" = "changes" ] && exit "$EXIT_CHANGES"
 exit 0
