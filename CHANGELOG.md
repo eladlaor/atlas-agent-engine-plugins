@@ -12,6 +12,14 @@ is why their headers carry a separate "Plugin version:" line.
 
 ## [Unreleased]
 
+### Added
+
+- Drift log: three entries dated 2026-10-13 on the deep-agent surface — `deepagents` 0.7.16
+  ships no planner and no default system prompt, a custom `backend` is accepted despite the
+  page saying it is rejected, and a missing `features.deep_agent` fails at run time rather
+  than at build time. They landed in the tree before this release was cut and are recorded
+  here after the fact.
+
 ### Removed
 
 - The Codex marketplace manifest no longer requests `authentication: ON_INSTALL`. Nothing in
