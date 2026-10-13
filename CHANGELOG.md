@@ -12,13 +12,15 @@ is why their headers carry a separate "Plugin version:" line.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-13
+
 ### Added
 
 - `atlas-cli`, a specialist for the MongoDB Atlas CLI (`atlas`): a subagent in Claude Code with a per-user memory overlay, a skill in Codex. Covers authentication and profiles, clusters, database users, access lists, search indexes, backups, and `atlas api`; verified against `atlascli` 1.59.1. It reads `--help` on the installed binary before prescribing a command, investigates read-only, and never runs a delete, pause, tier change or non-GET `atlas api` operation without explicit confirmation.
 - `aae-docs-watch-git.sh`: docs-change detection sourced from the git history of the public `mongodb/docs` repository instead of hashing published pages. It writes the same `report.json`, state layout and exit codes as the hashing watcher, so the session notice, the knowledge-base updater, the prior-art gate and the scheduled job are unaffected. It adds what hashing could not provide: commit dates, authors and messages; history from before the tool was first run; shared-include fan-out resolved at the reported commit; site-wide fan-out when `snooty.toml` changes; and filtering of non-page commit noise. Needs no credentials — the repository is public. It is the scheduled default; `AAE_WATCH_IMPL=hash` selects the original.
 - `aae-cli-docs-check.sh`: a regression guard comparing the CLI binary's self-generated reference against the published `cli/` pages. Silent while they agree; exit `30` on divergence. Measured at zero drift across 117 commands and 1251 flag tokens at CLI 0.1.118.
 - `changes-summary.md` in the watcher state directory: a human-readable digest that collapses a CLI-reference regeneration into one line instead of ~37 page alerts, while `report.json` still lists every page.
-- Test suites: `tests/run-tests.sh` (27 tests) and `tests/cli-docs-check/run-tests.sh` (19 tests), both offline and requiring no external test framework. The first ports the behaviour spec's detector acceptance criteria into executable form and asserts them against both detectors, including feeding a git-produced report to the real session-notice and schedule-status consumers.
+- Test suites: `tests/run-tests.sh` (35 tests) and `tests/cli-docs-check/run-tests.sh` (19 tests), both offline and requiring no external test framework. The first ports the behaviour spec's detector acceptance criteria into executable form and asserts them against both detectors, including feeding a git-produced report to the real session-notice and schedule-status consumers.
 - Plan: `GIT_SOURCED_DOCS_WATCH.md`, the implementation plan for sourcing docs-change detection from `mongodb/docs` git history instead of page hashing, keeping `report.json` byte-compatible for its four consumers, with a test-first phase that ports the behaviour spec's acceptance criteria into executable tests before the detector changes.
 - Knowledge base: `CONFIG_FIELDS.md`, a field-by-field reference for `agent.yaml` and `project-config.yaml`, merged from the docs, the SDK source, the API schema and the CLI validator, including fields the guides omit (`features.durable_workflow`, `project-config.yaml`'s CLI-only `memory_only`, per-type extraction prompts, metadata partition keys, memory-server capacity). Also records the MCP validation layer and per-auth-type field matrix, `${VAR}` interpolation being allowlisted at one path only, the config-discovery order, and what `agent validate` does and does not enforce — unknown keys and a malformed `entrypoint` pass, an unknown sandbox name is rejected, and a missing egress policy is its one hard requirement.
 - Knowledge base: how to limit memory-extraction cost (documented levers, a provider-side cap through a dedicated extraction key, and what is inferred but unmeasured), plus a drift entry for the undocumented, untested per-type `extraction.<type>.prompt` with a two-arm test plan.
@@ -220,7 +222,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.1...v0.5.2

@@ -41,6 +41,14 @@ readonly KB_ERROR_FILE="${STATE_DIR}/kb-update-error"
 readonly BROKEN_HOURS="${AAE_WATCH_BROKEN_HOURS:-30}"
 readonly SCHEDULE_PLIST="${HOME}/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist"
 
+# python3 builds the hook's JSON payload and reads report.json. Without it this hook
+# cannot say anything at all, so say *that* once, on stderr, rather than exiting 0 and
+# leaving the user to believe the docs are unchanged.
+if ! command -v python3 >/dev/null 2>&1; then
+  printf 'aae-docs-watch: python3 not found; the session notice cannot run.\n' >&2
+  exit 0
+fi
+
 emit() {
   # $1 = systemMessage, $2 = additionalContext
   python3 - "$1" "$2" <<'PY'

@@ -32,6 +32,28 @@ while [ $# -gt 0 ]; do
 done
 
 die() { printf 'install-ae-shortcut: ERROR: %s\n' "$1" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+install-ae-shortcut.sh — install or remove the `ae` shortcut for the agentengine CLI.
+
+usage: install-ae-shortcut.sh {install|uninstall|status} [--force]
+
+Actions:
+  install     Create an `ae` symlink pointing at the agentengine binary.
+  uninstall   Remove the symlink. Refuses if `ae` is not a symlink we created.
+  status      Report whether the shortcut is installed and what it points at.
+
+Options:
+  --force     Overwrite an existing `ae` that is not already our symlink.
+  -h, --help  Show this message.
+EOF
+}
+
+case "$ACTION" in
+  help|-h|--help) usage; exit 0 ;;
+esac
+
 note() { printf '%s\n' "$1"; }
 
 # Resolve the real agentengine binary. Fail fast: installing a shortcut to a
@@ -205,5 +227,5 @@ case "$ACTION" in
   install)   do_install ;;
   uninstall) do_uninstall ;;
   status)    do_status ;;
-  *) die "usage: install-ae-shortcut.sh {install|uninstall|status} [--force]" ;;
+  *) usage >&2; die "unknown action: ${ACTION:-<none>}" ;;
 esac

@@ -77,6 +77,38 @@ ACTION="${1:-}"
 
 die() { printf 'install-schedule: ERROR: %s\n' "$1" >&2; exit 1; }
 
+usage() {
+  cat <<'EOF'
+install-schedule.sh — install, inspect or remove the daily docs-change crawl.
+
+usage: install-schedule.sh {install|uninstall|status|run|print-plist} [options]
+
+Actions:
+  install       Install the scheduled job (launchd on macOS) and the watcher it runs.
+  uninstall     Remove the scheduled job. Leaves the watcher state directory in place.
+  status        Report whether the job is installed, which detector it runs, and its last result.
+  run           Run a full crawl now, through the installed watcher.
+  print-plist   Print the launchd plist that `install` would write, without writing it.
+
+Options:
+  --hour N      Hour of the daily run, 0-23 (default 10).
+  --minute N    Minute of the daily run, 0-59 (default 0).
+  --update-kb   Let the crawl update the bundled knowledge base when pages change.
+                Off by default; this is the only path that invokes an AI runner.
+  -h, --help    Show this message.
+
+Environment:
+  AAE_WATCH_IMPL   git (default) or hash — which detector the scheduled job runs.
+
+Nothing runs on a schedule unless you run `install`.
+EOF
+}
+
+case "$ACTION" in
+  help|-h|--help) usage; exit 0 ;;
+esac
+
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --hour)   HOUR="${2:?--hour needs a value}"; shift 2 ;;
@@ -292,5 +324,6 @@ case "$ACTION" in
   status)    do_status ;;
   run)       AAE_WATCH_STATE_DIR="$STATE_DIR" "$WATCHER" --full ${UPDATE_KB:+--update-kb} ;;
   print-plist) check_kb_settings; render_plist ;;
-  *) die "usage: install-schedule.sh {install|uninstall|status|run|print-plist} [--hour N] [--minute N] [--update-kb]" ;;
+  help|-h|--help) usage ;;
+  *) usage >&2; die "unknown action: ${ACTION:-<none>}" ;;
 esac

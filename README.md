@@ -79,6 +79,10 @@ Details: [`CLI_SKILLS_AND_THIS_PLUGIN.md`](plugins/aae/skills/aae-kb-read/refere
 
 ## Install
 
+**Prerequisites:** `bash` 3.2+ (macOS's system bash is fine), `git`, `curl`, and `python3`.
+All four ship with macOS or a standard Linux install. The scheduled crawl uses `launchd`
+and is macOS-only; on Linux, call the watcher from cron instead.
+
 **Claude Code**
 
 ```
@@ -127,10 +131,11 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
 ## Status and caveats
 
 - **Tested in Claude Code**, including the `--update-kb` runner. In Codex (codex-cli
-  0.162.1) the plugin installs and all skills load; a full conversation, the hook-trust
-  flow and the `--update-kb` runner are untested.
+  0.162.1) the plugin installs and the skills load; that check predates `atlas-cli`, so
+  seven of the eight were exercised. A full conversation, the hook-trust flow and the
+  `--update-kb` runner are untested there.
 - **The git-sourced detector is the scheduled default, and is new.** Its first run clones
-  the publishing repository (~30s, ~165 MB on disk); later runs only fetch. It has a full
+  the publishing repository (around a minute, ~165 MB on disk); later runs only fetch. It has a full
   test suite but no long production record yet. Set `AAE_WATCH_IMPL=hash` when installing
   the schedule to keep the original page-hashing watcher instead.
 - Atlas Agent Engine is in **Public Preview**: *"intended for evaluation and
