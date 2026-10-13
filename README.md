@@ -21,9 +21,11 @@ The plugin adds two things:
    few skills into each project. This plugin builds on them with a continually-learning knowledge base,
    utilities the CLI doesn't ship, and a specialist subagent
    ([details](#how-does-this-relate-to-the-skills-the-cli-installs)).
-2. **Protection against AI agent knowledge drift.** AAE is in Public Preview: its docs
-   change weekly and its CLI ships faster than the docs. The plugin keeps an assistant
-   from answering confidently from a picture of the product that is no longer true.
+2. **Protection against AI agent knowledge drift.** AAE is in Public Preview and launched
+   after current models' training cutoffs, so an assistant has no reliable prior about it
+   and the docs keep moving — package names, flags and commands have all changed under
+   readers. The plugin keeps an assistant from answering confidently from a picture of the
+   product that is no longer true.
 
 **Token-efficient by design.** Checking the docs costs no AI tokens, because detection is
 a plain script with no AI in it. Two detectors ship: the scheduled default reads the git

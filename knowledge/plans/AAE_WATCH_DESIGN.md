@@ -8,7 +8,6 @@
 - [How is the agent memory updated without destroying curated notes?](#how-is-the-agent-memory-updated-without-destroying-curated-notes)
 - [How does one capability reach both Claude Code and Codex?](#how-does-one-capability-reach-both-claude-code-and-codex)
 - [Why detect CLI releases but not auto-upgrade?](#why-detect-cli-releases-but-not-auto-upgrade)
-- [Is there a second consumer of the same detection?](#is-there-a-second-consumer-of-the-same-detection)
 - [Component inventory](#component-inventory)
 - [Phasing](#phasing)
 - [Open questions](#open-questions)
@@ -57,7 +56,7 @@ notification is the lesser half.
 
 | Tier | Source | Verdict | Mechanism |
 |---|---|---|---|
-| 1 | Public docs, 196 pages via `docs/agentengine/llms.txt` | High | SHA-256 content hash per page — **already built**. Since 2026-10-13 also available from the publishing repository's git history, with commit-level provenance ([below](#is-there-a-second-consumer-of-the-same-detection)) |
+| 1 | Public docs, 196 pages via `docs/agentengine/llms.txt` | High | SHA-256 content hash per page — **already built**. Since 2026-10-13 also available from the publishing repository's git history, with commit-level provenance, which is the scheduled default |
 | 2 | CLI releases, `mongodb/agent-engine-client-libraries` | High | GitHub releases API vs `agentengine version --json` |
 | 3 | Private sources you configure | Varies — yours to judge | Headless agent over an MCP-backed search tool |
 
@@ -252,55 +251,6 @@ CLI changelog that exists. The docs site has no release notes: `/release-notes/`
 
 Related: leave `self-update --auto` off. An unattended CLI upgrade is exactly the
 unannounced change this design exists to surface.
-
-## Is there a second consumer of the same detection?
-
-Yes. It follows the same detection rules but has its own implementation; the two share
-behaviour, not code.
-
-The watch described here runs **on a developer's machine** and keeps coding agents current.
-A second, independent design runs the same detection **as a deployed AAE agent**. A scheduler
-starts it every morning; it notifies a team with before/after diffs for each change and feeds
-the changed pages into a search index that a deployed "AAE expert" agent answers from.
-
-| | This design (local) | Deployed watcher |
-|---|---|---|
-| Purpose | Keep `aae-guide`/Codex current | Notify a team; refresh an agent's knowledge base |
-| Tier 1 docs hashing | Yes | Yes, same rules, own implementation |
-| Tier 2 CLI releases | Yes | Yes, adopted from here |
-| Tier 3 private sources | Optional, via MCP | No; ingested separately |
-
-Consequence for this repo: none. `aae-docs-watch.sh` stays bash. The shared part is small
-(read `llms.txt`, fetch each page as `.md`, SHA-256 the body, unified-diff the changed
-pages), and a shared package would force Python on users who today need only bash, curl
-and jq. What must not change silently is the rules above: if they change here, the
-deployed watcher has to follow.
-
-**Update 2026-10-13: the detection rules are no longer the only option, so "same rules"
-needs restating.** A second detector, `aae-docs-watch-git.sh`, now reads the git history
-of the public repository the docs are published from, mapping each changed source file to
-its published URL instead of hashing the published body. It is implemented and tested; it
-is **not** yet the scheduled default, and the hashing watcher is unchanged.
-
-What that means for the second consumer:
-
-- **The artifact contract, not the detection method, is what the two must share.** The git
-  detector writes the same `report.json` keys, the same state layout and the same exit
-  codes, which is why every downstream reader here was untouched. Any second
-  implementation should be pinned to that contract and left free to choose its source.
-- **The hashing rules above remain valid** and remain the fallback: they need no `git`, no
-  clone and no knowledge of how the site is built, and the site still offers no
-  `Last-Modified` or `ETag` to replace them.
-- **The git source reports strictly more**: commit time, author and message, history from
-  before the detector first ran, the pages a changed shared include fans out to, and the
-  site-wide fan-out of a one-line change to the publishing configuration — which is the
-  largest change a source-path filter would otherwise miss entirely.
-- **The costs are different, so the choice is a real one.** Hashing costs a full crawl per
-  run and no disk. The git source costs a one-time clone (~30s, ~165 MB) and then a cheap
-  fetch, and requires `git`.
-
-Whether the second consumer adopts git sourcing is its own decision; nothing here forces
-it. What must not happen is one side changing its *output* contract silently.
 
 ## Component inventory
 

@@ -353,7 +353,8 @@ Progress on 2026-10-10:
   `codex-cli` 0.162.1 in an isolated `CODEX_HOME` via `codex debug prompt-input`.
 - **After the merge into one plugin (2026-10-10):** a local-path marketplace in an
   isolated `CODEX_HOME` lists only `aae`, it installs with its `hooks/` and `scripts/`,
-  and all seven skills, including `aae-docs-watch`, reach the model prompt.
+  and the seven skills that existed then, including `aae-docs-watch`, reach the model
+  prompt. `atlas-cli` was added afterwards and has not been checked in Codex.
 - **Still open:** a real Codex conversation, and the hook firing after trust. Codex sets
   `CLAUDE_PLUGIN_ROOT` for plugin hooks (per its plugin docs), so the hook command should
   resolve.

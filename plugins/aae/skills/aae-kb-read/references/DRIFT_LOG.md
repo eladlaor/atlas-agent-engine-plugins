@@ -6,6 +6,9 @@ description: Dated log of observed drift between the Atlas Agent Engine docs and
 # AAE drift log
 
 - [Summary](#summary)
+- [2026-10-13 — `deepagents` 0.7.16 has no planner, and there is no default system prompt](#2026-10-13--deepagents-0716-has-no-planner-and-there-is-no-default-system-prompt)
+- [2026-10-13 — the deep-agent page claims a custom `backend` is rejected; it is not](#2026-10-13--the-deep-agent-page-claims-a-custom-backend-is-rejected-it-is-not)
+- [2026-10-13 — a missing `features.deep_agent` fails at run time, not build time](#2026-10-13--a-missing-featuresdeep_agent-fails-at-run-time-not-build-time)
 - [2026-10-13 — `agent validate` does not enforce the required fields](#2026-10-13--agent-validate-does-not-enforce-the-required-fields)
 - [2026-10-13 — `project-config.yaml` has a second top-level key, `memory_only`](#2026-10-13--project-configyaml-has-a-second-top-level-key-memory_only)
 - [2026-10-13 — `--open-egress` writes to `agent.yaml`, not `project-config.yaml`](#2026-10-13----open-egress-writes-to-agentyaml-not-project-configyaml)
@@ -51,6 +54,51 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Fetch egress IPs live.** There are two pairs for two purposes.
 - **A `validate` pass proves almost nothing.** It enforces an egress policy and little else —
   not `entrypoint`, not `sandboxes`, not unknown keys.
+
+## 2026-10-13 — `deepagents` 0.7.16 has no planner, and there is no default system prompt
+
+- **Docs say** (`/build/build-deep-agent.md`, checked 2026-10-13): if `system_prompt` is
+  omitted, "the agent uses the default prompt from the `deepagents` library." The page never
+  mentions planning or todos either way, and the wider "deep agents" framing in circulation
+  describes a planning/todo tool as a defining feature.
+- **Observed** (introspected `deepagents==0.7.16`, the version SDK 0.11.8 pins, installed in a
+  clean venv): there is **no `deepagents.middleware.todo` module and nothing todo-shaped in the
+  package exports**. The built-in tool suite is exactly `ls`, `read_file`, `write_file`,
+  `edit_file`, `glob`, `grep`, `execute`, `task`. And `create_deep_agent`'s own contract is the
+  opposite of the doc on prompts: with `system_prompt=None` and no harness profile defining
+  `base_system_prompt`/`system_prompt_suffix`, "the model receives an empty authored system
+  prompt."
+- **Resolution:** a deep agent on AAE is **filesystem + shell + subagent delegation + skills**,
+  not a planner. Always pass `system_prompt=` explicitly — omitting it yields no instructions
+  at all, not a sensible default. If an agent needs a plan, build the planning step yourself.
+  Note the doc also pins `deepagents==0.5.3` in its `pyproject.toml` snippet, which is the
+  release *before* the todo tool was removed; following the doc would give a different tool set
+  than the SDK expects. Pin the SDK's version.
+
+## 2026-10-13 — the deep-agent page claims a custom `backend` is rejected; it is not
+
+- **Docs say** (`/build/build-deep-agent.md`, "Security Validations", checked 2026-10-13):
+  "Supplying a custom backend bypasses the platform's sandbox and the platform rejects the
+  backend."
+- **Observed** (SDK 0.11.8, `runtime.py`): `app.deep_agent()` accepts any `backend` passed to
+  it and uses it verbatim; `AgentEngineToolPodBackend()` is only substituted when `backend` is
+  `None`. The docstring calls this a "Security note", not a rejection. No guard exists.
+- **Resolution:** treat the custom-backend path as **working and unaudited**, not blocked. Do
+  not rely on the platform to stop you from bypassing its own sandbox. Related, resolving an
+  older open contradiction: `AgentEngineToolSandboxBackend` **is**
+  `AgentEngineToolPodBackend` — a module-level alias in `backends/tool_sandbox.py`, the same
+  class object. Both imports work; the name disagreement is cosmetic.
+
+## 2026-10-13 — a missing `features.deep_agent` fails at run time, not build time
+
+- **Docs say** (`/reference/agent-contract.md`, checked 2026-10-13): calling `app.deep_agent()`
+  without `features.deep_agent: true` causes an error **at build time**.
+- **Observed** (SDK 0.11.8, `runtime.py`): the `RuntimeError` is raised when `deep_agent()`
+  executes — i.e. when the entrypoint runs in the agent sandbox — so a build succeeds and the
+  agent fails on first invoke. The message itself is clear and actionable; only the timing
+  claim is wrong.
+- **Resolution:** do not expect `build` or `validate` to catch a missing `deep_agent` flag.
+  Verify the flag is set before deploying, and smoke-invoke after deploy.
 
 ## 2026-10-13 — `agent validate` does not enforce the required fields
 

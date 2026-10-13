@@ -17,6 +17,11 @@ is why their headers carry a separate "Plugin version:" line.
 - The Codex marketplace manifest no longer requests `authentication: ON_INSTALL`. Nothing in
   this plugin needs credentials — the docs repository it reads is public — so asking to
   authenticate on install bought nothing and cost trust.
+- `knowledge/plans/GIT_SOURCED_DOCS_WATCH.md`: the git-sourced detector shipped in 0.8.0, so
+  the plan that described building it is now history. What it decided is recorded above.
+- The "second consumer" section of `AAE_WATCH_DESIGN.md`, which described a separate
+  deployment rather than anything in this repository, and had drifted into asserting that the
+  git detector was not yet the scheduled default — which it has been since 2026-10-13.
 
 ## [0.8.0] - 2026-10-13
 
@@ -174,8 +179,8 @@ Plugin versions: `aae` 0.3.1, `aae-docs-watch` 0.3.0.
 ### Changed
 
 - The daily docs check now defaults to 10:00 local time instead of 09:00.
-- AAE Watch design: the deployed watcher shares the detection rules, not the code.
-  `aae-docs-watch.sh` stays bash, so the plugin still needs only bash, curl and jq.
+- AAE Watch design: another implementation of the same detection would share the rules, not
+  the code. `aae-docs-watch.sh` stays bash, so the plugin still needs only bash, curl and jq.
 
 ### Removed
 
@@ -195,7 +200,7 @@ Plugin versions: `aae` 0.3.1, `aae-docs-watch` 0.3.0.
 - Contribution ideas 2–4: a scheduled-invoke helper, a fleet spec kit (agent spec cards
   plus an A2A message contract), and a golden-set evaluation harness.
 - Behaviour spec FR-17 to FR-19 and AC-13 to AC-15 for `aae-scout`.
-- AAE Watch design: a section on the deployed watcher that will share its detection logic.
+- AAE Watch design: a section on what a second implementation would need to share.
 
 ## [0.2.0] - 2026-10-06
 
