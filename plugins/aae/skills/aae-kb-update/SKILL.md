@@ -1,14 +1,18 @@
 ---
 name: aae-kb-update
-description: "Update the aae-guide's MongoDB Atlas Agent Engine (AAE) knowledge from one of two sources. Notes mode promotes generic findings from the user's personal aae-guide notes into the shipped aae-kb-read knowledge base, in a local clone of the plugin repository, proposing first and editing only after approval. Docs mode applies the docs watcher's latest changes report: it finds the knowledge entries that rest on each changed page, and confirms, corrects or extends them. Use when the user says \"update the kb\", \"promote my AAE notes\", \"ship what I learned\", \"apply the docs changes to the kb\", \"update the kb from the docs diff\", \"aae-kb-update\", or \"add this to the plugin's knowledge base\". Arguments: notes | docs [--auto] [--repo <path>]."
+description: "Update the aae-guide's MongoDB Atlas Agent Engine (AAE) knowledge from one of three sources. Direct mode takes a finding typed straight into the invocation, works out which reference file owns it, and files it there. Notes mode promotes generic findings from the user's personal aae-guide notes into the shipped aae-kb-read knowledge base, in a local clone of the plugin repository, proposing first and editing only after approval. Docs mode applies the docs watcher's latest changes report: it finds the knowledge entries that rest on each changed page, and confirms, corrects or extends them. Use when the user says \"update the kb\", \"add this to the kb\", \"file this finding\", \"remember this about AAE\", \"promote my AAE notes\", \"ship what I learned\", \"apply the docs changes to the kb\", \"update the kb from the docs diff\", \"aae-kb-update\", or \"add this to the plugin's knowledge base\". Arguments: direct \"<finding>\" | notes | docs [--auto] [--repo <path>]."
 ---
 
 # AAE KB Update
 
 - [Summary](#summary)
 - [Choosing the mode](#choosing-the-mode)
-- [Rules for both modes](#rules-for-both-modes)
+- [Rules for every mode](#rules-for-every-mode)
 - [The processed-report record](#the-processed-report-record)
+- [Direct mode](#direct-mode)
+  - [Direct mode: inputs](#direct-mode-inputs)
+  - [Direct mode: hard rules](#direct-mode-hard-rules)
+  - [Direct mode: procedure](#direct-mode-procedure)
 - [Notes mode](#notes-mode)
   - [Notes mode: inputs](#notes-mode-inputs)
   - [Notes mode: hard rules](#notes-mode-hard-rules)
@@ -24,10 +28,11 @@ description: "Update the aae-guide's MongoDB Atlas Agent Engine (AAE) knowledge 
 ## Summary
 
 The shipped knowledge base (`aae-kb-read` and the `aae-guide` card) changes only through
-this skill. It has two sources, kept apart on purpose:
+this skill. It has three sources, kept apart on purpose:
 
 | Mode | Source | Writes to | Approval |
 |---|---|---|---|
+| **direct** | A finding typed into the invocation | The reference file the skill judges owns it, in a git clone of the plugin repository | Always: names the target and shows the entry, edits after approval |
 | **notes** | The user's personal `aae-guide` notes | Reference files in a git clone of the plugin repository | Always: proposes, edits only what the user approves |
 | **docs** | The docs watcher's latest changes report: `report.json`, `diffs/`, `pages/` | Reference files and the guide card in the clone (or the notes, without a clone); user-specific consequences in the notes | Interactive by default; `--auto` applies without asking, for the opt-in watcher flow only |
 
@@ -35,15 +40,21 @@ It never commits, publishes, or edits an installed plugin.
 
 ## Choosing the mode
 
-- Take the mode from the first argument (`notes` or `docs`), else from the request:
-  "promote my notes", "ship what I learned" mean notes mode; "apply the docs changes",
-  "the docs changed, update the kb" mean docs mode.
-- If neither makes it clear, ask which one. Don't guess.
-- `--auto` is valid **only** with `docs`. With `notes`, or with no mode, refuse it and say
-  why: promoting personal notes into a public knowledge base always needs a person.
+- Take the mode from the first argument (`direct`, `notes` or `docs`), else from the
+  request: a finding handed over in the message itself — "add this to the kb", "file this",
+  "remember that `--help` lists a role the docs omit" — means direct mode; "promote my
+  notes", "ship what I learned" mean notes mode; "apply the docs changes", "the docs
+  changed, update the kb" mean docs mode.
+- **The tell for direct mode is that the knowledge is in the request.** Notes mode goes
+  looking for it in a file; direct mode has already been given it. If the user both states
+  a finding and says "promote my notes", treat them as two runs and ask which first.
+- If the mode still isn't clear, ask. Don't guess.
+- `--auto` is valid **only** with `docs`. With `direct` or `notes`, or with no mode, refuse
+  it and say why: putting a person's own words into a public knowledge base always needs
+  that person.
 - `--repo <path>` names the plugin repository clone. Without it, use env `AAE_KB_REPO`.
 
-## Rules for both modes
+## Rules for every mode
 
 - **Never edit the installed plugin** (anything under `~/.claude/plugins/` or
   `~/.codex/`). A plugin update overwrites it, and nobody else would ever see the change.
@@ -76,6 +87,75 @@ already in the file, stop and say when it was processed. **Write nothing at all*
 case: no edit, no new line, and in `--auto` no `kb-update.md` either, because that file
 still holds the summary of the run that did process the report.
 
+## Direct mode
+
+The user has a finding in hand and wants it filed, without first writing it to the notes
+and promoting it. Direct mode takes the finding from the invocation, decides **which
+reference file owns it**, and puts it there in that file's format. The user supplies the
+knowledge; the skill supplies the judgement about where it belongs and whether it is fit
+to ship.
+
+```
+aae-kb-update direct "service-account create --help on 0.1.118 offers AGENT_DEVELOPER, which the api-keys-service-accounts page still omits"
+```
+
+### Direct mode: inputs
+
+- **The finding**: the quoted argument, or the surrounding request when the user stated it
+  in prose rather than as an argument. Several findings in one invocation are allowed;
+  treat each as its own entry.
+- **The plugin repository clone.** `--repo`, `AAE_KB_REPO`, or ask for it. Validate it as
+  in [Rules for every mode](#rules-for-every-mode).
+- **The `aae-kb-read` index and every reference file** a candidate could belong to.
+
+### Direct mode: hard rules
+
+- **No edits before approval**, as in notes mode, and for the same reason: the knowledge
+  base is public.
+- **Verify before shipping, and never silently.** A finding typed into a prompt carries no
+  evidence with it. Before proposing an entry, check it against the thing it describes —
+  the live docs page for a docs claim, `--help` or the CLI itself for a CLI claim, the
+  OpenAPI spec for an endpoint. State in the proposal how each entry was checked. If a
+  claim can't be verified, say so and offer it as an entry marked `unverified, reported by
+  a user on <date>`, or leave it out. Never present an unchecked assertion as a verified
+  one.
+- **Contradiction stops the run for that entry.** If verification shows the finding is
+  wrong, or narrower than stated, say so plainly, propose the corrected version, and let
+  the user decide. Don't file the original.
+- **Generic only**, by [What counts as generic](#what-counts-as-generic). A finding about
+  the user's own project is a notes entry, not a KB entry: say so and offer to write it to
+  the personal notes instead.
+- **Record the version and the date.** Every entry carries today's date and, for CLI or
+  SDK behaviour, the version it was seen on. A finding without a version is worth much
+  less later.
+
+### Direct mode: procedure
+
+1. **Restate the finding** in one sentence, so a misreading surfaces before any work. If
+   the finding is ambiguous about which of several AAE surfaces it concerns, ask.
+2. **Verify it**, per the hard rules. Record what you checked and what the check showed.
+3. **Classify** it: already shipped (say where, and stop unless it's newer or more
+   precise), project-specific (offer the notes instead), or generic and new.
+4. **Choose the target file and section** from the `aae-kb-read` index. The usual homes:
+   `DRIFT_LOG.md` when the docs and observed behaviour disagree, `DOC_CONTRADICTIONS.md`
+   when two pages disagree with each other, `VERIFIED_DETAILS.md` for a capability or
+   detail the guides omit, a runbook file for a working procedure, and the troubleshooting
+   file for a failure and its cause. Say why that file, in one clause. Replace an older
+   entry rather than duplicating it.
+5. **Write the entry** in the target file's shape — a drift entry as *Docs say / Observed /
+   Resolution*, a troubleshooting entry as a question heading — phrased neutrally for a
+   public reader, with the [leak scan](#leak-scan) applied.
+6. **Propose and wait:**
+
+   | # | Finding | How it was verified | Target file › section | New or replaces |
+   |---|---|---|---|---|
+
+   Show the exact text of each entry under the table.
+7. **Apply** the approved entries in the clone, with the CHANGELOG line.
+8. **Verify and report:** run the [leak scan](#leak-scan) over the changed files, check the
+   TOC anchors still resolve, and report the files changed. Offer to record the same
+   finding in the personal notes when it also has a consequence for the user's own setup.
+
 ## Notes mode
 
 `aae-guide` writes what it learns to the user's **personal notes**, never to the shipped
@@ -88,7 +168,7 @@ It proposes, the user approves, then it edits a local clone of the plugin reposi
 - **Personal notes.** Default: `~/.claude/agent-memory/aae-guide/MEMORY.md`. The user
   may name other files instead, for example in Codex, where that directory doesn't exist.
 - **The plugin repository clone.** `--repo`, `AAE_KB_REPO`, or ask for it. Validate it as
-  in [Rules for both modes](#rules-for-both-modes).
+  in [Rules for every mode](#rules-for-every-mode).
 
 ### Notes mode: hard rules
 
