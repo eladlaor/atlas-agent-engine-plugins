@@ -12,6 +12,12 @@ is why their headers carry a separate "Plugin version:" line.
 
 ## [Unreleased]
 
+### Removed
+
+- The Codex marketplace manifest no longer requests `authentication: ON_INSTALL`. Nothing in
+  this plugin needs credentials — the docs repository it reads is public — so asking to
+  authenticate on install bought nothing and cost trust.
+
 ## [0.8.0] - 2026-10-13
 
 ### Added
