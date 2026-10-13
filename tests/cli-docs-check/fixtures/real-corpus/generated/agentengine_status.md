@@ -1,0 +1,42 @@
+## agentengine status
+
+Show the current deployed status for the workspace.
+
+### Synopsis
+
+Show the current deployment state for the workspace in the current directory,
+for a monorepo workspace selected with --workspace, or for an explicitly
+targeted workspace selected with --workspace-id.
+
+```
+agentengine status [flags]
+```
+
+### Options
+
+```
+      --all                   Monorepo: show status for all workspaces
+      --base-url string       Platform base URL
+      --context string        Named context to target (see 'agentengine context list')
+  -h, --help                  help for status
+      --json                  Output JSON
+      --org-id string         Organization ID
+      --project-id string     Project ID
+      --verbose               Show additional deployment and runtime details
+      --workspace string      Monorepo: show status for a specific workspace by name (from root agent.yaml)
+      --workspace-id string   Workspace ID
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+```
+
+### SEE ALSO
+
+* [agentengine](agentengine.md)	 - Agent Engine local development CLI.
+

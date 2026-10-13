@@ -21,7 +21,11 @@
 
 set -euo pipefail
 
-readonly DOCS_BASE="https://www.mongodb.com/docs/agentengine"
+# AAE_WATCH_DOCS_BASE is a test seam: it lets the suite point the crawl at a local
+# fixture server so the behavioural contract can be checked without the network.
+# Nothing else should set it — a wrong value makes the watcher silently report on
+# the wrong site.
+readonly DOCS_BASE="${AAE_WATCH_DOCS_BASE:-https://www.mongodb.com/docs/agentengine}"
 readonly INVENTORY_URL="${DOCS_BASE}/llms.txt"
 readonly CURL_TIMEOUT=30
 readonly PARALLEL=8

@@ -1,0 +1,148 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# Artifact registry validation in the CLI
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+Flag reference: [agentengine agent validate](https://www.mongodb.com/docs/agentengine/cli/agentengine_agent_validate.md#std-label-agentengine_agent_validate), [agentengine build.](https://www.mongodb.com/docs/agentengine/cli/agentengine_build.md#std-label-agentengine_build)
+
+**Audience:** CLI users running `agentengine agent validate` or `agentengine build`.
+
+The CLI runs the same **declared-index** artifact registry checks as ECP build-start validation, locally and before archive upload.
+
+***
+
+## Commands
+
+| Command | Hard validation | Secret warnings |
+| --- | --- | --- |
+| `agentengine agent validate [path]` | When `artifact_repositories` is non-empty | When logged in (best-effort); `--strict` → exit 1 |
+| `agentengine build` | Same, before `InitArchiveBuild` | Always when client is available; non-blocking |
+| `agentengine build --upload-build-secrets` | Same | Uploads declared secrets from the environment first — see [below](#uploading-declared-secrets-before-a-build) |
+
+Both commands read tooling files from the **same directory as
+\`\`agent.yaml\`\`**.
+
+***
+
+## What is validated
+
+### Always (schema — `agentconfig.Validate`)
+
+- `artifact_repositories` entry shape: `name`, `type`, `secret`, `scope`, `auth`, `npm_scope`
+
+### When `artifact_repositories` is non-empty (cross-file)
+
+1. Declared `name` (or npm `npm_scope`) must exist in project tooling.
+
+2. Matching tooling entry must have an HTTPS registry URL.
+
+3. URLs in tooling and loaded lockfiles are scanned for SSRF-unsafe hosts.
+
+### Opt-in model (not errors)
+
+- No `artifact_repositories` block → no cross-file fetch.
+
+- Private HTTPS URLs in `uv.lock` / `package-lock.json` that are **not** declared → pass without platform creds.
+
+- SSRF-unsafe URLs in tooling or loaded lockfiles still fail with `INVALID_REGISTRY_URL` when `artifact_repositories` is non-empty.
+
+### Secret warnings (online)
+
+Mirrors ECP scope rules for secret lookup. In the CLI these are **warnings** unless `agentengine agent validate --strict` (exit 1). ECP build-start treats a missing secret as a **hard failure** (`MISSING_BUILD_SECRET` before CodeBuild).
+
+| Code | CLI `validate` | ECP build start | Meaning |
+| --- | --- | --- | --- |
+| `MISSING_BUILD_SECRET` | Warning; `--strict` → exit 1 | Hard fail | No ASM secret at declared scope |
+| `SCOPE_MISMATCH_HINT` | Warning; `--strict` → exit 1 | Hard fail | Secret exists at the other scope |
+| `WORKSPACE_CONTEXT_NEEDED` | Warning; `--strict` → exit 1 | N/A (CLI needs `agentengine init`) | Workspace-scoped entry but no workspace context |
+| `SECRET_METADATA_LOOKUP_FAILED` | Warning; `--strict` → exit 1 | Hard fail (non-retryable); retried when transient | Online secret list could not be verified |
+
+### Cross-file hard errors
+
+These fail `agentengine agent validate`, `agentengine build` (before upload), and ECP build-start cross-check when `artifact_repositories` is non-empty:
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `UNKNOWN_INDEX_NAME` | Declared `name` (or npm `npm_scope`) not found in tooling | Align `agent.yaml` with `pyproject.toml` / `.npmrc` / `publishConfig.registry` |
+| `MISSING_REGISTRY_URL` | Name matched but tooling has no HTTPS URL | Add `url` to the index/registry config |
+| `INVALID_REGISTRY_URL` | Non-HTTPS URL, embedded credentials, or blocked host | Use `https://`; never put tokens in URLs |
+
+Undeclared private HTTPS URLs in lockfiles pass without platform creds (opt-in model). SSRF-unsafe URLs in tooling or loaded lockfiles still fail with `INVALID_REGISTRY_URL` when `artifact_repositories` is non-empty. Setup walkthroughs, CI token refresh, webhook pre-seed, and migration from vendored `wheels/` are in [agent-yaml.md.](../../docs/agent-yaml.md#artifact_repositories-optional)
+
+***
+
+## Examples
+
+### Valid declared index (Python)
+
+`agent.yaml`:
+
+```yaml
+language: python
+required_secrets:
+artifact_repositories:
+  - name: corps-pypi
+    type: pypi
+    secret: ARTIFACT_REPO_CORPS_PYPI_TOKEN
+```
+
+`pyproject.toml` must contain a matching `[[tool.uv.index]]` name and HTTPS `url`.
+
+```bash
+agentengine agent validate
+# ✓ ./agent.yaml valid (egress rules: 0, atlas clusters: 0, artifact repositories: 1)
+```
+
+### Unknown declared name
+
+```bash
+agentengine agent validate
+# ✗ ./agent.yaml: artifact registry: UNKNOWN_INDEX_NAME: declared name "missing-index" not found in project tooling
+# exit 1
+```
+
+### Undeclared lockfile URL (passes)
+
+An agent with private packages in `uv.lock` but **no** `artifact_repositories` block exits 0 — customer-managed auth only.
+
+### Strict mode
+
+```bash
+agentengine agent validate --strict
+# Any artifact-registry secret warning (or secret-list failure) becomes exit 1.
+```
+
+***
+
+## Uploading declared secrets before a build
+
+`agentengine build --upload-build-secrets` is an **opt-in** convenience for short-lived registry tokens. It reads each `artifact_repositories[].secret` from the environment variable of the same name and `PUT` s it at the declared scope before the build is created. It never reads an environment variable that `agent.yaml` does not declare.
+
+```bash
+export ARTIFACT_REPO_CORPS_PYPI_TOKEN="$(aws codeartifact get-authorization-token \
+  --domain my-domain --query authorizationToken --output text)"
+agentengine build --upload-build-secrets
+# ✓ uploaded project secret ARTIFACT_REPO_CORPS_PYPI_TOKEN (version 3)
+```
+
+Without the flag, set credentials once with `agentengine secret set <NAME>`; the flag exists for tokens that expire between builds.
+
+| Behavior | Detail |
+| --- | --- |
+| Scope | Per entry, from `scope` (default `project`) → project or workspace `PUT` |
+| Ordering | Runs before build creation — ECP resolves declared secrets to ASM ARNs inside build-start and fails the build if one is absent |
+| Deduplication | Same secret at the same scope and project is uploaded once, including across `--all` |
+| Missing / empty env var | Fails before that agent’s upload or build, listing every offending name at once. With `--all`, resolution runs per workspace, so earlier workspaces may already have uploaded and built |
+| Reserved or invalid name | Rejected locally (`agent.yaml` permits names the secrets API reserves) |
+| Authorization | Project scope needs `PROJECT_OWNER` (or `ORG_ADMIN`); workspace scope needs `PROJECT_OWNER` or `AGENT_DEVELOPER` |
+| Validation | A workspace’s `artifact_repositories` must pass schema **and** cross-file validation before any of its secrets are uploaded, on both the single-workspace and `--all` paths |
+| `--all` | Uploaded per workspace; a failure fails only that workspace |
+
+Secret **values** never appear in stdout, logs, or error text — a failing upload is scrubbed via the same path as `agentengine secret set`.
+
+***
+
+## Related docs
+
+- `artifact_repositories` field reference and setup: [agent-yaml.md](../../docs/agent-yaml.md#artifact_repositories-optional)

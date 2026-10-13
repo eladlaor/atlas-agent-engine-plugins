@@ -1,0 +1,44 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# agentengine dev mcp auth upload
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+Upload cached MCP OAuth credentials as a workspace secret.
+
+## Synopsis
+
+Upload cached MCP OAuth credentials as a workspace secret.
+
+Run agentengine dev mcp auth login first. This command base64-encodes the local OAuth cache file and stores it as a workspace secret that deployed agents can materialize into their runtime OAuth cache.
+
+```bash
+agentengine dev mcp auth upload <server> [flags]
+```
+
+## Options
+
+```bash
+    --base-url string       Platform base URL
+    --context string        Named context to target (see 'agentengine context list')
+-h, --help                  help for upload
+    --org-id string         Organization ID
+    --project-id string     Project ID
+    --sync                  Sync the uploaded secret to active deployments
+    --workspace string      Monorepo: target a specific agent by name (from root agent.yaml)
+    --workspace-id string   Workspace ID
+```
+
+## Options inherited from parent commands
+
+```bash
+    --log-file string    override log file path
+    --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+    --no-log             disable file logging
+-q, --quiet              silence stderr below error
+-v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+## SEE ALSO
+
+- [agentengine dev mcp auth](https://www.mongodb.com/docs/agentengine/cli/agentengine_dev_mcp_auth.md#std-label-agentengine_dev_mcp_auth) - Manage MCP OAuth credentials for agentengine dev.

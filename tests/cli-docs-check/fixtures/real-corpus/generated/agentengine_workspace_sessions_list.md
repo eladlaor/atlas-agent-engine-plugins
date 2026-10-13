@@ -1,0 +1,51 @@
+## agentengine workspace sessions list
+
+List sessions that currently hold runtime capacity.
+
+### Synopsis
+
+List sessions that currently hold reserved agent or tool sandbox capacity, or are
+still releasing it.
+
+Status is active while capacity is held and stopping while release is in
+progress. Last activity and scheduled release follow the workspace idle timeout.
+Scheduled release is omitted while a session is still stopping.
+
+```
+agentengine workspace sessions list [flags]
+```
+
+### Examples
+
+```
+  agentengine workspace sessions list
+  agentengine workspace sessions list --json
+```
+
+### Options
+
+```
+      --base-url string       Platform base URL
+      --context string        Named context to target (see 'agentengine context list')
+  -h, --help                  help for list
+      --json                  Output JSON
+      --org-id string         Organization ID
+      --project-id string     Project ID
+      --workspace string      Monorepo: select a specific workspace by name (from root agent.yaml)
+      --workspace-id string   Workspace ID
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine workspace sessions](agentengine_workspace_sessions.md)	 - List and stop runtime sessions for a workspace.
+

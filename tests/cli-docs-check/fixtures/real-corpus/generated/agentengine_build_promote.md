@@ -1,0 +1,53 @@
+## agentengine build promote
+
+Promote a succeeded build into another workspace.
+
+### Synopsis
+
+Promote a succeeded build image into another workspace without rebuilding it.
+
+<source_build_id> names the source build; the platform resolves it within the
+current organization. --workspace, --context, and the explicit target flags
+select the destination workspace.
+
+A non-interactive shell fails unless you pass --yes. --force bypasses the
+successful-deploy proof gate and requires the target project owner role.
+
+Examples:
+  agentengine build promote bld_abc123 --workspace prod
+  agentengine build promote bld_abc123 --context prod
+
+```
+agentengine build promote <source_build_id> [flags]
+```
+
+### Options
+
+```
+      --base-url string       Platform base URL
+      --context string        Named context to target (see 'agentengine context list')
+      --force                 Bypass the successful-deploy proof gate (target project owner role required)
+  -h, --help                  help for promote
+      --json                  Output promotion result as JSON
+      --org-id string         Organization ID
+      --project-id string     Project ID
+      --workspace string      Monorepo: select a destination workspace by name (from root agent.yaml)
+      --workspace-id string   Workspace ID
+  -y, --yes                   Skip the interactive confirmation prompt
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine build](agentengine_build.md)	 - Package and build the agent image on the platform.
+* [agentengine build promote get](agentengine_build_promote_get.md)	 - Get build promotion status.
+

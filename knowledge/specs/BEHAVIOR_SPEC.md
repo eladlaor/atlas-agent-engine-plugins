@@ -377,3 +377,102 @@ Stated so they are not mistaken for omissions:
 1. Where tier 2's state lives inside `report.json` — additive `cli` object, shape TBD.
 2. Whether `--quick` should also run tier 2 (it is one cheap API call; probably yes).
 3. No `tests/` directory exists. AC-5 through AC-12 need somewhere to live and a runner.
+
+## CLI reference regression guard
+
+`plugins/aae/scripts/aae-cli-docs-check.sh`. A separate script with its own exit codes,
+not a mode of the watcher: it answers a different question. The watcher asks "did a
+published page change?"; the guard asks "does the published CLI reference still describe
+the binary that is installed?".
+
+**Why it is a guard and not a detector.** The pages under `/docs/agentengine/cli/` are
+generated from the binary's own command tree — `agentengine docs generate <dir>` writes
+the same one-page-per-command set the docs site publishes. Measured 2026-10-13 at CLI
+0.1.118: 117 generated pages, 121 published, 0 commands missing from the docs, 1251 flag
+tokens compared, 0 flag drift. Agreement is therefore the expected state, and the value of
+the script is that it stays quiet until that stops being true.
+
+**Decision on where the result surfaces (closes plan item 2.4 / open question O2):** its
+own script and its own exit code. It does **not** write `report.json` and does not touch
+the watcher's state directory, so none of the four downstream consumers is affected. The
+`cli` object reserved in `report.json` stays reserved for tier 2, the CLI *release* watch,
+which is a different thing from this guard.
+
+### Functional requirements
+
+- **FR-30.** The guard MUST take the binary as the authority. It MUST generate the command
+  set with `agentengine docs generate <dir>` (a positional directory, not `--dir`) and
+  compare it against the published inventory read from `llms.txt`. Both sides MUST be
+  lowercased before comparison, because published URLs are lowercase.
+- **FR-31.** It MUST compare the command set **and** the flag set of every command the two
+  sides share, including each flag's short form, and MUST report the exact commands and
+  flags that diverge — never only a count.
+- **FR-32.** Flag extraction MUST be structural, not textual: only fenced code blocks under
+  an `Options` or `Options inherited from parent commands` heading are read, at any heading
+  level, and a flag MUST sit at the start of its own line, optionally behind its short
+  form. A `grep` for `--[a-z0-9-]*` over the page body is forbidden — it matches Markdown
+  horizontal rules (`---`), the `\--auto` escaping the docs pipeline emits for a paragraph
+  that opens with a flag, and flags merely named in a description, each of which reads as
+  drift that is not there.
+- **FR-33.** Published pages under `cli/` that are hand-written guides rather than command
+  reference pages MUST be a named allowlist in the script, with a reason per entry, and
+  MUST NOT be reported as divergence. As of 2026-10-13 it holds exactly four:
+  `artifact-registry-validate`, `custom-artifact-source`, `environment-variables`,
+  `public-artifacts`.
+- **FR-34.** Every run MUST record the CLI version of both sides — the binary's
+  `agentengine --version`, and the published side's recorded version where one exists
+  (`.cli-version` in an offline corpus) or `unversioned`, since the docs pages carry no
+  version marker. A zero-drift result against a one-version-old binary proves agreement
+  with that version only, and the output must make that readable.
+- **FR-35.** The published-page source MUST be overridable by a local directory, so the
+  guard and its tests run offline.
+- **FR-36.** The guard MUST NOT report agreement when it could not actually check. Any
+  fetch failure, an empty corpus, zero commands in common, or a page from which zero flags
+  parse on both sides MUST exit 1.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | The binary and the published reference agree |
+| `30` | Divergence: a command or a flag differs |
+| `1` | Error — binary missing, `docs generate` failed, network failure, nothing parsed |
+
+`30` is deliberately distinct from the watcher's `10` (changes) and `20` (skipped), so a
+caller that runs both can tell the two outcomes apart.
+
+### Output contract
+
+- **stdout is silent on agreement.** With `--summary` it prints the one-line summary
+  anyway, which is what a scheduled run records.
+- On divergence it prints the diverging commands and flags to **stderr**, and exactly one
+  machine-readable summary line to **stdout**:
+  `status=diverged binary_version=… docs_cli_version=… docs_source=… commands_binary=… commands_published=… commands_checked=… flags_checked=… missing_from_docs=… undocumented_commands=… flag_drift=…`
+- Progress logging goes to stderr and is silenced by `--quiet` or `AAE_CLI_DOCS_QUIET`.
+
+### Environment
+
+| Variable | Effect |
+|---|---|
+| `AAE_CLI_DOCS_GENERATED_DIR` | Use this directory of generated pages instead of running the binary. Offline mode |
+| `AAE_CLI_DOCS_PUBLISHED_DIR` | Read the published pages from this directory (`<command>.md` each) instead of the docs site. An optional `.cli-version` file records the corpus's CLI version. Offline mode |
+| `AAE_CLI_DOCS_BINARY_VERSION` | Binary version to report when the generated directory is supplied and the binary is unavailable |
+| `AAE_CLI_DOCS_EXTRA_ALLOWLIST` | Space-separated extra hand-written page names, for one run. A lasting addition belongs in the script's allowlist |
+| `AAE_CLI_DOCS_NET_RETRIES` / `AAE_CLI_DOCS_NET_RETRY_DELAY` | Retry the first network request. Defaults 6 and 30s, matching the watcher |
+| `AAE_CLI_DOCS_QUIET` | Non-empty: no progress logging |
+
+### Acceptance criteria
+
+| ID | Criterion | Status |
+|---|---|---|
+| **AC-24** | Against the recorded real corpus (117 generated, 121 published, CLI 0.1.118), the guard reports `status=agree`, `flag_drift=0`, `missing_from_docs=0`, `undocumented_commands=0`, and exits `0` | **Verified** (2026-10-13, live and from the fixture, identically: 117 commands, 1251 flags) |
+| **AC-25** | A fixture whose published page has one flag deleted from its Options block is detected as `flag_drift=1` naming that command and flag, and exits `30` — even though the page's prose still names the flag | **Verified** (2026-10-13) |
+| **AC-26** | A fixture whose published side is missing one command page reports `missing_from_docs=1` naming it, and exits `30` | **Verified** (2026-10-13) |
+| **AC-27** | A fixture in which the published side differs from the binary only by the four hand-written guide pages exits `0` and prints nothing on stdout; adding a fifth, un-allowlisted page makes it exit `30` | **Verified** (2026-10-13) |
+| **AC-28** | A fixture carrying `---` rules, `----`, em-dash prose and `\--flag` escapes on one side only still reports `flag_drift=0` | **Verified** (2026-10-13) |
+| **AC-29** | A missing generated directory, an empty published corpus, a corpus sharing no command name, and a page with no Options section each exit `1` with a descriptive message, never `0` | **Verified** (2026-10-13) |
+
+Tests live in `tests/cli-docs-check/`: `cli_docs_check.bats` (bats-core) with
+`run-tests.sh` as the entry point. `run-tests.sh` runs the same `.bats` file through a
+built-in shim when bats-core is not installed, so the suite has one copy and no hard
+dependency on the framework. Every test is offline; none needs the binary.

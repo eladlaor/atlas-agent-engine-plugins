@@ -1,0 +1,43 @@
+## agentengine debug logs get
+
+Print a log file.
+
+### Synopsis
+
+Print the contents of a log file.
+
+Pass a filename from 'agentengine debug logs list', or use --last for the most
+recent log file. Without either, the command fails. --last skips the current
+invocation's own log file. Output is raw JSON lines; --pretty indents and
+colorizes it.
+
+Examples:
+  agentengine debug logs get --last --pretty
+  agentengine debug logs get agentengine-2026-05-13T11-43-57Z-12345.log
+
+```
+agentengine debug logs get [logfile] [flags]
+```
+
+### Options
+
+```
+  -h, --help     help for get
+      --last     Print the most recent log file
+      --pretty   Indent and colorize JSON output
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine debug logs](agentengine_debug_logs.md)	 - View CLI debug logs.
+

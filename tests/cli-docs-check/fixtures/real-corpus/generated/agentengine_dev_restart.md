@@ -1,0 +1,45 @@
+## agentengine dev restart
+
+Restart the hot-reload app container.
+
+### Synopsis
+
+Restart the running hot-reload app container.
+
+Restarting reruns the container's startup environment sync, which is useful
+after changing host dependencies, for example with uv sync.
+
+The stack is checked for health afterward, with one automatic recovery
+(docker compose up -d). A stack that still fails is reported as an error with
+the recovery steps to run.
+
+For an agent that declares artifact_repositories, registry auth is refreshed
+first and the app container is recreated when the credentials change;
+--no-artifact-auth restarts in place.
+
+```
+agentengine dev restart [flags]
+```
+
+### Options
+
+```
+  -h, --help               help for restart
+      --no-artifact-auth   Skip refreshing registry auth for declared artifact_repositories
+      --workspace string   Monorepo: target a specific agent by name (from root agent.yaml)
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine dev](agentengine_dev.md)	 - Local dev environment commands.
+

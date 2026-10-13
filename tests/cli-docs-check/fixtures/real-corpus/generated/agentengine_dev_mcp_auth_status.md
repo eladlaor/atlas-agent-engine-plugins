@@ -1,0 +1,37 @@
+## agentengine dev mcp auth status
+
+Show MCP OAuth credential status.
+
+### Synopsis
+
+Show whether configured OAuth MCP servers have cached credentials.
+
+Use --check to validate cached credentials by contacting the MCP server. If the
+access token can be refreshed, the cache is updated.
+
+```
+agentengine dev mcp auth status [server] [flags]
+```
+
+### Options
+
+```
+      --check              Validate cached credentials by contacting the MCP server
+  -h, --help               help for status
+      --workspace string   Monorepo: target a specific agent by name (from root agent.yaml)
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine dev mcp auth](agentengine_dev_mcp_auth.md)	 - Manage MCP OAuth credentials for agentengine dev.
+

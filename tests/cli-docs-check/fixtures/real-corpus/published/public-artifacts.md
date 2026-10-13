@@ -1,0 +1,160 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# Public artifacts
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+The platform serves an environment-wide feature flag, `ap.cli.publicArtifactsEnabled`, that switches the CLI to publicly readable artifacts: container images from public GHCR and `agentengine create` starter templates from a public examples repo, both fetched with no registry login and no platform session.
+
+This page covers what changes when the flag flips, how to migrate, and how to operate the flag. For the `custom` source and `source.yaml` itself, see [custom-artifact-source.md.](https://www.mongodb.com/docs/agentengine/cli/custom-artifact-source.md#std-label-custom-artifact-source)
+
+## Why a flag rather than a release
+
+The CLI reads the flag over the network on every run that resolves an artifact source. That indirection is the point: an `agentic` binary already installed on a developer’s laptop moves to public artifacts on its next run, with no upgrade and no reinstall. A release could not reach the binaries already in the field.
+
+The same property is the constraint on the flag key. The Platform UI ships with the gateway, so a renamed UI flag key is consistent on both sides the moment it deploys. A released CLI keeps polling the key name it was compiled with, so this key is a versioned contract: it cannot be renamed or retired while any CLI depending on it is still in use.
+
+## What changes
+
+Two things, all at once:
+
+|  | Flag off | Flag on |
+| --- | --- | --- |
+| Override variables | `AP_SOURCE`, `AP_SOURCE_FILE` | `AGENTENGINE_IMAGE_SOURCE`, `AGENTENGINE_IMAGE_SOURCE_FILE` |
+| Default when unset | `internal` | `public` |
+
+The accepted **values** do not change. `internal`, `public` and `custom` mean the same thing under either variable name, so renaming the variable is the entire migration. `internal` and `custom` resolve identically on both sides of the flag.
+
+## The flag read
+
+Every command that resolves an artifact source — `create`, `dev`, `agent`, `version`, `self-update` — reads the flag once before its own logic runs.
+
+```mermaid
+flowchart TD
+    A["command starts"] --> B{"cached answer<br/>within TTL?"}
+    B -->|yes| E["ap.cli.publicArtifactsEnabled"]
+    B -->|no| C["GET /api/v1/feature-flags/global<br/>no credentials"]
+    C -->|success| E
+    C -->|"offline, error, bad response"| S{"any earlier answer<br/>cached?"}
+    S -->|yes| E
+    S -->|no| D["fail open to false"]
+    E --> F{"flag true?"}
+    F -->|no| D
+    F -->|yes| G["public-artifact mode on"]
+    D --> H["today's behavior, unchanged"]
+    G --> I{"override variable set?"}
+    I -->|no| J["default source = public"]
+    I -->|yes| K["explicit value wins"]
+```
+
+The request carries no credential, because the paths the flag exists for — image pulls and pre-login scaffolding — run on machines that may never authenticate. The host is resolved in precedence order: `AGENTENGINE_FLAG_ENDPOINT`, then the platform base URL from your auth state if you are logged in, then a baked-in production default. A baked default is required: a CLI on a clean machine has no login, no `--context` and no directory pin, so there would otherwise be no host to ask.
+
+**A failure never becomes an error.** The read resolves, in order: a fresh cached answer, then the platform, then the last answer the platform gave even if it has expired, and only then the compiled default of `false`.
+
+Serving an expired answer matters more than it looks. Once the flag is on, falling back to `false` is itself a silent reroute — the default source drops to `internal`, the ECR remap re-engages, and `agentengine dev up` hard-fails with `not logged in` for exactly the users who have no session. A brief DNS or gateway blip should not do that, so a stale answer from the platform is preferred over an answer it never gave.
+
+A failed read is also remembered for a minute, so a host that blackholes rather than refuses costs one timeout per minute instead of one per command. To stop the read entirely — an air-gapped machine, or CI that should never call out — set `AGENTENGINE_SKIP_PLATFORM_FLAGS=1`.
+
+## `agentengine create`
+
+The template source is decided by whether the resolved source is `internal`: the gateway serves the internal template repo only, so the gateway path applies to the internal source alone. Nothing in `create` is gated on the flag directly — moving the default source is what reroutes it.
+
+The two paths have opposite requirements. The gateway path needs a platform session but no `git` binary; the git path needs a `git` binary but no session.
+
+**Before**
+
+```mermaid
+flowchart TD
+    A["agentengine create"] --> B{"source == internal?"}
+    B -->|"yes — the default"| C["Gateway path"]
+    B -->|no| G["Git path"]
+    C --> D{"logged in?"}
+    D -->|no| E["error: not logged in"]
+    D -->|yes| F["GET archive from API Gateway<br/>(mongodb/agent-engine-examples)"]
+    G --> I["git clone mongodb/agent-engine-examples"]
+    F --> J["scaffold + git init"]
+    I --> J
+```
+
+**After**
+
+```mermaid
+flowchart TD
+    A["agentengine create"] --> P["flag read → default source = public"]
+    P --> B{"source == internal?"}
+    B -->|"no — the default now"| G["Git path"]
+    B -->|"yes — explicitly asked for"| C["Gateway path, login required"]
+    G --> I["git clone mongodb/agent-engine-examples<br/>no credentials"]
+    C --> F["GET archive from API Gateway"]
+    I --> J["scaffold + git init"]
+    F --> J
+```
+
+Note the new dependency: with the flag on, the default path requires `git` on the PATH, where the gateway archive path did not.
+
+## `agentengine dev up`
+
+With the internal source and the gateway proxy on (both defaults today), first-party image references are remapped to the platform’s ECR registry, and pulling them requires a short-lived credential brokered by the API Gateway — which requires a session. The ECR remap applies to the internal source only, so moving the default to `public` removes the login requirement entirely.
+
+**Before**
+
+```mermaid
+flowchart TD
+    A["agentengine dev up"] --> B["source = internal (default)"]
+    B --> C["images remapped to ECR"]
+    C --> D{"images present locally?"}
+    D -->|yes| H["docker compose up"]
+    D -->|no| E{"cached credential valid?"}
+    E -->|yes| G["docker login → pull from ECR"]
+    E -->|no| F{"logged in?"}
+    F -->|no| X["error: not logged in"]
+    F -->|yes| F2["broker ECR token via API Gateway"]
+    F2 --> G
+    G --> H
+```
+
+**After**
+
+```mermaid
+flowchart TD
+    A["agentengine dev up"] --> P["flag read → default source = public"]
+    P --> B{"source == internal?"}
+    B -->|"no — the default now"| C["skip registry login"]
+    B -->|"yes — explicitly asked for"| D["ECR path, login required"]
+    C --> E["images from public GHCR"]
+    E --> F["anonymous pull"]
+    F --> G["docker compose up"]
+    D --> G
+```
+
+## Migrating
+
+Rename the variable; keep the value.
+
+```bash
+# before
+export AP_SOURCE=custom
+export AP_SOURCE_FILE=/etc/agentic/source.yaml
+
+# after
+export AGENTENGINE_IMAGE_SOURCE=custom
+export AGENTENGINE_IMAGE_SOURCE_FILE=/etc/agentic/source.yaml
+```
+
+**Either name is honored.** You are not racing the flag. If only one of the two names is set, the CLI reads it whichever side of the flag it is on, so migrating early or late both work and a machine that cannot reach the flag at all can still configure itself. This matters most for `custom`, which exists for air-gapped and egress-restricted machines: gating which name is readable on a network call would have made the documented variable unusable for exactly those users.
+
+**Set both names and the authoritative one wins**, which is the name the flag selects — `AGENTENGINE_IMAGE_SOURCE` when it is on, `AP_SOURCE` when it is off. The CLI warns that it is ignoring the other one. Setting both to different values is the only case that is genuinely ambiguous, so it is the only case that warns.
+
+**The default still follows the flag.** Renaming is safe, but if you set *neither* name, an unreadable flag leaves the default at `internal` rather than `public`. Set the variable explicitly if you need a machine to be certain of its source without reaching the platform.
+
+`base: public` in a `source.yaml` inherits whatever `public` currently means, so a custom source that omits a `registry` or `release` block will follow the flag for that block. `agentengine create` ’s template repo always follows `base:`, since `source.yaml` has no templates field. Pin `registry.prefix` to be unaffected. A `registry` block pins only the images; the templates repository and the release host keep following `base:`.
+
+## Diagnostics
+
+`agentengine version --full` reports which side of the flag the CLI landed on, which variable names are live, and where the answer came from — read, cached, a stale cache after a failed refresh, disabled, or never reached. It stays silent on the unremarkable path — flag off, read succeeded, nothing ignored — so a line that would be present on every internal invocation is not printed. A read that failed or was disabled is always reported, because it is the one case where routing can differ from what you configured with no other signal.
+
+## Rollout and rollback
+
+The flag is environment-wide and served to the CLI on the gateway’s unauthenticated global feature-flags route, so a change reaches every machine on its next flag read. Turning the flag off restores the previous behavior the same way, bounded by the cache TTL. No CLI release is involved in either direction.
+
+Point a CLI at a non-production platform’s flag with `AGENTENGINE_FLAG_ENDPOINT`, or stop the read entirely with `AGENTENGINE_SKIP_PLATFORM_FLAGS=1`. Both use the `AGENTENGINE_` prefix like every other public input; they gate the flag read itself, so neither can be one of the names a flag might switch.

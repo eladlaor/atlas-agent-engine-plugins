@@ -1,0 +1,66 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# agentengine secret set
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+Set or update a secret.
+
+## Synopsis
+
+Set or update a secret in the project or workspace secret store.
+
+The platform requires MONGODB\_URI, plus VOYAGE\_API\_KEY when features.memory is true. Provider keys such as ANTHROPIC\_API\_KEY and OPENAI\_API\_KEY are agent-specific; set the ones your agent uses.
+
+Names match ^\[A-Z]\[A-Z0-9\_]\{0,127}$, may not be reserved platform names, and cannot start with AGENTIC\_PLATFORM\_. This sets project-scoped secrets by default; --workspace-scope or --workspace-id targets a workspace. --context names the organization and project only, so combine it with --project-scope.
+
+Omit the value for a hidden prompt, or pipe it with --stdin. Positional VALUE and --value are deprecated. Bulk dotenv import uses --from-file (- for stdin). --from-file reads plaintext secrets. Prefer a masked prompt or stdin from a secret manager. If you use a file, make it owner-only, import it once, then delete it and remove copies from history, backups, and version control, and rotate every imported secret if it may have been committed or exposed. Do not commit or sync the file. File paths work on Linux only, so use --from-file - on macOS and Windows.
+
+\--on-empty controls empty values in an import: skip, warn, or error. The default is to prompt on an interactive terminal and to error otherwise.
+
+\--sync waits until the next message can use the new values. The current turn keeps the old ones.
+
+Examples:
+
+```bash
+agentengine secret set MONGODB_URI
+secret-manager export-dotenv | agentengine secret set --from-file -
+agentengine secret set API_KEY --workspace-scope
+```
+
+```bash
+agentengine secret set [NAME] [flags]
+```
+
+## Options
+
+```bash
+    --base-url string       Platform base URL
+    --context string        Named context to target (see 'agentengine context list')
+    --description string    Human-readable description of the secret
+    --from-file string      Security warning: import plaintext dotenv secrets from a private temporary Linux file, or - for stdin on any OS
+-h, --help                  help for set
+    --on-empty string       Action for empty values when using --from-file: skip, warn, or error
+    --org-id string         Organization ID
+    --project-id string     Project ID
+    --project-scope         Target project-scoped secrets (the default; explicit alternative to --workspace-scope)
+    --stdin                 Read the entire stdin stream as one secret; use --from-file - for dotenv
+    --sync                  After setting, wait until the next message can use the new secret values
+    --workspace string      Monorepo: target a specific workspace by name (from root agent.yaml)
+    --workspace-id string   Workspace ID
+    --workspace-scope       Target workspace-scoped secrets instead of project-scoped secrets (the default)
+```
+
+## Options inherited from parent commands
+
+```bash
+    --log-file string    override log file path
+    --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+    --no-log             disable file logging
+-q, --quiet              silence stderr below error
+-v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+## SEE ALSO
+
+- [agentengine secret](https://www.mongodb.com/docs/agentengine/cli/agentengine_secret.md#std-label-agentengine_secret) - Secret management commands.

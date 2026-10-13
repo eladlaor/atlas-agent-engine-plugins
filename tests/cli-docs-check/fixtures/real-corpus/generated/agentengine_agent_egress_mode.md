@@ -1,0 +1,47 @@
+## agentengine agent egress mode
+
+Set egress_mode in agent.yaml.
+
+### Synopsis
+
+Set network.egress_mode in agent.yaml.
+
+MODE is deny_all, allow_list, or allow_all. allow_all requires
+--confirm-allow-all and is rejected while that sandbox still lists destinations:
+remove them first, or use allow_list. --confirm-allow-all is valid only with
+allow_all.
+
+This edits the local file and does not change the running workspace. Redeploy
+for the new mode to apply.
+
+Examples:
+  agentengine agent egress mode allow_all --confirm-allow-all
+  agentengine agent egress mode deny_all
+
+```
+agentengine agent egress mode MODE [flags]
+```
+
+### Options
+
+```
+      --component string    Target a single sandbox: agent or tool. Omit to apply to both.
+      --confirm-allow-all   Required acknowledgement when MODE is allow_all.
+  -h, --help                help for mode
+      --workspace string    Monorepo: select a specific workspace by name (from root agent.yaml)
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine agent egress](agentengine_agent_egress.md)	 - Edit the egress allow-list in agent.yaml.
+

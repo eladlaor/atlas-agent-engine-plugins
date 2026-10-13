@@ -1,0 +1,50 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# agentengine agent validate
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+\[Experimental] Validate agent.yaml locally without running the build pipeline.
+
+## Synopsis
+
+Validate agent.yaml against the platform schema, including network policy rules. Catches typos and invalid values that the build pipeline would otherwise reject later.
+
+Default path is ./agent.yaml. Pass a path to validate a file elsewhere, such as a monorepo workspace.
+
+Exits 0 on success, 1 on validation failure, 2 on file/IO errors.
+
+When artifact\_repositories is non-empty, validate also cross-checks pyproject.toml and uv.lock (Python) or package.json, .npmrc, and package-lock.json (TypeScript) beside agent.yaml. Undeclared lockfile URLs are allowed. When signed in, missing or mis-scoped build secrets print warnings to stderr; --strict turns them into exit 1.
+
+Experimental: the flags, output format, and exit codes may change as the validator covers more agent.yaml subtrees. The validation rules come from the same code path the build uses.
+
+This command validates the manifest. Run the feature-validations skill installed by agentengine init to check framework code against the shapes the SDK supports.
+
+```bash
+agentengine agent validate [path] [flags]
+```
+
+## Options
+
+```bash
+-h, --help     help for validate
+    --strict   Treat artifact registry secret warnings as errors (exit 1)
+```
+
+## Options inherited from parent commands
+
+```bash
+    --log-file string    override log file path
+    --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+    --no-log             disable file logging
+-q, --quiet              silence stderr below error
+-v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+## SEE ALSO
+
+- [agentengine agent](https://www.mongodb.com/docs/agentengine/cli/agentengine_agent.md#std-label-agentengine_agent) - Inspect and edit agent configuration.
+
+## Further reading
+
+- [Artifact registry validation](https://www.mongodb.com/docs/agentengine/cli/artifact-registry-validate.md#std-label-artifact-registry-validate)

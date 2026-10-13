@@ -1,0 +1,34 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# agentengine self-update
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+Update this binary to the latest version.
+
+```bash
+agentengine self-update [flags]
+```
+
+## Options
+
+```bash
+    --auto      enable or disable automatic installations of a newer CLI
+-f, --force     download a new CLI even if the current CLI is not out of date
+-h, --help      help for self-update
+-i, --install   deprecated compatibility no-op; self-update installs by default
+```
+
+## Options inherited from parent commands
+
+```bash
+    --log-file string    override log file path
+    --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+    --no-log             disable file logging
+-q, --quiet              silence stderr below error
+-v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+## SEE ALSO
+
+- [agentengine](https://www.mongodb.com/docs/agentengine/cli/agentengine.md#std-label-agentengine) - Agent Engine local development CLI.

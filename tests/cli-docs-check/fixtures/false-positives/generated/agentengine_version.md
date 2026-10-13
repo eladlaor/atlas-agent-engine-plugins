@@ -1,0 +1,40 @@
+## agentengine version
+
+Print the agentengine CLI version.
+
+### Synopsis
+
+Print the agentengine CLI version.
+
+By default only the version is printed. Pass --full to also print the build commit, artifact source and image registry, and the embedded container image defaults.
+
+```
+agentengine version [flags]
+```
+
+### Options
+
+```
+      --full   Also print the build commit, artifact source, image registry, and embedded image defaults
+  -h, --help   help for version
+      --json   Output version information as JSON
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine](agentengine.md)	 - Agent Engine local development CLI.
+
+
+---
+
+Prose — em dashed — naming \--full and --phantom-flag.

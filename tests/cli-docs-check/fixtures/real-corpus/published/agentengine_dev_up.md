@@ -1,0 +1,56 @@
+> For the complete MongoDB documentation index, see www.mongodb.com/docs/llms.txt
+
+# agentengine dev up
+
+MongoDB Atlas Agent Engine is in Public Preview and intended for evaluation and prototyping purposes only. We do not recommend production deployments during preview and expect to communicate breaking changes with you periodically. To learn more about preview feature considerations, see [Preview Features](https://www.mongodb.com/docs/preview-features/).
+
+Start the local dev environment.
+
+## Synopsis
+
+Start the local development stack.
+
+Hot reload is the default: the app container runs the application processes and file watching restarts them on change. --isolated runs one container per process and needs a rebuild for changes.
+
+\--all starts every agent under one UI with shared project services. It supports hot reload only and is rejected with --isolated, --headless, and --with-egress.
+
+The memory-server is configured from the memory: section of a project-config.yaml. A single-agent run uses the nearest one at or above the agent directory, stopping at the repository root, so a workspace file overrides the monorepo root’s. --all reads only the monorepo root’s file. For an agent project, features.memory in agent.yaml also gates whether a memory-server runs. A memory-only project always starts one.
+
+Local egress is on by default. --no-egress skips the CONNECT proxy and opens the internet. --with-egress is a deprecated alias that forces the proxy on.
+
+Agents that declare artifact\_repositories get registry auth for private PyPI indexes, resolved from a UV\_INDEX\_\* override, then a .env secret, then a minted AWS CodeArtifact token. --no-artifact-auth leaves UV\_INDEX\_\* credentials to you.
+
+```bash
+agentengine dev up [flags]
+```
+
+## Options
+
+```bash
+    --all                Monorepo: start all agents under a single UI
+    --headless           Omit the playground UI service (for CI and automated testing)
+-h, --help               help for up
+    --isolated           Run each process in its own container to simulate production
+    --local-sdk string   Install SDK from local source instead of pre-built wheels.
+                         Also hot-reloads playground UI (unless --headless) from the same SDK checkout.
+                         Pass the path to the client-libraries checkout root.
+    --no-artifact-auth   Skip auto-configuring registry auth for declared artifact_repositories
+    --no-cache           Build images without Docker layer cache
+    --no-egress          Do not start the local CONNECT proxy (open internet)
+    --with-egress        Force local egress even if preflight would skip (deprecated alias; default is on)
+    --workspace string   Monorepo: target a specific agent by name (from root agent.yaml)
+```
+
+## Options inherited from parent commands
+
+```bash
+    --log-file string    override log file path
+    --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+    --no-log             disable file logging
+-q, --quiet              silence stderr below error
+-v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+## SEE ALSO
+
+- [agentengine dev](https://www.mongodb.com/docs/agentengine/cli/agentengine_dev.md#std-label-agentengine_dev) - Local dev environment commands.

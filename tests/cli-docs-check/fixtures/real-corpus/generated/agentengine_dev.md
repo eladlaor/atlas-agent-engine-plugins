@@ -1,0 +1,43 @@
+## agentengine dev
+
+Local dev environment commands.
+
+### Synopsis
+
+Manage the local development environment.
+
+Two modes are available:
+
+  Hot reload (default):  One app container runs the application processes and
+                         file watching restarts them on change.
+  Isolated (--isolated): One container per process, matching the production
+                         topology. Changes require a rebuild.
+
+### Options
+
+```
+  -h, --help   help for dev
+```
+
+### Options inherited from parent commands
+
+```
+      --log-file string    override log file path
+      --log-level string   file log verbosity (error|warn|info|debug) (default "info")
+      --no-log             disable file logging
+  -q, --quiet              silence stderr below error
+  -v, --verbose count      raise stderr verbosity (-v info, -vv debug)
+```
+
+### SEE ALSO
+
+* [agentengine](agentengine.md)	 - Agent Engine local development CLI.
+* [agentengine dev clean](agentengine_dev_clean.md)	 - Stop containers and remove generated local artifacts.
+* [agentengine dev login](agentengine_dev_login.md)	 - Log the local container tooling in to the platform image registry.
+* [agentengine dev logs](agentengine_dev_logs.md)	 - Follow logs from agent services.
+* [agentengine dev mcp](agentengine_dev_mcp.md)	 - Prepare remote MCP server credentials for agentengine dev.
+* [agentengine dev restart](agentengine_dev_restart.md)	 - Restart the hot-reload app container.
+* [agentengine dev status](agentengine_dev_status.md)	 - Show the running state of local dev services.
+* [agentengine dev stop](agentengine_dev_stop.md)	 - Stop running agent services.
+* [agentengine dev up](agentengine_dev_up.md)	 - Start the local dev environment.
+
