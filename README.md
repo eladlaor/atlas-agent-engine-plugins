@@ -52,6 +52,7 @@ One plugin, `aae`:
 | `aae-scout` | Skill | A cheap check before building anything: confirms the docs and CLI are current, then whether the platform, CLI, SDK, official examples or your repo already do it. Answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence. |
 | `aae-add-agent` | Skill | Adds one agent to an existing AAE monorepo. `agentengine create` only scaffolds whole new projects. |
 | `aae-delete-agent` | Skill | Tears one agent down completely. `workspace delete` alone leaves secrets, sessions and the database user behind. |
+| `aae-rename-atlas-cluster` | Skill | Atlas clusters cannot be renamed, so this runs the migration that stands in for one: preflight, create the target, move the data and rebuild the Search indexes, re-link the platform, rotate `MONGODB_URI`, redeploy, verify. The additive phases run unattended; the cutover takes one confirmation, and the old cluster is never deleted for you. |
 | `aae-docs-watch` | Skill | Checks the AAE docs on demand, either by comparing page hashes with the last run or by reading the publishing repository's git history. Detection is deterministic with no AI involved; the model reads only the per-page diffs, and only when something changed. |
 | CLI reference guard | Script | `aae-cli-docs-check.sh` compares the `agentengine` binary's own command tree against the published CLI reference pages and exits non-zero if they disagree. Zero drift across 117 commands at CLI 0.1.118. |
 | Session-start notice | Hook | Tells you once, at session start, when the docs changed, and whether the knowledge base was already updated from them. Also warns, once a day, when the watcher or the automatic update is failing. |
@@ -112,7 +113,7 @@ when asked**. Until you do, Codex skips it and you get no session-start notices.
 | `atlas-cli` | A **subagent**, with its own per-user memory directory | A **skill**: the same instructions, loaded into your main conversation, with **no** memory across sessions |
 | `aae-scout` | A **skill**, with its verdict and utility-candidate ledgers in `~/.local/state/aae-scout/` | Same, sharing the same ledgers |
 | `aae-scout` freshness gate | Reads the docs watcher's state | Same |
-| `aae-add-agent`, `aae-delete-agent`, `aae-kb-read`, `aae-kb-update`, `aae-docs-watch` skills | Yes | Yes, the same files |
+| `aae-add-agent`, `aae-delete-agent`, `aae-rename-atlas-cluster`, `aae-kb-read`, `aae-kb-update`, `aae-docs-watch` skills | Yes | Yes, the same files |
 | Session-start notice that the docs changed | Runs automatically | Runs **only after you trust the hook**, and again after each update that changes it |
 | Scheduled daily docs crawl | Opt-in, via macOS `launchd` | Same: opt-in, via macOS `launchd` |
 | `--update-kb` runner | `claude -p`, tested | `codex exec`, **untested** |

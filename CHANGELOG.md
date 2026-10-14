@@ -14,6 +14,17 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Added
 
+- `aae-rename-atlas-cluster`: a skill for the request Atlas cannot satisfy directly. Clusters
+  cannot be renamed — not in the UI, the Admin API, or `atlas clusters update`, where the name
+  is the path identifier rather than a mutable field — so the skill runs the migration that
+  stands in for one: preflight, create the target, move the data and rebuild the Search
+  indexes, re-link the platform, rotate `MONGODB_URI`, redeploy, and verify on a reused
+  session id. Additive phases run unattended; the cutover takes one confirmation and the
+  source cluster is never deleted automatically.
+- `scripts/aae-cluster-rename-preflight.sh`: the read-only go/no-go behind that skill. It
+  rejects a user-account Atlas credential, whose refresh token expires mid-migration, and
+  requires a service account; it also catches a paused or free-tier source, a target name
+  already taken, and a source with no Cloud Backup to restore from.
 - `aae-kb-update`: a third mode, `direct`, which takes a finding stated in the invocation
   itself, verifies it against the docs, the CLI or the OpenAPI spec, works out which
   reference file owns it, and files it there after approval. Until now the only route for a

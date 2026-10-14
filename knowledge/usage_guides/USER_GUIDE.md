@@ -47,8 +47,9 @@ One plugin, `aae`, with two halves that belong together.
 **The guide.** It centres on **`aae-guide`**, the specialist for Atlas Agent Engine — the
 runtime model, the SDK surface, the config contract, and the failure modes. In Claude
 Code it is a subagent; in Codex, a skill. Alongside it: the `aae-kb-read` base, the
-`aae-kb-update` skill that keeps it current, the `aae-scout` skill, and the
-`aae-add-agent` / `aae-delete-agent` skills.
+`aae-kb-update` skill that keeps it current, the `aae-scout` skill, the
+`aae-add-agent` / `aae-delete-agent` skills, and `aae-rename-atlas-cluster` for the
+cluster rename Atlas does not offer.
 
 **The docs watcher.** The `aae-docs-watch` skill, a session-start hook and an optional
 daily job answer "did the AAE docs change?" mechanically instead of by guessing. AAE is in Public Preview
