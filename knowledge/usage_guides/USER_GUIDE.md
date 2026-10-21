@@ -11,6 +11,7 @@
 - [How do I type `ae` instead of `agentengine`?](#how-do-i-type-ae-instead-of-agentengine)
 - [Why a symlink instead of a shell alias?](#why-a-symlink-instead-of-a-shell-alias)
 - [How do I know when the AAE docs change?](#how-do-i-know-when-the-aae-docs-change)
+  - [Why does the hook ask GitHub instead of being notified of a change?](#why-does-the-hook-ask-github-instead-of-being-notified-of-a-change)
 - [How do I check I'm not rebuilding something AAE already does?](#how-do-i-check-im-not-rebuilding-something-aae-already-does)
 - [How does change detection actually work?](#how-does-change-detection-actually-work)
 - [Why does it crawl every page instead of checking a timestamp?](#why-does-it-crawl-every-page-instead-of-checking-a-timestamp)
@@ -246,12 +247,39 @@ afterthought.
 
 ## How do I know when the AAE docs change?
 
-At the start of a session, a `SessionStart` hook reads the watcher's last result.
-If pages changed, you get a one-line notice, and Claude separately receives the
-list of changed pages so it knows to re-read them before answering.
+At the start of a session, a `SessionStart` hook does two things:
 
-Each result is announced **once**. After it is shown, it is marked acknowledged
-so it does not repeat in every future session.
+1. **It asks GitHub whether anything landed.** `aae-docs-probe.sh` sends one request for
+   the commits under `content/agentengine` in the public `mongodb/docs` repository, newer
+   than the last one it saw. New commits produce a one-line notice, and Claude receives
+   each commit's date and subject. This takes about a second, at most once per 15 minutes
+   (`AAE_WATCH_PROBE_MIN_MINUTES`), and needs no account.
+2. **It reads the watcher's last result.** If the last crawl found changed pages, you get a
+   one-line notice, and Claude separately receives the list of changed pages so it knows
+   to re-read them before answering.
+
+Each is announced **once**, then marked shown so it does not repeat in every future
+session. The probe names commits; the crawl names pages and diffs. So a change can be
+announced twice: first as a commit at session start, then as changed pages after the
+next crawl. Set `AAE_WATCH_ON_SESSION=off` for a hook with no network calls at all.
+
+### Why does the hook ask GitHub instead of being notified of a change?
+
+Because nothing can notify a coding agent on your laptop. A push notification, such as a
+webhook, is an HTTP request the sender makes to *your* address, and a laptop has no public
+address. So a local agent has to ask, and the cheapest moment to ask is when a session
+starts, before it answers anything.
+
+**The misunderstanding to avoid:** thinking GitHub's "watch" button or a repository webhook
+could do this instead. Watching sends *you* notifications about issues, pull requests and
+releases, never about ordinary commits, and `mongodb/docs` publishes no releases. A webhook
+can be added only by the repository's admins, and would still need a public address to
+deliver to.
+
+Asking is also cheap. The hook sends back the tag GitHub gave its last answer (an ETag),
+and when nothing changed GitHub answers "not modified" with no body. Without an account
+GitHub allows 60 requests an hour per IP address, and a "not modified" answer still
+counts, which is why the probe waits at least 15 minutes between requests.
 
 You can also ask at any time: *"check the AAE docs"* invokes the `aae-docs-watch`
 skill, which runs the watcher and explains the diff.
@@ -412,9 +440,10 @@ Without that, a second run would replace the morning's list of changes with "cle
 because the baseline already moved. To crawl again anyway, run the watcher with `--full`
 alone.
 
-If you would rather not use launchd, set `AAE_WATCH_ON_SESSION=quick` and the
-session hook will run the ~1s inventory check itself when its state is more than
-24 hours old. The full crawl is deliberately never run from the hook, because
+Without launchd, the session hook's probe still tells you when new commits land, but not
+which pages they changed. `AAE_WATCH_ON_SESSION=quick` replaces the probe with the older ~1s
+inventory check, run when its state is more than 24 hours old, which catches only pages
+added or removed. The full crawl is deliberately never run from the hook, because
 `SessionStart` hooks delay Claude's first reply.
 
 ## Where does state live?
@@ -444,6 +473,11 @@ plugin updates and is shared by Claude Code, Codex and the launchd job.
 | `kb-update-notes-before.md` | Copy of your notes taken before the last automatic update, to undo a bad edit |
 | `notes-pending.md` | The runner's notes updates; appended to your notes after a successful run, so you see it only if that append failed |
 | `kb-update-skill.md`, `kb-baseline/` | Inputs copied in for the runner: the skill, and a read-only copy of the shipped knowledge base when no clone is set |
+| `probe-seen` | The newest `content/agentengine` commit the session-start probe has recorded — its baseline |
+| `probe-etag` | The tag of GitHub's last answer, sent back so an unchanged answer is "not modified" |
+| `probe-checked` | Its modification time is the last successful probe, for the 15-minute throttle |
+| `probe-pending.json` | Commits the probe found that the hook has not shown yet |
+| `probe-error` | Time and message of the last failed probe; removed by the next successful one |
 
 Override the location with `AAE_WATCH_STATE_DIR` — useful for testing against a
 throwaway directory.
@@ -459,7 +493,8 @@ Work through these in order:
 3. **Nothing actually changed.** `status=clean` means the crawl succeeded and
    every hash matched.
 4. **The watcher is failing.** You'd get a once-a-day notice saying so, also when only
-   the automatic knowledge-base update failed. Check `install-schedule.sh status` (it
+   the automatic knowledge-base update or the session-start probe failed (see
+   `probe-error`; a `403` there means GitHub's hourly limit for your IP address). Check `install-schedule.sh status` (it
    prints the last error of each) and `~/Library/Logs/aae-docs-watch/err.log`.
 5. **Nothing is scheduled.** Without launchd, state only refreshes when you run
    the watcher or invoke the skill. Check `install-schedule.sh status`.

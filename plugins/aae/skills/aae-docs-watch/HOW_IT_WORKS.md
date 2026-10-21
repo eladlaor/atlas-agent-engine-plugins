@@ -2,6 +2,7 @@
 
 - [Summary](#summary)
 - [How do the pieces fit together?](#how-do-the-pieces-fit-together)
+- [Why does the session-start hook make a request at all?](#why-does-the-session-start-hook-make-a-request-at-all)
 - [Why read git history instead of the pages?](#why-read-git-history-instead-of-the-pages)
 - [What does the git-sourced detector cost, and what does it not do?](#what-does-the-git-sourced-detector-cost-and-what-does-it-not-do)
 - [What does `--update-kb` add?](#what-does---update-kb-add)
@@ -12,26 +13,28 @@
 A shell script detects changes to the AAE docs with no AI involved, so detecting a change
 costs no AI tokens. Two detectors exist: the scheduled default reads the git history of
 the public repository the docs are published from, and the original hashes every
-published page and compares the hashes with the last run. A session-start hook tells you once when
-something changed, and warns once a day if the watcher is failing. Optionally, a daily
+published page and compares the hashes with the last run. A session-start hook asks GitHub, in
+one request, whether new commits landed, tells you once when something changed, and warns
+once a day if the watcher is failing. Optionally, a daily
 `launchd` job runs the check on your Mac, and the opt-in `--update-kb` flag updates the
 knowledge base when the docs changed. Commands and the state-file layout are in the
 [user guide](../../../../knowledge/usage_guides/USER_GUIDE.md).
 
 ## How do the pieces fit together?
 
-Three separate pieces. The session-start hook does **not** crawl anything; it only reads
-the result of the last crawl.
+Separate pieces. The session-start hook does **not** crawl anything: it sends one request
+to learn whether commits landed, and reads the result of the last crawl.
 
 | Piece | Runs | Does |
 |---|---|---|
 | **The git-sourced check** (`aae-docs-watch-git.sh`) | Daily at 10:00 via `launchd` if you [schedule it](../../../../README.md#optional-extras), retried hourly until it succeeds; or when you ask. **This is what the schedule runs** | Fetches the publishing repository, resolves the changed pages from the commit range, writes `report.json`, per-page diffs and a `changes-summary.md`. With `--update-kb`, then starts the knowledge-base update if anything changed. See [below](#why-read-git-history-instead-of-the-pages) |
-| **The session-start hook** | When a session starts | Reads `report.json`. If it says `changes` and you haven't been told yet, shows a one-line notice, once, including the update's summary when there was one. Also warns, once a day, if the watcher or the update is failing |
+| **The session-start probe** (`aae-docs-probe.sh`) | When a session starts, at most once per 15 minutes; or when you ask | One request to GitHub's commits API, filtered to `content/agentengine`. Records commits newer than the last one it saw in `probe-pending.json`. Names commits, not pages. See [below](#why-does-the-session-start-hook-make-a-request-at-all) |
+| **The session-start hook** | When a session starts | Runs the probe, then reads `probe-pending.json` and `report.json`. Shows new commits, and a crawl that found `changes`, once each, including the update's summary when there was one. Also warns, once a day, if the watcher, the probe or the update is failing |
 | **The hashing crawl** (`aae-docs-watch.sh`) | Only if you select it with `AAE_WATCH_IMPL=hash`, or when you ask | Fetches every docs page and compares hashes with the baseline, writing the same `report.json` and per-page diffs. Also supports `--update-kb`. Useful where a clone is unwelcome |
 | **The `aae-docs-watch` skill** | When you ask ("check the AAE docs") | Runs a check on demand and explains the diffs |
 
-Without a schedule or a request, nothing new is detected; the hook keeps reading the old
-result.
+Without a schedule or a request, the probe still notices new commits at session start,
+but nothing resolves them to pages; the hook keeps reading the old crawl result.
 
 What updates on its own, and what doesn't:
 
@@ -47,6 +50,31 @@ What updates on its own, and what doesn't:
 - **A broken watcher is announced.** If the last check failed, or no check has succeeded
   for over a day while the schedule is installed, the session-start notice says so, once
   a day. Silence therefore means "checked, no changes", never "not checked".
+
+## Why does the session-start hook make a request at all?
+
+Because a coding agent on your laptop cannot be notified of a change; it has to ask. A
+push notification such as a webhook is a request the sender makes to *your* address, and a
+laptop has no public one. Asking when a session starts is the cheapest moment that still
+comes before the agent answers anything.
+
+The question is as small as it can be. `aae-docs-probe.sh` sends one request to GitHub's
+commits API for `mongodb/docs`, filtered to `content/agentengine`, and sends back the ETag
+of the previous answer. Unchanged upstream answers `304` with no body. New commits go to
+`probe-pending.json`, and the hook shows their dates and subjects once. Measured on
+2026-10-21: about 1.2s for the whole hook, live.
+
+**The misunderstanding to avoid:** reading the probe as a replacement for the crawl. It names
+commits, not pages: it cannot say which published pages a shared include or a
+`snooty.toml` edit changed, and it writes no diffs. It tells the agent *that* the docs moved,
+so it re-reads before answering; the git detector says *what* moved. A change can therefore
+be announced twice, first as a commit, then as changed pages after the next crawl.
+
+Two limits shape it. Without a token GitHub allows 60 requests an hour per IP address, and
+a `304` still counts, so the probe waits at least 15 minutes between requests
+(`AAE_WATCH_PROBE_MIN_MINUTES`). And a failed probe (offline, rate-limited, timed out after
+4 seconds) never blocks the session: it is written to `probe-error` and named in the
+once-a-day health notice. `AAE_WATCH_ON_SESSION=off` turns the request off entirely.
 
 ## Why read git history instead of the pages?
 
@@ -98,17 +126,17 @@ What it deliberately does not change:
   runner, the `aae-scout` freshness gate and the `launchd` job are untouched. The test
   suite proves this by feeding a git-produced report to the real `session-notice.sh` and
   `install-schedule.sh`.
-- **What runs on a schedule.** The hashing watcher is still present and is still what the
-  `launchd` job runs. Switching the scheduled job over, and removing the hashing path, has
-  not happened yet; until it does, the git detector is something you run explicitly.
+- **The hashing path.** The scheduled job runs the git detector by default. The hashing
+  watcher is still present and still supported: install the schedule with
+  `AAE_WATCH_IMPL=hash` to run it instead, on machines where the clone is unwelcome.
 
 Alongside it, `aae-cli-docs-check.sh` guards a different axis: it generates the CLI's own
 command reference from the installed binary and compares it with the published `cli/`
 pages, exiting `30` if they disagree. Measured at zero drift across 117 commands on CLI
 0.1.118, so a clean run is the expected result and anything else is news.
 
-Both are covered by dependency-free shell suites: `tests/run-tests.sh` (27 tests) and
-`tests/cli-docs-check/run-tests.sh` (19 tests).
+Both are covered by dependency-free shell suites: `tests/run-tests.sh` (55 tests, including
+the session-start probe) and `tests/cli-docs-check/run-tests.sh` (19 tests).
 
 ## What does `--update-kb` add?
 

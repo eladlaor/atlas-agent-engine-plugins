@@ -16,7 +16,8 @@ path. Any AAE answer given from memory risks being stale, so this skill turns
 
 ## How detection works
 
-There are two detectors with the same output contract and two different sources.
+There are two detectors with the same output contract and two different sources, plus
+a one-request probe that only says whether anything landed.
 
 **From the published site (`aae-docs-watch.sh`), by content hashing:**
 
@@ -46,7 +47,17 @@ There are two detectors with the same output contract and two different sources.
   costs roughly 30 seconds and 165 MB on disk; later runs are a cheap
   `git fetch`.
 
-**Which to run.** Prefer `aae-docs-watch-git.sh` when the user asks what changed,
+**From GitHub's API, in one request (`aae-docs-probe.sh`):**
+
+- The fastest "did anything land?": one request to GitHub's commits API for
+  `mongodb/docs`, filtered to `content/agentengine`. No clone, no credentials, about
+  a second. An unchanged upstream answers `304` to the stored ETag.
+- It names **commits** (date, subject), never pages. Resolving them to pages and
+  diffs is the git detector's job.
+- The `SessionStart` hook runs it by default, at most once per 15 minutes: without a
+  token GitHub allows 60 requests an hour per IP address, and a `304` still counts.
+
+**Which to run.** For "anything new?", run the probe. Prefer `aae-docs-watch-git.sh` when the user asks what changed,
 when the answer needs dates or provenance, or when a shared include or the site
 banner may be involved. Use `aae-docs-watch.sh` when git is unavailable, when the
 165 MB clone is unwanted.
@@ -95,8 +106,19 @@ The git-sourced detector takes the same flags and writes the same files:
 "${PLUGIN_DIR}/scripts/aae-docs-watch-git.sh" --quick
 ```
 
-It has no `--update-kb` / `--kb-update-only`: those stay on the hashing watcher,
-which can be run with `--kb-update-only` against whichever report is current.
+The probe takes no flags. Exit codes: `0` nothing new (or baseline recorded), `10` new
+commits, written to `probe-pending.json`, `20` throttled, `1` error, written to
+`probe-error`. Set `AAE_WATCH_PROBE_MIN_MINUTES=0` to bypass the throttle when the user
+asks for a fresh answer.
+
+```bash
+# One request: did commits land under content/agentengine since the last probe? ~1s.
+"${PLUGIN_DIR}/scripts/aae-docs-probe.sh"
+```
+
+On exit `10`, read `probe-pending.json`, lead with the commit subjects, then run the git
+detector with `--full --skip-if-ran-today` if the user wants the page-level diff. Reading
+the file here does not clear it; the hook still shows it once at the next session start.
 
 Separately, `aae-cli-docs-check.sh` compares the `agentengine` binary's
 self-generated command tree against the published `cli/` pages. It prints nothing
@@ -115,7 +137,8 @@ already ran (the time is in `last-full-run`), then report from the existing
 `report.json` and `diffs/` exactly as for a fresh run. Do not force a re-crawl to
 "refresh" it: a second crawl the same day replaces the morning's changes with "clean",
 because the baseline has already moved. Force with `--full` alone only when the user
-explicitly asks to run it again. Use `--quick` only for a fast "anything new?". The first run on a fresh machine records a baseline and reports no
+explicitly asks to run it again. For a fast "anything new?", run the probe instead of
+`--quick`. The first run on a fresh machine records a baseline and reports no
 changes — say so rather than implying the docs are unchanged.
 
 ### `--update-kb`: apply the changes to the knowledge base
@@ -166,6 +189,9 @@ Codex alike:
 | `kb-update-notes-before.md` | Copy of the personal notes taken before the last automatic update |
 | `notes-pending.md` | The runner's notes updates; the watcher appends them to the notes after a successful run. Present only if that append failed |
 | `kb-update-skill.md`, `kb-baseline/` | Inputs staged for the runner: the skill, and a read-only knowledge-base copy when no clone is set |
+| `probe-seen`, `probe-etag`, `probe-checked` | The probe's baseline commit, the ETag sent back as `If-None-Match`, and the time of its last success (throttle) |
+| `probe-pending.json` | Commits the probe found that the hook has not shown yet: `truncated` (more may exist) and `commits` (`sha`, `date`, `subject`, `url`), newest first |
+| `probe-error` | Time and message of the last failed probe; removed by the next success |
 
 After a git-sourced run, read `changes-summary.md` first: it names the commits
 behind the change and collapses a CLI-reference regeneration into one line.
@@ -201,8 +227,9 @@ of the `aae-kb-update` skill beside it, because the plugin's own folder is versi
 an update can delete it. If `status` reports either copy as out of date or missing, tell
 the user and re-run `install` (with `--update-kb` again if they had it on).
 
-The `SessionStart` hook then reports any pending result once, and marks it
-acknowledged so it does not repeat every session.
+The `SessionStart` hook then runs the probe, reports any new commits and any pending crawl
+result once each, and marks them shown so they do not repeat every session.
+`AAE_WATCH_ON_SESSION=off` stops it from making any network request.
 
 ## Handing off
 

@@ -25,6 +25,11 @@ is why their headers carry a separate "Plugin version:" line.
   rejects a user-account Atlas credential, whose refresh token expires mid-migration, and
   requires a service account; it also catches a paused or free-tier source, a target name
   already taken, and a source with no Cloud Backup to restore from.
+- `aae-docs-probe.sh`: one request to GitHub's commits API, filtered to `content/agentengine`
+  in `mongodb/docs`, that records commits landed since the last check. No clone, no
+  credentials, about a second; an unchanged upstream answers `304` to the stored ETag. It
+  waits at least 15 minutes between requests (`AAE_WATCH_PROBE_MIN_MINUTES`) and records a
+  failure in `probe-error`. Covered by twelve tests against a fixture GitHub server.
 - `aae-kb-update`: a third mode, `direct`, which takes a finding stated in the invocation
   itself, verifies it against the docs, the CLI or the OpenAPI spec, works out which
   reference file owns it, and files it there after approval. Until now the only route for a
@@ -57,6 +62,11 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Changed
 
+- The session-start hook now runs the probe by default and shows new commits once, in both
+  the user notice and the model's context. It used to make no network request, so a local
+  agent learned of a docs change only after the next crawl. `AAE_WATCH_ON_SESSION=off`
+  restores the offline hook; a failed probe never blocks the session and appears in the
+  once-a-day health notice.
 - The behaviour spec now describes both detectors. It had no mention of the git-sourced one
   at all, while that is what the schedule runs, and it asserted that hashing was the only
   dependable method — true of the published site, not of the repository behind it. FR-1 to
@@ -85,6 +95,9 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Fixed
 
+- `HOW_IT_WORKS.md` said the scheduled job still runs the hashing watcher; it has run the
+  git detector by default since 0.8.0. Its test count was also stale.
+- The `aae-docs-watch` skill said the git detector has no `--update-kb`; it has.
 - `deploy logs <id>` is read-only, and `deploy cancel` exists and is mutating. The drift log,
   the CLI-targeting reference and the troubleshooting reference all stated that only
   `deploy list` and `deploy get` were safe, which pushed a documented read-only subcommand out

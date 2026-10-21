@@ -8,10 +8,15 @@
 # opt-in --update-kb run already applied that change to the knowledge base, the
 # notice says so and carries the update's summary (kb-update.md).
 #
-# This hook does NO network work by default: SessionStart hooks delay Claude's
-# first reply, so the crawl belongs in the scheduled job, not here. Set
-# AAE_WATCH_ON_SESSION=quick to allow a ~1s inventory-only check when state is
-# stale.
+# It never crawls: SessionStart hooks delay Claude's first reply, so the crawl
+# belongs in the scheduled job. By default it runs aae-docs-probe.sh, ONE request
+# to GitHub asking whether commits landed under content/agentengine since the
+# last probe (at most once per 15 minutes), and shows any new commits once. A
+# local agent cannot be pushed to, so asking at session start is how it learns
+# of a change before answering. AAE_WATCH_ON_SESSION selects the network work:
+#   probe (default)  the one-request probe
+#   quick            the older ~1s inventory-only check, when state is stale
+#   off              no network work at all
 #
 # It also says when the watcher itself is broken: a failed run (last-error), a
 # failed knowledge-base update (kb-update-error), or no successful full crawl for
@@ -40,6 +45,9 @@ readonly KB_SUMMARY_FILE="${STATE_DIR}/kb-update.md"
 readonly KB_ERROR_FILE="${STATE_DIR}/kb-update-error"
 readonly BROKEN_HOURS="${AAE_WATCH_BROKEN_HOURS:-30}"
 readonly SCHEDULE_PLIST="${HOME}/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist"
+readonly PROBE_PENDING_FILE="${STATE_DIR}/probe-pending.json"
+readonly PROBE_ERROR_FILE="${STATE_DIR}/probe-error"
+readonly SESSION_MODE="${AAE_WATCH_ON_SESSION:-probe}"
 
 # python3 builds the hook's JSON payload and reads report.json. Without it this hook
 # cannot say anything at all, so say *that* once, on stderr, rather than exiting 0 and
@@ -63,8 +71,14 @@ print(json.dumps({
 PY
 }
 
-# Optional cheap refresh when the state is stale.
-if [ "${AAE_WATCH_ON_SESSION:-}" = "quick" ]; then
+# The one-request probe. Its failures land in probe-error, reported below.
+if [ "$SESSION_MODE" = "probe" ]; then
+  probe="$(dirname "$0")/aae-docs-probe.sh"
+  [ -x "$probe" ] && AAE_WATCH_QUIET=1 "$probe" >/dev/null 2>&1
+fi
+
+# The older inventory-only refresh when the state is stale.
+if [ "$SESSION_MODE" = "quick" ]; then
   watcher="$(dirname "$0")/aae-docs-watch.sh"
   if [ -x "$watcher" ]; then
     needs_run=1
@@ -104,6 +118,63 @@ if [ "$(cat "$HEALTH_ACK_FILE" 2>/dev/null)" != "$today" ]; then
     HEALTH_SYS="${HEALTH_SYS:+${HEALTH_SYS} }AAE docs watcher: the automatic knowledge-base update failed: ${kb_problem}. Retry with aae-docs-watch.sh --kb-update-only, or run the aae-kb-update skill in docs mode."
     HEALTH_CTX="${HEALTH_CTX:+${HEALTH_CTX}
 }The opt-in automatic knowledge-base update did not complete: ${kb_problem}. The docs changes in the watcher's report have not been applied to the aae-kb-read knowledge base or the personal notes; do not assume they were."
+  fi
+  if [ -f "$PROBE_ERROR_FILE" ]; then
+    probe_problem="$(cut -f2- "$PROBE_ERROR_FILE" 2>/dev/null) (at $(cut -f1 "$PROBE_ERROR_FILE" 2>/dev/null))"
+    HEALTH_SYS="${HEALTH_SYS:+${HEALTH_SYS} }AAE docs probe failed: ${probe_problem}. New docs commits since then are unknown."
+    HEALTH_CTX="${HEALTH_CTX:+${HEALTH_CTX}
+}The session-start docs probe failed: ${probe_problem}. Whether the AAE docs changed since the last successful probe is unknown; verify AAE API details against the live docs."
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Part 1b: commits the probe found, once.
+# ---------------------------------------------------------------------------
+PROBE_SYS=""
+PROBE_CTX=""
+if [ -f "$PROBE_PENDING_FILE" ]; then
+  probe_notice="$(python3 - "$PROBE_PENDING_FILE" "$MAX_LISTED" <<'PY' 2>/dev/null
+import json, sys
+
+pending_path, max_listed = sys.argv[1], int(sys.argv[2])
+with open(pending_path) as fh:
+    pending = json.load(fh)
+commits = pending["commits"]
+if not commits:
+    sys.exit(1)
+
+n = len(commits)
+more = "+" if pending.get("truncated") else ""
+newest = commits[0]
+noun = "commit" if n == 1 and not more else "commits"
+system_message = (
+    f"AAE docs: {n}{more} new {noun} upstream since the last check "
+    f"(latest {newest['date'][:10]}: {newest['subject']}). "
+    "Ask aae-guide, or run /aae-docs-watch for the page diffs."
+)
+lines = [
+    "The MongoDB Atlas Agent Engine documentation source (github.com/mongodb/docs, "
+    f"path content/agentengine) has {n}{more} new {noun} since the last session-start check:",
+]
+for c in commits[:max_listed]:
+    lines.append(f"  - {c['date'][:10]} {c['sha'][:7]} {c['subject']}")
+if n > max_listed:
+    lines.append(f"  - …and {n - max_listed} more")
+if more:
+    lines.append("More commits may exist beyond these.")
+lines += [
+    "",
+    "These are commits, not yet resolved to published pages. Before asserting AAE API "
+    "details these subjects touch, re-read the affected docs pages (append .md to the "
+    "docs URL for clean markdown), or run the aae-docs-watch skill's git detector "
+    "(aae-docs-watch-git.sh --full) for page-level diffs.",
+]
+json.dump({"system": system_message, "context": "\n".join(lines)}, sys.stdout)
+PY
+)"
+  if [ -n "$probe_notice" ]; then
+    PROBE_SYS="$(printf '%s' "$probe_notice" | python3 -c 'import json,sys;print(json.load(sys.stdin)["system"])' 2>/dev/null)"
+    PROBE_CTX="$(printf '%s' "$probe_notice" | python3 -c 'import json,sys;print(json.load(sys.stdin)["context"])' 2>/dev/null)"
   fi
 fi
 
@@ -188,11 +259,15 @@ PY
   fi
 fi
 
-[ -n "${HEALTH_SYS}${CHANGES_SYS}" ] || exit 0
+[ -n "${HEALTH_SYS}${PROBE_SYS}${CHANGES_SYS}" ] || exit 0
 
 SYS="${HEALTH_SYS}"
+[ -n "$PROBE_SYS" ] && SYS="${SYS:+${SYS} }${PROBE_SYS}"
 [ -n "$CHANGES_SYS" ] && SYS="${SYS:+${SYS} }${CHANGES_SYS}"
 CTX="${HEALTH_CTX}"
+[ -n "$PROBE_CTX" ] && CTX="${CTX:+${CTX}
+
+}${PROBE_CTX}"
 [ -n "$CHANGES_CTX" ] && CTX="${CTX:+${CTX}
 
 }${CHANGES_CTX}"
@@ -201,5 +276,6 @@ emit "$SYS" "$CTX" || exit 0
 
 # Mark shown so the same notice does not nag on every future session.
 [ -n "$HEALTH_SYS" ] && printf '%s\n' "$today" > "$HEALTH_ACK_FILE"
+[ -n "$PROBE_SYS" ] && rm -f "$PROBE_PENDING_FILE"
 [ -n "$CHANGES_SYS" ] && touch "$ACK_FILE"
 exit 0

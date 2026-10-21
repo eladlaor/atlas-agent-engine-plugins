@@ -80,6 +80,7 @@ new_sandbox() {
 
 cleanup_sandbox() {
   stop_server
+  stop_gh_server
   [ -n "$SANDBOX" ] && [ -d "$SANDBOX" ] && rm -rf "$SANDBOX"
   SANDBOX=""
 }
@@ -270,6 +271,108 @@ run_git_watcher() {
     AAE_WATCH_NO_FETCH_PAGES=1 \
     AAE_WATCH_QUIET=1 \
     "${REPO_ROOT}/plugins/aae/scripts/aae-docs-watch-git.sh" "$@" 2>"${SANDBOX}/stderr.log"
+  )"
+  RUN_RC=$?
+  set -e
+}
+
+# --------------------------------------------------------------------------
+# GitHub API fixture for the session-start probe
+# --------------------------------------------------------------------------
+#
+# A real HTTP server, for the same reason as the docs fixture: the probe
+# branches on the status code. It serves gh/commits.json with an ETag derived
+# from the body, answers 304 to a matching If-None-Match, and answers with the
+# code in gh/status (and a GitHub-style error body) when that file exists.
+# Every request is logged to gh/requests.log as "<path> <If-None-Match>".
+
+GH_API=""
+GH_SERVER_PID=""
+
+# gh_commits <sha|date|subject>... — newest first, as GitHub returns them.
+gh_commits() {
+  mkdir -p "${SANDBOX}/gh"
+  python3 - "$@" > "${SANDBOX}/gh/commits.json" <<'PY'
+import json, sys
+out = []
+for spec in sys.argv[1:]:
+    sha, date, subject = spec.split("|", 2)
+    out.append({
+        "sha": sha,
+        "html_url": f"https://github.com/mongodb/docs/commit/{sha}",
+        "commit": {"message": subject + "\n\nbody", "committer": {"date": date}},
+    })
+json.dump(out, sys.stdout)
+PY
+}
+
+start_gh_server() {
+  mkdir -p "${SANDBOX}/gh"
+  : > "${SANDBOX}/gh/requests.log"
+  cat > "${SANDBOX}/gh/server.py" <<'PY'
+import hashlib, http.server, os, sys
+root = sys.argv[2]
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        inm = self.headers.get("If-None-Match", "-")
+        with open(os.path.join(root, "requests.log"), "a") as fh:
+            fh.write(f"{self.path} {inm}\n")
+        status_file = os.path.join(root, "status")
+        if os.path.exists(status_file):
+            code = int(open(status_file).read().strip())
+            body = b'{"message":"API rate limit exceeded"}'
+            self.send_response(code); self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body))); self.end_headers()
+            self.wfile.write(body); return
+        body = open(os.path.join(root, "commits.json"), "rb").read()
+        etag = 'W/"' + hashlib.sha256(body).hexdigest() + '"'
+        if inm == etag:
+            self.send_response(304); self.send_header("ETag", etag); self.end_headers(); return
+        self.send_response(200); self.send_header("ETag", etag)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body))); self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+PY
+  local port
+  port="$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')"
+  GH_API="http://127.0.0.1:${port}/repos/mongodb/docs/commits?path=content/agentengine"
+  python3 "${SANDBOX}/gh/server.py" "$port" "${SANDBOX}/gh" >"${SANDBOX}/gh/server.log" 2>&1 &
+  GH_SERVER_PID=$!
+  local i=0
+  while [ "$i" -lt 100 ]; do
+    if curl -s -o /dev/null "http://127.0.0.1:${port}/ready"; then
+      : > "${SANDBOX}/gh/requests.log"
+      return 0
+    fi
+    i=$(( i + 1 ))
+    sleep 0.05
+  done
+  echo "GitHub fixture server failed to start; log:" >&2
+  cat "${SANDBOX}/gh/server.log" >&2
+  return 1
+}
+
+stop_gh_server() {
+  if [ -n "$GH_SERVER_PID" ]; then
+    kill "$GH_SERVER_PID" 2>/dev/null || true
+    wait "$GH_SERVER_PID" 2>/dev/null || true
+    GH_SERVER_PID=""
+  fi
+}
+
+gh_request_count() { wc -l < "${SANDBOX}/gh/requests.log" | tr -d ' '; }
+
+# run_probe <args...> — throttle off unless the test sets PROBE_MIN_MINUTES.
+run_probe() {
+  set +e
+  RUN_OUT="$(
+    AAE_WATCH_PROBE_API="$GH_API" \
+    AAE_WATCH_STATE_DIR="$STATE_DIR" \
+    AAE_WATCH_PROBE_MIN_MINUTES="${PROBE_MIN_MINUTES:-0}" \
+    AAE_WATCH_QUIET=1 \
+    "${REPO_ROOT}/plugins/aae/scripts/aae-docs-probe.sh" "$@" 2>"${SANDBOX}/stderr.log"
   )"
   RUN_RC=$?
   set -e

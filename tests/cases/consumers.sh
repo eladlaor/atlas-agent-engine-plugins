@@ -9,8 +9,10 @@
 
 run_hook() {
   set +e
+  # The probe is covered in probe.sh; here it would reach the real GitHub.
   RUN_OUT="$(
     AAE_WATCH_STATE_DIR="$STATE_DIR" \
+    AAE_WATCH_ON_SESSION=off \
     "${REPO_ROOT}/plugins/aae/scripts/session-notice.sh" 2>"${SANDBOX}/hook-stderr.log"
   )"
   RUN_RC=$?

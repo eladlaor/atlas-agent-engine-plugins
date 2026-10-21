@@ -55,12 +55,13 @@ One plugin, `aae`:
 | `aae-rename-atlas-cluster` | Skill | Atlas clusters cannot be renamed, so this runs the migration that stands in for one: preflight, create the target, move the data and rebuild the Search indexes, re-link the platform, rotate `MONGODB_URI`, redeploy, verify. The additive phases run unattended; the cutover takes one confirmation, and the old cluster is never deleted for you. |
 | `aae-docs-watch` | Skill | Checks the AAE docs on demand, either by comparing page hashes with the last run or by reading the publishing repository's git history. Detection is deterministic with no AI involved; the model reads only the per-page diffs, and only when something changed. |
 | CLI reference guard | Script | `aae-cli-docs-check.sh` compares the `agentengine` binary's own command tree against the published CLI reference pages and exits non-zero if they disagree. Zero drift across 117 commands at CLI 0.1.118. |
-| Session-start notice | Hook | Tells you once, at session start, when the docs changed, and whether the knowledge base was already updated from them. Also warns, once a day, when the watcher or the automatic update is failing. |
+| Session-start notice | Hook | Asks GitHub, in one request, whether new commits landed in the AAE docs source since the last check, and tells you once if they did. Also tells you once when the last crawl found changed pages, and whether the knowledge base was already updated from them, and warns once a day when the watcher, the probe or the automatic update is failing. |
 | Daily docs crawl | `launchd` job (optional, macOS) | Runs the check every day, at 10:00 by default, retried hourly until it succeeds. With `--update-kb`, it also updates the knowledge base when the docs changed. See [Optional extras](#optional-extras). |
 | `ae` | Shell shortcut (optional) | Type `ae` instead of `agentengine`. See [Optional extras](#optional-extras). |
 
-Nothing runs on a schedule unless you install the daily crawl, and the session-start hook
-makes no network calls.
+Nothing runs on a schedule unless you install the daily crawl. The session-start hook makes
+one request to GitHub's public API, at most once per 15 minutes and with no credentials;
+set `AAE_WATCH_ON_SESSION=off` to make it fully offline.
 
 ## How does this relate to the skills the CLI installs?
 

@@ -41,7 +41,7 @@ Decided 2026-10-06. These close previously open questions; do not reopen without
 | **Private sources (tier 3)** | Deferred past v1.0 | No code, no config keys |
 | **Detection source** (2026-10-13) | Git history of the publishing repository is the scheduled default; page hashing stays available via `AAE_WATCH_IMPL=hash` | Both write the same `report.json`, state layout and exit codes, so no consumer depends on which one ran. Needs `git` and a one-time blobless clone |
 | **Codex** | Supported from 0.2.0 (2026-10-06) | Same plugin directories, a `.codex-plugin/plugin.json` beside each `.claude-plugin/plugin.json`; the subagent ships to Codex as a skill. Gaps are listed in the repo README, not hidden |
-| **Session-start behaviour** | Notify once per change, else silent | No network at session start by default; no startup latency |
+| **Session-start behaviour** (revised 2026-10-21) | Notify once per change, else silent. By default the hook also sends **one** request to GitHub's commits API, scoped to `content/agentengine`, to learn whether anything landed since the last session | About 1s added to session start, at most once per 15 minutes. A local agent has no public address, so nothing can push to it; checking at session start is the cheapest way to learn of a change before answering. `AAE_WATCH_ON_SESSION=off` restores the no-network behaviour. Supersedes the 2026-10-06 "no network at session start" choice |
 | **Scheduling** | Opt-in, prompted after install | Install never registers a background job by itself |
 | **Packaging** (2026-10-10) | One plugin, `aae`; the docs watcher, its hook and its skill moved in from the former `aae-docs-watch` plugin | One install gets everything. The state directory, launchd label, scheduled-copy directory and skill name are unchanged, so existing installs keep their baseline. Breaking for anyone who installed `aae-docs-watch` by name |
 | **Knowledge-base auto-update** (2026-10-10) | Opt-in only, via `--update-kb`; notify-only stays the default | An unattended AI run edits files only when the user asked for it, and only a clone and the user's notes, never an installed plugin |
@@ -112,6 +112,32 @@ which is what lets either one run without a downstream consumer noticing.
   versioned plugin folder, which a plugin update can delete. `install` MUST also copy the
   `aae-kb-update` `SKILL.md` there as `aae-kb-update.SKILL.md`. `status` MUST report
   whether each copy matches the plugin's version.
+
+### Session-start probe
+
+`aae-docs-probe.sh` answers one question cheaply: did anything land under
+`content/agentengine` since the last check? It does not resolve commits to pages; the git
+detector does that. Exit codes: `0` nothing new (or baseline recorded), `10` new commits,
+`20` throttled, `1` error.
+
+- **FR-37.** The probe MUST send exactly one request: GitHub's commits API for
+  `mongodb/docs`, branch `main`, filtered to `content/agentengine`, with the stored ETag as
+  `If-None-Match`. It MUST need no credentials. The SessionStart hook MUST run it by
+  default; `AAE_WATCH_ON_SESSION=off` disables it.
+- **FR-38.** It MUST NOT send a request when the last successful probe is younger than
+  `AAE_WATCH_PROBE_MIN_MINUTES` (default 15), and MUST exit `20` instead. Without a token
+  GitHub allows 60 requests an hour per IP address, and a `304` still counts.
+- **FR-39.** The first run MUST record the newest commit as its baseline (`probe-seen`)
+  and report nothing. A later run MUST add every commit newer than `probe-seen` to
+  `probe-pending.json`, keeping commits already pending and never listing one twice, then
+  advance `probe-seen`. If `probe-seen` is not among the returned commits, all of them are
+  pending and the pending file MUST say more may exist.
+- **FR-40.** The hook MUST show pending commits once: `systemMessage` gives the count and
+  the newest subject; `additionalContext` lists each commit's date, short SHA and subject,
+  says they are not yet resolved to pages, and names the git detector as the way to do so.
+- **FR-41.** Any probe failure MUST write `probe-error`, exit `1`, and leave `probe-seen`
+  and `probe-etag` unchanged. A successful probe MUST remove `probe-error`. The hook MUST
+  name a `probe-error` in its once-a-day health notice, and MUST still exit `0`.
 
 ### Docs-to-knowledge update (opt-in)
 
@@ -272,6 +298,11 @@ kb-update-notes-before.md  notes snapshot staged for the runner; the backup take
 notes-pending.md  the runner's notes updates, appended to the notes by the watcher after a successful run
 kb-update-skill.md  the aae-kb-update skill, staged for the runner
 kb-baseline/      read-only copy of the shipped knowledge base, staged when no clone is set
+probe-seen        SHA of the newest content/agentengine commit the probe has recorded
+probe-etag        ETag of the probe's last 200 response, sent back as If-None-Match
+probe-checked     marker: its mtime is the time of the last successful probe (throttle)
+probe-pending.json  commits the probe found that the hook has not shown yet
+probe-error       time <TAB> message of the last failed probe; removed by the next success
 ```
 
 The URL baseline is tracked **separately** from the content manifest so a `--quick`
@@ -293,9 +324,12 @@ Tier 2 adds a `cli` object. It MUST be additive — existing keys keep their mea
 - MUST emit `systemMessage` (for the user) **and**
   `hookSpecificOutput.additionalContext` (for the model). Both, because the point is
   that the model knows, not only that the human is told.
-- MUST perform **no network work** by default. A SessionStart hook delays the first
-  reply; the crawl belongs in the scheduled job. `AAE_WATCH_ON_SESSION=quick` opts in
-  to a ~1s inventory check when state is stale.
+- MUST NOT crawl. A SessionStart hook delays the first reply; the crawl belongs in the
+  scheduled job. By default it runs the session-start probe (FR-37 to FR-41), one request.
+  `AAE_WATCH_ON_SESSION=off` disables all network work; `AAE_WATCH_ON_SESSION=quick`
+  replaces the probe with the older ~1s inventory check when state is stale.
+- MUST show the probe's pending commits once, then delete `probe-pending.json`. A probe
+  notice, a health problem and a changes report MUST be able to appear in one notice.
 - MUST `touch acknowledged` after emitting, so the same report never appears twice.
 - When `kb-update.md` is newer than the current changes report, the notice MUST say the
   knowledge base was updated, with that file's first line, and `additionalContext` MUST
@@ -319,6 +353,7 @@ Fail-fast with a descriptive message, except where failing would block the user'
 | `agentengine` not installed | Skip tier 2 silently, tier 1 proceeds (FR-10) |
 | GitHub API unreachable/rate-limited | Warn, tier 1 proceeds (FR-11) |
 | Any hook-side failure | Exit 0, emit nothing (hook must never block) |
+| Session-start probe: API unreachable, timed out, rate-limited, non-200/304, or unparseable | Write `probe-error`, exit 1, keep `probe-seen` and `probe-etag`; the hook still exits 0 and names the error in the once-a-day health notice (FR-41) |
 | `--update-kb`: no runner, skill not found, invalid clone, runner error, cap reached, timeout, or no `kb-update.md` / processed record afterwards | Write `kb-update-error`, log it, keep the crawl's exit code (FR-27) |
 
 ## Acceptance criteria
@@ -350,6 +385,11 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-21** | A real `claude` run on a seeded diff (a role added to a docs role list) edits the matching reference file in a throwaway clone, writes `kb-update.md` and `kb-update-processed`, and a second run on the same report changes nothing | **Verified** (2026-10-10, Sonnet, USD 0.42; the repeat run, through the watcher and with the runner started directly, changed nothing) |
 | **AC-22** | `print-plist --update-kb` output passes `plutil -lint` and holds `--update-kb`, the `AAE_KB_*` variables set at install time, and `~/.local/bin` on `PATH`; without the flag it holds none of them; an invalid `AAE_KB_REPO` or no runner on the job's `PATH` is refused | **Verified** (2026-10-10) |
 | **AC-23** | The `codex` runner applies a seeded diff | To write (no signed-in Codex available) |
+| **AC-30** | Probe first run against a fixture API records the newest SHA in `probe-seen`, stores the ETag, writes no `probe-pending.json`, and exits `0` | **Verified** (2026-10-21, fixture; live run against GitHub: 1.2s hook, 4 real commits shown once) |
+| **AC-31** | With two new commits upstream, the probe exits `10`, `probe-pending.json` lists exactly those two, newest first, and `probe-seen` advances; an unchanged upstream is asked with `If-None-Match`, answers `304`, and the probe exits `0` | **Verified** (2026-10-21, fixture; live run against GitHub: 1.2s hook, 4 real commits shown once) |
+| **AC-32** | A second probe inside `AAE_WATCH_PROBE_MIN_MINUTES` sends no request and exits `20` | **Verified** (2026-10-21, fixture; live run against GitHub: 1.2s hook, 4 real commits shown once) |
+| **AC-33** | A `403` rate-limit answer or an unreachable API makes the probe exit `1`, write `probe-error`, and leave `probe-seen` unchanged; the hook still exits `0` and names the error | **Verified** (2026-10-21, fixture; live run against GitHub: 1.2s hook, 4 real commits shown once) |
+| **AC-34** | With the probe on by default, the hook shows new commits in both channels once; the next session is silent. With `AAE_WATCH_ON_SESSION=off` it sends no request | **Verified** (2026-10-21, fixture; live run against GitHub: 1.2s hook, 4 real commits shown once) |
 
 **Install verification (not automatable, must be done once before delivery):**
 add the `eladlaor/atlas-agent-engine-plugins` marketplace in **each** host, install the
