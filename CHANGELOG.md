@@ -14,6 +14,11 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Added
 
+- `aae-roadmap`: a subagent (a skill in Codex) for questions about where Atlas Agent Engine
+  is going. It labels each roadmap item shipped, announced, planned, concept or unknown,
+  quotes the source's own timing, links every claim to its dated source, separates public
+  from internal claims, and keeps a source registry and a dated roadmap ledger in its
+  per-user memory directory.
 - `aae-rename-atlas-cluster`: a skill for the request Atlas cannot satisfy directly. Clusters
   cannot be renamed — not in the UI, the Admin API, or `atlas clusters update`, where the name
   is the path identifier rather than a mutable field — so the skill runs the migration that

@@ -13,6 +13,7 @@
 - [How do I know when the AAE docs change?](#how-do-i-know-when-the-aae-docs-change)
   - [Why does the hook ask GitHub instead of being notified of a change?](#why-does-the-hook-ask-github-instead-of-being-notified-of-a-change)
 - [How do I check I'm not rebuilding something AAE already does?](#how-do-i-check-im-not-rebuilding-something-aae-already-does)
+- [How do I ask what's coming on the AAE roadmap?](#how-do-i-ask-whats-coming-on-the-aae-roadmap)
 - [How does change detection actually work?](#how-does-change-detection-actually-work)
 - [Why does it crawl every page instead of checking a timestamp?](#why-does-it-crawl-every-page-instead-of-checking-a-timestamp)
 - [Can I detect changes from git history instead?](#can-i-detect-changes-from-git-history-instead)
@@ -305,6 +306,24 @@ have.
 It uses the docs watcher in the same plugin for the freshness check, and it never changes anything.
 It is a skill in both hosts; its verdict and utility-candidate ledgers live in
 `~/.local/state/aae-scout/`, shared by Claude Code and Codex.
+
+## How do I ask what's coming on the AAE roadmap?
+
+Ask **`aae-roadmap`**: "is multi-cloud on the roadmap?", "what can I tell a customer about
+private networking?", "what changed on the roadmap this month?". It labels each item
+**shipped**, **announced**, **planned**, **concept** or **unknown**, quotes the source's
+own timing wording, and links every claim to the dated source it came from. If no source
+says something, it answers "no source found" rather than guessing.
+
+**The misunderstanding to avoid:** treating a roadmap answer as a commitment. A planned
+item with a quarter attached is still a plan. Before calling anything planned, the agent
+checks the live docs, because items ship before roadmap documents catch up.
+
+It marks each claim `[public]` or `[internal]`. When you ask for customer-facing wording,
+it uses only public claims and tells you what it held back. Its memory lives in
+`~/.claude/agent-memory/aae-roadmap/` and holds a source registry, a dated roadmap ledger
+and a log of what moved. Any internal source you give it stays there, on your machine;
+the plugin ships only the public ones. In Codex it is a skill with no ledger.
 
 ## How does change detection actually work?
 
