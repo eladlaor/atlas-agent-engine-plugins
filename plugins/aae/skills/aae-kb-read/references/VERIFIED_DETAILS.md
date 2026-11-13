@@ -8,12 +8,14 @@ description: Doc- and spec-verified Atlas Agent Engine facts that the guides omi
 - [Summary](#summary)
 - [Where is the freshest description of the platform?](#where-is-the-freshest-description-of-the-platform)
 - [Limits beyond the card](#limits-beyond-the-card)
+- [Where does the runtime run, and can I choose a region?](#where-does-the-runtime-run-and-can-i-choose-a-region)
 - [OTLP trace export exists in the API](#otlp-trace-export-exists-in-the-api)
 - [Policy Engine: seven policy types](#policy-engine-seven-policy-types)
 - [Where are policies and guardrails authored?](#where-are-policies-and-guardrails-authored)
 - [The `a2a:` block is not the A2A wire protocol](#the-a2a-block-is-not-the-a2a-wire-protocol)
 - [Stream chunks change when guardrails are on](#stream-chunks-change-when-guardrails-are-on)
 - [Memory scoping and config keys the card omits](#memory-scoping-and-config-keys-the-card-omits)
+- [What does the memory service trust, keep and drop?](#what-does-the-memory-service-trust-keep-and-drop)
 - [Where does the Voyage key for memory come from?](#where-does-the-voyage-key-for-memory-come-from)
 - [The `A2A_JWT_SECRET` project secret](#the-a2a_jwt_secret-project-secret)
 - [Creation paths: what the CLI can and cannot create](#creation-paths-what-the-cli-can-and-cannot-create)
@@ -56,6 +58,25 @@ Verified against `/reference/limitations.md` on 2026-10-04.
   100 project service accounts.
 - The limitations page says **nothing** about PrivateLink, private endpoints or VPC peering.
 
+## Where does the runtime run, and can I choose a region?
+
+As of 2026-11-12. **Today, in AWS `us-east-1` only, and no, you cannot choose.** No guide
+page states the runtime region; this rests on a product-team statement (2026-11-06) plus one
+live signal.
+
+- The platform's own egress endpoint labels the Atlas-lane addresses `aws/us-east-1`
+  (`GET https://agentengine.mongodb.com/api/v1/platform/egress-ips`, fetched 2026-11-12).
+  No doc, CLI flag or `agent.yaml` key selects a runtime region or cloud.
+- Your **Atlas cluster** can live in any region or cloud (`AGENTENGINE_ATLAS_CLUSTER_REGION`
+  only picks where `atlas setup` creates one). Everything durable — checkpoints, memory, your
+  data — lives in that cluster, so placing it elsewhere works today at a cross-region latency
+  cost on every call. No runtime region-migration path is documented.
+- So the honest data-residency answer is: data at rest can sit where your cluster sits;
+  compute, and the data in flight through it, is in `us-east-1`.
+- **Do not move a linked Atlas project to another Atlas organization.** It breaks Agent Engine
+  for that project and is unsupported (product-team statement, 2026-11-05); see
+  [IDENTITY_ATLAS_AND_AUTH.md](IDENTITY_ATLAS_AND_AUTH.md#can-i-move-a-linked-project-to-another-org).
+
 ## OTLP trace export exists in the API
 
 Verified 2026-10-08 against the OpenAPI spec. Not in any guide, no CLI command.
@@ -75,6 +96,14 @@ Verified 2026-10-08 against the OpenAPI spec. Not in any guide, no CLI command.
   `GET /api/v1/projects/{id}/sessions`.
 - How to say it: "the API supports OTLP export; the guides don't document it; verify against
   the OpenAPI spec". Expect to need an egress allowance for the collector endpoint.
+- **Observed 2026-10-22 (CLI 0.1.120):** the live preset catalog held exactly one preset, Arize
+  (`https://otlp.arize.com/v1/traces`). Any other vendor means a generic OTLP endpoint, untested.
+- **What export means for data** (product-team statements 2026-11-09/10; no guide page yet as
+  of 2026-11-12). An eval or observability tool is useful only with
+  `content_mode: full`, which sends **prompts, completions and tool payloads** to that vendor:
+  get the data owner's sign-off first. Delivery is asynchronous and **best-effort**: confirm
+  spans actually arrive before relying on them. AAE runs no evaluations itself; export is how
+  evals are bolted on. Only new runs are exported, not history.
 
 ## Policy Engine: seven policy types
 
@@ -181,6 +210,36 @@ reference.
 - Undocumented and **untested**: a per-type `extraction.<type>.prompt`, mentioned only in
   the CLI 0.1.118 template. See the 2026-10-11 entry in [DRIFT_LOG.md](DRIFT_LOG.md). To limit
   extraction cost, see [TOKEN_AND_COST_ACCOUNTING.md](TOKEN_AND_COST_ACCOUNTING.md#how-do-i-limit-what-memory-extraction-costs).
+
+## What does the memory service trust, keep and drop?
+
+*Field observations, 2026-11-09, on CLI 0.1.124, memory server 0.11.12 and
+`agent-engine-sdk-memory` 0.11.11. One reporter, not confirmed in the docs; re-test before
+relying on any of them.*
+
+- **It trusts the `user_id` the caller sends.** The memory MCP server and REST API take
+  `user_id` from the request; a search over MCP **without** a `user_id` returned other users'
+  memories. Identity enforcement is the calling application's job. This matters most for the
+  card's standard workaround for the service-account identity collapse (call the memory
+  service directly with explicit `user_id`): that moves enforcement into your code, so never
+  let an end user choose the `user_id`, and do not expose the memory MCP server to anything
+  that is not already trusted.
+- **No delete and no TTL for long-term memories found** in the MCP server, the REST API or the
+  SDK (the SDK's procedural-only delete aside). **Conflicting statement:** a product-team
+  answer (2026-11-11) says memories can be deleted manually, without naming the surface. Until
+  someone shows the delete call, treat deletion as unconfirmed: do not promise it, and do not
+  deny it outright. Nothing documented expires long-term memories (the `ttl_days` key applies
+  to short-term snapshots). The fallback correction path is deleting the documents in your own
+  cluster, with the embedding caveat above. Plan retention and right-to-erasure handling before
+  storing personal data.
+- **No review step.** Extracted memories are stored directly; there is no pending or approval
+  state, and no end-user editing.
+- `build_context_from_sources` accepts memory types only, not arbitrary sources.
+- Taxonomic extraction never produced a record on the hosted service in that test.
+- Local-mode extraction hard-codes `max_tokens=2000`, which can truncate the extraction JSON.
+- A non-default `MONGOMEM_DB_NAME` was ignored by the extraction workers.
+- Custom memory types are still gated off, although `/add-features/memory.md` documents them
+  (checked 2026-11-12); see the 2026-10-10 entry in [DRIFT_LOG.md](DRIFT_LOG.md).
 
 ## Where does the Voyage key for memory come from?
 

@@ -64,6 +64,14 @@ is why their headers carry a separate "Plugin version:" line.
   page saying it is rejected, and a missing `features.deep_agent` fails at run time rather
   than at build time. They landed in the tree before this release was cut and are recorded
   here after the fact.
+- Verified details: where the runtime runs (AWS `us-east-1` only, no runtime
+  region choice) and what that means for data residency; what the memory service
+  trusts, keeps and drops (caller-supplied `user_id`, no TTL, delete unconfirmed, no review
+  step), as field observations on CLI 0.1.124; and the data and delivery caveats of OTLP trace export.
+- Identity and auth: moving a linked Atlas project to another organization breaks Agent Engine.
+- Troubleshooting: an invoke with a bad LLM key can hang instead of failing, and `secret set
+  --sync` can time out on a broker-backed project although the new value is live (CLI 0.1.124).
+- Token and cost accounting: the Public Preview price list and the four bills behind memory.
 
 ### Changed
 
@@ -100,6 +108,11 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Fixed
 
+- Egress IPs: `/network-egress.md` now lists all four addresses for destinations outside Atlas,
+  so the drift log, troubleshooting, first-deploy write-up and the `aae-guide` card no longer
+  say the docs list only the non-Atlas pair, and advise external services to allowlist all four.
+- The `aae-guide` card's memory-identity workaround now warns that the memory service trusts
+  the `user_id` it is sent.
 - `HOW_IT_WORKS.md` said the scheduled job still runs the hashing watcher; it has run the
   git detector by default since 0.8.0. Its test count was also stale.
 - The `aae-docs-watch` skill said the git detector has no `--update-kb`; it has.

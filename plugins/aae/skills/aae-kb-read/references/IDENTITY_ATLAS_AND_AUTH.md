@@ -8,6 +8,7 @@ description: How Atlas Agent Engine projects and orgs relate to Atlas ones, the 
 - [Summary](#summary)
 - [Is an AAE project the same thing as an Atlas project?](#is-an-aae-project-the-same-thing-as-an-atlas-project)
 - [Which org ID do I pass where?](#which-org-id-do-i-pass-where)
+- [Can I move a linked project to another org?](#can-i-move-a-linked-project-to-another-org)
 - [Does `atlas setup` need an Atlas service account?](#does-atlas-setup-need-an-atlas-service-account)
 - [Must the database be Atlas, or just MongoDB?](#must-the-database-be-atlas-or-just-mongodb)
 - [Which "service account" is meant?](#which-service-account-is-meant)
@@ -49,6 +50,23 @@ for the same project, and both carry the same org name.
 - Teach it as one logical org with two records. A one-to-one mapping is not proven.
 - Rule: check `contexts.json` and `project get` before asserting identity relationships. A
   mismatch between two records is a question, not a conclusion.
+
+## Can I move a linked project to another org?
+
+**No.** Product-team statement, 2026-11-05; not in the docs as of 2026-11-12: moving an
+Atlas project that Agent Engine is linked to into a different Atlas organization **breaks
+Agent Engine for that project**, and it is not supported. Atlas does not block the move
+today, which is what makes it a trap: the move succeeds and the agents stop working.
+
+- The misunderstanding to head off: "the project ID stays the same, so AAE follows it." It
+  does not. *Inference, unconfirmed:* AAE keeps its own org record (see above), and that
+  record does not follow the move.
+- If agents must live under another org, create a new project there and redeploy into it;
+  the data can stay in, or be restored into, an Atlas cluster of your choosing.
+- Related: agents cannot talk to, or share state with, agents in another project, even in the
+  same org (A2A is intra-project only, and memory records never cross project boundaries,
+  per `/add-features/memory-types.md`, checked 2026-11-12). No doc describes org-level agent
+  management either.
 
 ## Does `atlas setup` need an Atlas service account?
 

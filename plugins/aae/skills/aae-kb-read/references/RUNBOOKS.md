@@ -103,7 +103,9 @@ header and model ID; a Voyage key only if memory is wanted.
    `VOYAGE_API_KEY`; workspace scope for the agent's LLM key. Confirm with
    `agentengine secret list` and `agentengine secret list --workspace-scope` (names and
    versions only). A changed `.env` updates nothing on the platform; re-run `secret set`
-   (optionally `--sync`). `secret sync` only reloads values already stored.
+   (optionally `--sync`). `secret sync` only reloads values already stored. On a
+   broker-backed project `--sync` can time out although the value is live (CLI 0.1.124); see
+   [TROUBLESHOOTING.md](TROUBLESHOOTING.md#why-does-secret-set---sync-time-out-when-the-new-value-already-works).
 6. **Memory, if enabled:** inspect `project-config.yaml`, then `agentengine memory configure`,
    `agentengine memory apply --wait`, `agentengine memory status`.
 7. **Check and build:** run the project's tests, `uv lock` if dependencies or the version

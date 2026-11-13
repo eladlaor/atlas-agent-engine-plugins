@@ -104,7 +104,9 @@ fixed set of addresses, and Atlas blocks unknown addresses, so those must be all
 
 - The **Atlas lane** (what `atlas setup` adds to Atlas), from the `egress-ips` endpoint.
 - The **non-Atlas lane** (what LLM gateways and other external services see, and must
-  allowlist), from the `agent-egress-ips` endpoint. These are the ones in `/network-egress.md`.
+  allowlist), from the `agent-egress-ips` endpoint. As of 2026-11-12 `/network-egress.md`
+  lists both pairs together and asks external services to allowlist all four; the Atlas
+  IP Access List still needs only the Atlas lane.
 
 Fetch both live rather than trusting a list. Detail in
 [DRIFT_LOG.md](DRIFT_LOG.md#2026-10-08--there-are-two-egress-ip-pairs-one-per-lane).

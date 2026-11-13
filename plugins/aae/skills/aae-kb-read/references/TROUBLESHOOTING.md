@@ -9,6 +9,8 @@ description: Symptom-first Q&A for Atlas Agent Engine failures - misleading erro
 - [Why does my gateway return 404?](#why-does-my-gateway-return-404)
 - [Why does a deployed agent say the provider "rejected this project's configured API key" when the key works locally?](#why-does-a-deployed-agent-say-the-provider-rejected-this-projects-configured-api-key-when-the-key-works-locally)
 - [Why does `app.llm()` report "Connection error" when a direct request works?](#why-does-appllm-report-connection-error-when-a-direct-request-works)
+- [Why does an invoke with a bad LLM key hang instead of failing?](#why-does-an-invoke-with-a-bad-llm-key-hang-instead-of-failing)
+- [Why does `secret set --sync` time out when the new value already works?](#why-does-secret-set---sync-time-out-when-the-new-value-already-works)
 - [Why does invoke return 503 while `status` says healthy?](#why-does-invoke-return-503-while-status-says-healthy)
 - [Why did my deploy fail with `OENotReady`?](#why-did-my-deploy-fail-with-oenotready)
 - [What does a deploy success rate below 100% tell me?](#what-does-a-deploy-success-rate-below-100-tell-me)
@@ -55,8 +57,11 @@ A bad key gives **401**.
   A gateway that allowlists IPs, or is reachable only on a private network or VPN, blocks them
   even though `dev up` worked.
 - Fix: allowlist the non-Atlas egress pair on the gateway (fetch it live from
-  `GET https://agentengine.mongodb.com/api/v1/platform/agent-egress-ips`), or use a gateway
-  or provider endpoint that is publicly reachable.
+  `GET https://agentengine.mongodb.com/api/v1/platform/agent-egress-ips`), plus the Atlas-lane
+  pair as a buffer, since `/network-egress.md` lists all four for external services (checked
+  2026-11-12; it listed only the first pair until at least 2026-10-10) ([DRIFT_LOG.md](DRIFT_LOG.md#2026-11-12--the-egress-page-now-lists-all-four-ips-as-one-list)).
+  Allowlisting cannot help a gateway that is not reachable from the public internet at all:
+  use a gateway or provider endpoint that is.
 - Always read the runtime log before trusting the CLI's summary of an LLM failure.
 
 ## Why does `app.llm()` report "Connection error" when a direct request works?
@@ -65,6 +70,25 @@ The provider request is running in the **tool sandbox**, which lacks the key or 
 entry. Give both sandboxes the LLM secret and the gateway egress, then redeploy (egress applies
 at deploy time). Check the live policy with `agentengine egress`. Detail:
 [SDK_ADAPTERS.md](SDK_ADAPTERS.md#where-do-model-calls-actually-run).
+
+## Why does an invoke with a bad LLM key hang instead of failing?
+
+Because the provider's **401** is not always propagated to the caller. *Field report,
+2026-11-11, CLI 0.1.124; unconfirmed.* With an invalid `LLM_API_KEY`, some workspaces return
+`llm_credential_rejected` quickly, while others hang for minutes (240 s and 1,156 s were seen)
+before failing. The 401 is in the runtime log the whole time.
+
+- On a slow or hanging invoke, read `agentengine logs --since 15m` before waiting it out.
+- Set a client-side timeout on `invoke` / `invokeStream`; do not rely on the platform to fail fast.
+- After rotating the key, verify with one short invoke rather than trusting `secret set` output.
+
+## Why does `secret set --sync` time out when the new value already works?
+
+On a project whose secrets are served by the credential broker (deploy events say "Application
+secrets are served by the credential broker"), `--sync` and `secret sync` were seen to time
+out after 5 minutes every time while the new value was live within about 2 minutes (CLI
+0.1.124, field report 2026-11-11). Ignore the timeout and verify with an invoke. Detail in
+[DRIFT_LOG.md](DRIFT_LOG.md#2026-11-12--secret-set---sync-and-secret-sync-time-out-although-the-secret-is-live-cli-01124).
 
 ## Why does invoke return 503 while `status` says healthy?
 

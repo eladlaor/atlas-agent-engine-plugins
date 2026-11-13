@@ -107,6 +107,28 @@ AAE bills infrastructure, not your tokens. `cost_usd` and `total_cost_usd` are A
 the tokens; the Atlas cluster bills separately. **No dollar-denominated budget or alert
 exists**: Policy Engine caps are token counts.
 
+**What AAE itself charges** (product page, checked 2026-11-12; Public Preview pricing,
+"subject to change", and not stated in the docs):
+
+| Component | Price |
+|---|---|
+| Runtime (time agents spend executing requests) | $0.04 per 1,000 seconds per vCPU |
+| Memory storage (docs sent to long-term memory) | $0.25 per 1,000 long-term memory docs stored |
+| Memory retrieval (docs retrieved from memory) | $0.50 per 1,000 memory docs retrieved |
+
+The full cost of memory is therefore four bills: those two memory lines, the Atlas cluster
+it lives on, the Voyage embeddings, and the extraction LLM on **your** provider key.
+
+- **vCPU per sandbox is contested.** The limitations page says the agent sandbox is a fixed
+  **0.5 vCPU** (see [VERIFIED_DETAILS.md](VERIFIED_DETAILS.md#limits-beyond-the-card)); a single
+  field report (2026-11-10) says 1 vCPU per container. Neither says how tool sandboxes count.
+  Do not turn the per-vCPU rate into a per-agent figure until an invoice line confirms it.
+- **Idle and standby sandboxes:** how they are metered is not documented. A single unconfirmed
+  field report (2026-11-10) says they are not billed today; do not quote that as policy.
+
+The trace UI shows tokens, never dollars; dollar **estimates** come only from the
+`cost/dashboard` endpoint, which has a published API reference page (checked 2026-11-12).
+
 ## How do I limit what memory extraction costs?
 
 Checked 2026-10-11 against `/add-features/memory.md`, `/add-features/memory-types.md`,

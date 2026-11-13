@@ -6,6 +6,8 @@ description: Dated log of observed drift between the Atlas Agent Engine docs and
 # AAE drift log
 
 - [Summary](#summary)
+- [2026-11-12 — the egress page now lists all four IPs as one list](#2026-11-12--the-egress-page-now-lists-all-four-ips-as-one-list)
+- [2026-11-12 — `secret set --sync` and `secret sync` time out although the secret is live (CLI 0.1.124)](#2026-11-12--secret-set---sync-and-secret-sync-time-out-although-the-secret-is-live-cli-01124)
 - [2026-10-13 — `deepagents` 0.7.16 has no planner, and there is no default system prompt](#2026-10-13--deepagents-0716-has-no-planner-and-there-is-no-default-system-prompt)
 - [2026-10-13 — the deep-agent page claims a custom `backend` is rejected; it is not](#2026-10-13--the-deep-agent-page-claims-a-custom-backend-is-rejected-it-is-not)
 - [2026-10-13 — a missing `features.deep_agent` fails at run time, not build time](#2026-10-13--a-missing-featuresdeep_agent-fails-at-run-time-not-build-time)
@@ -52,9 +54,42 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **`deploy list`, `deploy get <id>` and `deploy logs <id>` are read-only** (corrected
   2026-10-13 on 0.1.118; an earlier version of this rule omitted `logs`). `deploy cancel` is
   mutating, and any form outside those four — including a typo — starts a real deployment.
-- **Fetch egress IPs live.** There are two pairs for two purposes.
+- **Fetch egress IPs live.** There are two pairs; as of 2026-11-12 the docs list all four as
+  one list. External allowlists need the non-Atlas pair and should carry all four.
 - **A `validate` pass proves almost nothing.** It enforces an egress policy and little else —
   not `entrypoint`, not `sandboxes`, not unknown keys.
+
+## 2026-11-12 — the egress page now lists all four IPs as one list
+
+- **Docs say** (`/network-egress.md#egress-ip-addresses`, fetched 2026-11-12): "The Atlas
+  Agent Engine uses the following egress IP addresses for destinations outside of Atlas:"
+  `34.196.57.85`, `54.227.181.25`, `52.44.27.64`, `44.214.209.237`, and "the external
+  service's allowlist must include these addresses." Until at least 2026-10-10 the page listed
+  only the first two.
+- **Observed** (unauthenticated GETs, 2026-11-12): unchanged from 2026-10-08.
+  `agent-egress-ips` → `34.196.57.85/32`, `54.227.181.25/32`; `egress-ips` →
+  `aws/us-east-1`: `44.214.209.237/32`, `52.44.27.64/32`.
+- **Resolution:** the endpoints still split the pairs by lane, and the non-Atlas pair is the one
+  outbound internet traffic is known to use. The docs now ask external services to allowlist
+  the Atlas-lane pair as well, so treat it as a buffer, not a substitute: **external services
+  (LLM gateways, SaaS APIs) → all four; the Atlas IP Access List → the Atlas-lane pair**, as
+  `atlas setup` writes it. Allowlisting helps only if the target is reachable from the public
+  internet; a gateway on a private network or VPN stays unreachable from a deployed agent
+  whatever its allowlist says. This corrects the 2026-10-08 entry's "not on Atlas" framing for
+  external services and its note that the docs list only the non-Atlas pair.
+
+## 2026-11-12 — `secret set --sync` and `secret sync` time out although the secret is live (CLI 0.1.124)
+
+*Single field report, 2026-11-11, CLI 0.1.124; not confirmed by the product docs.*
+
+- **Docs say** (CLI `--help`): `--sync` waits until the next message can use the new value;
+  `secret sync` reloads stored values into running deployments.
+- **Observed:** in a project whose deploy events say "Application secrets are served by the
+  credential broker", both commands time out after **5 minutes** every time. The runtime
+  secrets status stays `{"ready": false, "source": "broker", "reason": "pending"}`, yet the
+  new value is in use within about **2 minutes**.
+- **Resolution:** on a broker-backed project, treat the timeout as a false failure. Verify the
+  change with an `agentengine invoke` that exercises the secret instead of re-running `sync`.
 
 ## 2026-10-13 — `deepagents` 0.7.16 has no planner, and there is no default system prompt
 
@@ -202,6 +237,9 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 - **Resolution:** the feature is switched off platform-side and a user cannot enable it per
   project. Comment out the `custom_memory_types:` block and upload the rest of the config.
   Re-test after doc or CLI changes.
+- **Still gated 2026-11-09** (single field report, CLI 0.1.124, memory server 0.11.12): custom
+  memory types remain behind a platform flag, while `/add-features/memory.md` still documents
+  them (checked 2026-11-12). Do not promise them until a live test succeeds.
 
 ## 2026-10-10 — per-agent `dev up` cannot see monorepo `shared/` path dependencies
 
@@ -282,6 +320,9 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
   endpoint). External services ← `agent-egress-ips`. Fetch both live; never hardcode.
 - **Re-checked 2026-10-10:** both endpoints return the same pairs; the docs still list only
   the non-Atlas pair.
+- **Superseded in part 2026-11-12:** the docs now list all four addresses for destinations
+  outside Atlas. External services should allowlist all four; see
+  [the 2026-11-12 entry](#2026-11-12--the-egress-page-now-lists-all-four-ips-as-one-list).
 
 ## 2026-10-08 — the agent contract now marks `sandboxes` as required
 
@@ -348,6 +389,9 @@ From `--help`:
   `by_workspace[]`, `daily_trend[]`. `ExecutionLog` carries per-step `cost_usd`.
 - **Resolution:** detail in [TOKEN_AND_COST_ACCOUNTING.md](TOKEN_AND_COST_ACCOUNTING.md).
   Undocumented means unstable: say both.
+- **Update 2026-11-12:** the endpoint has a page in the published API reference (first seen 2026-11-12)
+  (`https://www.mongodb.com/docs/api/doc/agentengine/operation/operation-get-api-v1-projects-parameter-cost-dashboard`).
+  The figures are still **estimates** of provider spend. The guides and the CLI remain silent.
 
 ## 2026-10-08 — the OpenAPI spec is ahead of the guides (OTLP trace export)
 
