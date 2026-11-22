@@ -3,6 +3,7 @@
 - [Summary](#summary)
 - [What's inside](#whats-inside)
 - [How does this relate to the skills the CLI installs?](#how-does-this-relate-to-the-skills-the-cli-installs)
+- [How do I read my Atlas cluster's metrics?](#how-do-i-read-my-atlas-clusters-metrics)
 - [Install](#install)
 - [Claude Code vs Codex: what each host gets](#claude-code-vs-codex-what-each-host-gets)
 - [Optional extras](#optional-extras)
@@ -54,6 +55,7 @@ One plugin, `aae`:
 | `aae-add-agent` | Skill | Adds one agent to an existing AAE monorepo. `agentengine create` only scaffolds whole new projects. |
 | `aae-delete-agent` | Skill | Tears one agent down completely. `workspace delete` alone leaves secrets, sessions and the database user behind. |
 | `aae-rename-atlas-cluster` | Skill | Atlas clusters cannot be renamed, so this runs the migration that stands in for one: preflight, create the target, move the data and rebuild the Search indexes, re-link the platform, rotate `MONGODB_URI`, redeploy, verify. The additive phases run unattended; the cutover takes one confirmation, and the old cluster is never deleted for you. |
+| `atlas-metrics-*` (9 skills) | Skills + script | Read-only Atlas cluster monitoring through the `atlas` CLI: `snapshot`, `history` (with week-over-week comparison), `storage`, per-collection latency (`collections`), per-query-pattern statistics (`query-shapes`), Atlas Search and Vector Search (`search`), the Performance Advisor (`advisor`), an `incident` timeline of metrics, alerts and events, and `profiles` for your own measurement sets and thresholds. Never changes the cluster. See the [Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md). |
 | `aae-docs-watch` | Skill | Checks the AAE docs on demand, either by comparing page hashes with the last run or by reading the publishing repository's git history. Detection is deterministic with no AI involved; the model reads only the per-page diffs, and only when something changed. |
 | CLI reference guard | Script | `aae-cli-docs-check.sh` compares the `agentengine` binary's own command tree against the published CLI reference pages and exits non-zero if they disagree. Zero drift across 117 commands at CLI 0.1.118. |
 | Session-start notice | Hook | Asks GitHub, in one request, whether new commits landed in the AAE docs source since the last check, and tells you once if they did. Also tells you once when the last crawl found changed pages, and whether the knowledge base was already updated from them, and warns once a day when the watcher, the probe or the automatic update is failing. |
@@ -81,6 +83,25 @@ only inside that project. This plugin builds on them rather than replacing them:
 - **Available everywhere,** not just inside a project directory.
 
 Details: [`CLI_SKILLS_AND_THIS_PLUGIN.md`](plugins/aae/skills/aae-kb-read/references/CLI_SKILLS_AND_THIS_PLUGIN.md).
+
+## How do I read my Atlas cluster's metrics?
+
+Ask: "how is my cluster `prod` doing?", "which collection got slower since yesterday?",
+"what happened at 14:00?". Nine `atlas-metrics-*` skills answer from the monitoring
+data Atlas already records. They work at cluster, node, disk, database, collection,
+query-pattern and Search-index scope, over any time window, against thresholds you can
+tune in a profile. The same engine runs from a shell, for scripts and health checks:
+
+```bash
+plugins/aae/scripts/atlas-metrics.sh doctor --cluster prod
+plugins/aae/scripts/atlas-metrics.sh snapshot --cluster prod --profile replication
+plugins/aae/scripts/atlas-metrics.sh history --cluster prod --last 24h --compare 7d
+```
+
+They need the `atlas` CLI, logged in with read access to the project, and they never
+change the cluster. Everything else, including profiles, thresholds, troubleshooting
+and what is out of scope, is in the
+**[Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md)**.
 
 ## Install
 
@@ -117,6 +138,7 @@ when asked**. Until you do, Codex skips it and you get no session-start notices.
 | `aae-scout` | A **skill**, with its verdict and utility-candidate ledgers in `~/.local/state/aae-scout/` | Same, sharing the same ledgers |
 | `aae-scout` freshness gate | Reads the docs watcher's state | Same |
 | `aae-add-agent`, `aae-delete-agent`, `aae-rename-atlas-cluster`, `aae-kb-read`, `aae-kb-update`, `aae-docs-watch` skills | Yes | Yes, the same files |
+| `atlas-metrics-*` skills and their engine | Yes | Yes, the same files |
 | Session-start notice that the docs changed | Runs automatically | Runs **only after you trust the hook**, and again after each update that changes it |
 | Scheduled daily docs crawl | Opt-in, via macOS `launchd` | Same: opt-in, via macOS `launchd` |
 | `--update-kb` runner | `claude -p`, tested | `codex exec`, **untested** |
@@ -151,6 +173,7 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
 - Not affiliated with or endorsed by MongoDB.
 
 Docs: [user guide](knowledge/usage_guides/USER_GUIDE.md) ·
+[Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md) ·
 [behaviour spec](knowledge/specs/BEHAVIOR_SPEC.md) ·
 [how the docs watcher works](plugins/aae/skills/aae-docs-watch/HOW_IT_WORKS.md) ·
 [changelog](CHANGELOG.md)

@@ -1,0 +1,26 @@
+{
+  "queryStats": {
+    "namespace": "app.users",
+    "command": "aggregate",
+    "execCount": 30,
+    "totalWorkingMillis": 9000,
+    "avgWorkingMillis": 300.0,
+    "p99ExecMicros": 90000,
+    "docsExaminedRatio": 250.0,
+    "keysExaminedRatio": 1.0,
+    "queryShapeHash": "2222222222222222222222222222222222222222222222222222222222222222",
+    "systemQuery": false,
+    "cpuTime": 5,
+    "queryShape": "{\"filter\": {\"status\": \"?string\"}}"
+  },
+  "firstSeen": {
+    "applicationName": "orders-api",
+    "driverName": "pymongo",
+    "driverVersion": "4.10"
+  },
+  "lastSeen": {
+    "applicationName": "orders-api",
+    "driverName": "pymongo",
+    "driverVersion": "4.10"
+  }
+}

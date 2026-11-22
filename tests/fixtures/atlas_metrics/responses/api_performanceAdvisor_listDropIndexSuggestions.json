@@ -1,0 +1,13 @@
+{
+  "unusedIndexes": [
+    {
+      "namespace": "app.users",
+      "name": "legacy_1",
+      "sizeBytes": 52428800,
+      "accessCount": 0,
+      "since": "2026-10-01T00:00:00Z"
+    }
+  ],
+  "redundantIndexes": [],
+  "hiddenIndexes": []
+}

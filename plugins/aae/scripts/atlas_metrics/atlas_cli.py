@@ -1,0 +1,181 @@
+"""The only place the engine runs the atlas binary.
+
+Two guarantees live here:
+
+1. Read-only. A command whose argv prefix is not in READ_ONLY_COMMANDS is
+   refused before anything is executed.
+2. Fail fast. A non-zero exit, a timeout or output that is not JSON raises an
+   AtlasCliError carrying the exact command and the CLI's own error text. There
+   is no retry and no empty-result fallback: an empty table that looks like
+   "all quiet" is the failure this engine exists to avoid.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from atlas_metrics.constants import (
+    API_PROJECT_FLAG,
+    ATLAS_BINARY_ENV,
+    CLI_TIMEOUT_SECONDS,
+    CURATED_OUTPUT_ARGS,
+    CURATED_PROJECT_FLAG,
+    DEFAULT_ATLAS_BINARY,
+    PROFILE_FLAG,
+    READ_ONLY_COMMANDS,
+)
+from atlas_metrics.errors import AtlasCliError, ReadOnlyViolation
+from atlas_metrics.logging_setup import get_logger
+
+log = get_logger("atlas_cli")
+
+# Wrapper keys some `atlas api` operations put around the payload.
+_ENVELOPE_KEY = "content"
+
+
+def _command_prefix(argv: Sequence[str]) -> Optional[Tuple[str, ...]]:
+    for allowed in READ_ONLY_COMMANDS:
+        if tuple(argv[: len(allowed)]) == allowed:
+            return allowed
+    return None
+
+
+class AtlasCli:
+    """Runs read-only atlas commands for one project and one CLI profile."""
+
+    def __init__(self, project_id: str = "", profile: str = "", binary: str = "") -> None:
+        self.project_id = project_id
+        self.profile = profile
+        self.binary = binary or os.environ.get(ATLAS_BINARY_ENV) or DEFAULT_ATLAS_BINARY
+        if shutil.which(self.binary) is None:
+            raise AtlasCliError(
+                f"atlas binary not found: {self.binary!r}. Install the MongoDB Atlas CLI "
+                f"or set {ATLAS_BINARY_ENV} to its path.",
+                {"binary": self.binary},
+            )
+
+    # ------------------------------------------------------------------ public
+
+    def curated(self, argv: Sequence[str]) -> Any:
+        """Run a curated command (`atlas metrics ...`, `atlas processes ...`)."""
+        args = list(argv) + list(CURATED_OUTPUT_ARGS) + self._target(CURATED_PROJECT_FLAG)
+        return self._run_json(argv, args)
+
+    def api(self, argv: Sequence[str], params: Optional[Dict[str, Any]] = None) -> Any:
+        """Run an `atlas api <tag> <operation>` with flag params; unwraps `content`."""
+        args = list(argv) + self._flags(params or {}) + self._target(API_PROJECT_FLAG)
+        payload = self._run_json(argv, args)
+        if isinstance(payload, dict) and isinstance(payload.get(_ENVELOPE_KEY), dict):
+            return payload[_ENVELOPE_KEY]
+        return payload
+
+    def help_ok(self, argv: Sequence[str]) -> Tuple[bool, str]:
+        """True if `atlas <argv> --help` succeeds. Used by `doctor` only."""
+        self._guard(argv)
+        try:
+            proc = subprocess.run(
+                [self.binary, *argv, "--help"],
+                capture_output=True,
+                text=True,
+                timeout=CLI_TIMEOUT_SECONDS,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            log.error("help check failed", extra={"argv": list(argv), "error": str(exc)})
+            raise AtlasCliError(f"could not run atlas {' '.join(argv)} --help: {exc}") from exc
+        # The CLI prints the parent's help with exit 0 for an unknown leaf, so
+        # require the leaf's own usage line rather than trusting the exit code.
+        usage_line = f"atlas {' '.join(argv)}"
+        return proc.returncode == 0 and usage_line in proc.stdout, proc.stdout + proc.stderr
+
+    def text(self, argv: Sequence[str]) -> str:
+        """Run an allowlisted command whose output is plain text (auth whoami)."""
+        self._guard(argv)
+        try:
+            proc = subprocess.run([self.binary, *argv], capture_output=True, text=True,
+                                  timeout=CLI_TIMEOUT_SECONDS, check=False)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise AtlasCliError(f"could not run atlas {' '.join(argv)}: {exc}") from exc
+        if proc.returncode != 0:
+            raise AtlasCliError(f"atlas {' '.join(argv)} failed: {(proc.stderr or proc.stdout).strip()}")
+        return proc.stdout.strip()
+
+    def version(self) -> str:
+        try:
+            proc = subprocess.run(
+                [self.binary, "--version"], capture_output=True, text=True,
+                timeout=CLI_TIMEOUT_SECONDS, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise AtlasCliError(f"could not run atlas --version: {exc}") from exc
+        for line in proc.stdout.splitlines():
+            if "version:" in line and "atlascli" in line:
+                return line.split("version:", 1)[1].strip()
+        raise AtlasCliError("atlas --version printed no 'atlascli version:' line",
+                            {"stdout": proc.stdout[:300]})
+
+    # ----------------------------------------------------------------- private
+
+    def _guard(self, argv: Sequence[str]) -> None:
+        if _command_prefix(argv) is None:
+            log.error("refused non-allowlisted command", extra={"argv": list(argv)})
+            raise ReadOnlyViolation(
+                f"refusing to run 'atlas {' '.join(argv)}': it is not on the read-only "
+                "allowlist in constants.Command",
+                {"argv": list(argv)},
+            )
+
+    def _target(self, project_flag: str) -> List[str]:
+        out: List[str] = []
+        if self.project_id:
+            out += [project_flag, self.project_id]
+        if self.profile:
+            out += [PROFILE_FLAG, self.profile]
+        return out
+
+    @staticmethod
+    def _flags(params: Dict[str, Any]) -> List[str]:
+        out: List[str] = []
+        for key, value in params.items():
+            if value is None or value == "" or value == [] or value is False:
+                continue
+            if value is True:  # pflag bools take no separate value
+                out.append(f"--{key}=true")
+                continue
+            values = value if isinstance(value, (list, tuple)) else [value]
+            for item in values:
+                out += [f"--{key}", str(item)]
+        return out
+
+    def _run_json(self, argv: Sequence[str], full_args: Sequence[str]) -> Any:
+        self._guard(argv)
+        cmd = [self.binary, *full_args]
+        shown = " ".join(["atlas", *full_args])
+        log.info("atlas call", extra={"command": shown})
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=CLI_TIMEOUT_SECONDS, check=False
+            )
+        except subprocess.TimeoutExpired as exc:
+            log.error("atlas timed out", extra={"command": shown})
+            raise AtlasCliError(f"timed out after {CLI_TIMEOUT_SECONDS}s: {shown}") from exc
+        except OSError as exc:
+            log.error("atlas could not start", extra={"command": shown, "error": str(exc)})
+            raise AtlasCliError(f"could not start atlas: {exc}", {"command": shown}) from exc
+        if proc.returncode != 0:
+            detail = (proc.stderr or proc.stdout).strip()
+            log.error("atlas failed", extra={"command": shown, "rc": proc.returncode,
+                                             "stderr": detail[:2000]})
+            raise AtlasCliError(f"{shown}\n  failed (exit {proc.returncode}): {detail}",
+                                {"command": shown, "rc": proc.returncode})
+        text = proc.stdout.strip()
+        try:
+            return json.loads(text) if text else None
+        except json.JSONDecodeError as exc:
+            log.error("atlas returned non-JSON", extra={"command": shown, "head": text[:300]})
+            raise AtlasCliError(f"{shown}\n  returned output that is not JSON: {text[:300]}",
+                                {"command": shown}) from exc

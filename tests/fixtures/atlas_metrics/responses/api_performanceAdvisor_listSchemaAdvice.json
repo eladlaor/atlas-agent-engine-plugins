@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    {
+      "recommendation": "AVOID_UNBOUNDED_ARRAY",
+      "description": "Arrays grow without bound.",
+      "affectedNamespaces": [
+        {
+          "namespace": "app.orders"
+        }
+      ]
+    }
+  ]
+}

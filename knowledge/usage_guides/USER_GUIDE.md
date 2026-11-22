@@ -14,6 +14,7 @@
   - [Why does the hook ask GitHub instead of being notified of a change?](#why-does-the-hook-ask-github-instead-of-being-notified-of-a-change)
 - [How do I check I'm not rebuilding something AAE already does?](#how-do-i-check-im-not-rebuilding-something-aae-already-does)
 - [How do I ask what's coming on the AAE roadmap?](#how-do-i-ask-whats-coming-on-the-aae-roadmap)
+- [How do I check my Atlas cluster's metrics?](#how-do-i-check-my-atlas-clusters-metrics)
 - [How does change detection actually work?](#how-does-change-detection-actually-work)
 - [Why does it crawl every page instead of checking a timestamp?](#why-does-it-crawl-every-page-instead-of-checking-a-timestamp)
 - [Can I detect changes from git history instead?](#can-i-detect-changes-from-git-history-instead)
@@ -324,6 +325,14 @@ it uses only public claims and tells you what it held back. Its memory lives in
 `~/.claude/agent-memory/aae-roadmap/` and holds a source registry, a dated roadmap ledger
 and a log of what moved. Any internal source you give it stays there, on your machine;
 the plugin ships only the public ones. In Codex it is a skill with no ledger.
+
+## How do I check my Atlas cluster's metrics?
+
+Ask: "how is my cluster doing?", "which collection is slow?", "what happened at 14:00?".
+Nine read-only `atlas-metrics-*` skills answer from Atlas's monitoring data through the
+`atlas` CLI, at scopes from the whole cluster down to one query pattern or Search index.
+Their own guide covers setup, profiles, thresholds and troubleshooting:
+[`ATLAS_METRICS_USER_GUIDE.md`](../atlas_metrics/ATLAS_METRICS_USER_GUIDE.md).
 
 ## How does change detection actually work?
 

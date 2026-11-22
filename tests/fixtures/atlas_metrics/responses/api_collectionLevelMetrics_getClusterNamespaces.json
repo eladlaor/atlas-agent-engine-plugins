@@ -1,0 +1,7 @@
+{
+  "rankedNamespaces": [
+    "app.orders",
+    "app.users",
+    "analytics.events"
+  ]
+}

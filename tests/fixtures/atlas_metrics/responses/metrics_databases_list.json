@@ -1,0 +1,13 @@
+{
+  "results": [
+    {
+      "databaseName": "admin"
+    },
+    {
+      "databaseName": "analytics"
+    },
+    {
+      "databaseName": "app"
+    }
+  ]
+}

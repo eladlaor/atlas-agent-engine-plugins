@@ -1,0 +1,159 @@
+{
+  "databaseName": "analytics",
+  "measurements": [
+    {
+      "name": "DATABASE_DATA_SIZE",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    },
+    {
+      "name": "DATABASE_STORAGE_SIZE",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    },
+    {
+      "name": "DATABASE_INDEX_SIZE",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    },
+    {
+      "name": "DATABASE_OBJECT_COUNT",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    },
+    {
+      "name": "DATABASE_COLLECTION_COUNT",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    },
+    {
+      "name": "DATABASE_INDEX_COUNT",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    },
+    {
+      "name": "DATABASE_AVERAGE_OBJECT_SIZE",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5000000000.0
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 5000000000.0
+        }
+      ]
+    }
+  ]
+}

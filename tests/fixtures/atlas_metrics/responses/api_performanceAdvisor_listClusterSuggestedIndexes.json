@@ -1,0 +1,32 @@
+{
+  "content": {
+    "suggestedIndexes": [
+      {
+        "namespace": "app.orders",
+        "index": [
+          {
+            "status": 1
+          },
+          {
+            "created": -1
+          }
+        ],
+        "weight": 412.5,
+        "impact": [
+          "s1",
+          "s2"
+        ],
+        "id": "i1"
+      }
+    ],
+    "shapes": [
+      {
+        "namespace": "app.orders",
+        "avgMs": 120,
+        "count": 900,
+        "inefficiencyScore": 88,
+        "id": "s1"
+      }
+    ]
+  }
+}

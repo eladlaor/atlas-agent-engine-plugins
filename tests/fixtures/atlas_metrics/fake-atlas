@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""A stand-in for the atlas CLI, for the atlas-metrics tests.
+
+- Appends every argv it receives, as one JSON line, to $FAKE_ATLAS_LOG, so a
+  test can assert exactly what the engine ran (and that nothing mutating did).
+- Answers from $FAKE_ATLAS_FIXTURES/<key>.json, where <key> is the command's
+  words joined by "_" (e.g. api_collectionLevelMetrics_getClusterNamespaces).
+  More specific files win when present: <key>__<all positionals>.json, then
+  <key>__<last positional>.json, then <key>__<first positional>.json.
+- <key>.error makes that command fail: its content goes to stderr, exit 1.
+- `--help` prints the leaf's usage line only for commands in KNOWN, mimicking
+  the real CLI, which prints the parent's help (exit 0) for an unknown leaf.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+KNOWN = {
+    ("processes", "list"), ("clusters", "describe"), ("metrics", "processes"),
+    ("metrics", "disks", "list"), ("metrics", "disks", "describe"),
+    ("metrics", "databases", "list"), ("metrics", "databases", "describe"),
+    ("auth", "whoami"),
+}
+API_KNOWN = {
+    "collectionLevelMetrics": {"getClusterNamespaces", "listCollStatMeasurements", "listPinnedNamespaces"},
+    "queryShapeInsights": {"listQueryShapeSummaries", "getQueryShapeDetails"},
+    "monitoringAndLogs": {"listHostFtsMetrics", "listMeasurements", "listIndexMeasurements",
+                          "getIndexMeasurements"},
+    "performanceAdvisor": {"listPerformanceAdvisorNamespaces", "listSlowQueryLogs",
+                           "listClusterSuggestedIndexes", "listDropIndexSuggestions", "listSchemaAdvice"},
+    "alerts": {"listAlerts"},
+    "events": {"listGroupEvents"},
+}
+
+
+def words(argv):
+    out = []
+    for item in argv:
+        if item.startswith("-"):
+            break
+        out.append(item)
+    return out
+
+
+def command_key(argv):
+    w = words(argv)
+    if w[:1] == ["api"]:
+        return tuple(w[:3]), w[3:]
+    for size in (3, 2):
+        if tuple(w[:size]) in KNOWN:
+            return tuple(w[:size]), w[size:]
+    return tuple(w), []
+
+
+def main():
+    argv = sys.argv[1:]
+    log = os.environ.get("FAKE_ATLAS_LOG")
+    if log:
+        with open(log, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(argv) + "\n")
+    if argv == ["--version"]:
+        print(f"atlascli version: {os.environ.get('FAKE_ATLAS_VERSION', '1.59.1')}")
+        return 0
+    key, positionals = command_key(argv)
+    if "--help" in argv:
+        disabled = set(os.environ.get("FAKE_ATLAS_MISSING", "").split(","))
+        known = key in KNOWN or (key[:1] == ("api",) and len(key) == 3
+                                 and key[2] in API_KNOWN.get(key[1], set()))
+        if known and "_".join(key) not in disabled:
+            print(f"Usage:\n  atlas {' '.join(key)} [flags]")
+        else:
+            print(f"Usage:\n  atlas {' '.join(key[:-1])} [command]")
+        return 0
+    fixtures = Path(os.environ["FAKE_ATLAS_FIXTURES"])
+    base = "_".join(key)
+    error = fixtures / f"{base}.error"
+    if error.exists():
+        sys.stderr.write(error.read_text())
+        return 1
+    if key == ("auth", "whoami"):
+        print("Logged in as fake-service-account service account")
+        return 0
+    candidates = []
+    if positionals:
+        candidates.append(fixtures / f"{base}__{'__'.join(positionals)}.json")
+        candidates.append(fixtures / f"{base}__{positionals[-1]}.json")
+        candidates.append(fixtures / f"{base}__{positionals[0]}.json")
+    candidates.append(fixtures / f"{base}.json")
+    for path in candidates:
+        if path.exists():
+            sys.stdout.write(path.read_text())
+            return 0
+    sys.stderr.write(f"Error: fake-atlas has no fixture for {base} {positionals}\n")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

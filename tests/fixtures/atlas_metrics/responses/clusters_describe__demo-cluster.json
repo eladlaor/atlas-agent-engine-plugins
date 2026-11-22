@@ -1,0 +1,9 @@
+{
+  "name": "demo-cluster",
+  "paused": false,
+  "stateName": "IDLE",
+  "connectionStrings": {
+    "standard": "mongodb://demo-cluster-shard-00-00.abcde.example.net:27017,demo-cluster-shard-00-01.abcde.example.net:27017,demo-cluster-shard-00-02.abcde.example.net:27017/?ssl=true&replicaSet=atlas-abc123-shard-0&authSource=admin",
+    "standardSrv": "mongodb+srv://demo-cluster.abcde.example.net"
+  }
+}

@@ -1,0 +1,283 @@
+{
+  "overview": {
+    "source": "process",
+    "description": "The first look: CPU, memory, connections, operation rates, replication lag and query targeting.",
+    "measurements": [
+      "PROCESS_NORMALIZED_CPU_USER",
+      "SYSTEM_NORMALIZED_CPU_USER",
+      "SYSTEM_NORMALIZED_CPU_IOWAIT",
+      "SYSTEM_MEMORY_AVAILABLE",
+      "CACHE_FILL_RATIO",
+      "CONNECTIONS",
+      "OPCOUNTER_QUERY",
+      "OPCOUNTER_INSERT",
+      "OPCOUNTER_UPDATE",
+      "OPCOUNTER_DELETE",
+      "OPCOUNTER_GETMORE",
+      "OPCOUNTER_CMD",
+      "OPLOG_REPLICATION_LAG_TIME",
+      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED"
+    ],
+    "thresholds": {
+      "PROCESS_NORMALIZED_CPU_USER": {"warn": 70, "crit": 90, "units": "PERCENT"},
+      "SYSTEM_NORMALIZED_CPU_USER": {"warn": 70, "crit": 90, "units": "PERCENT"},
+      "SYSTEM_NORMALIZED_CPU_IOWAIT": {"warn": 10, "crit": 25, "units": "PERCENT"},
+      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED": {"warn": 100, "crit": 1000, "units": "SCALAR"}
+    }
+  },
+  "cpu": {
+    "source": "process",
+    "description": "CPU split by user, kernel, I/O wait and steal, for the process and the whole host.",
+    "measurements": [
+      "PROCESS_NORMALIZED_CPU_USER",
+      "PROCESS_NORMALIZED_CPU_KERNEL",
+      "SYSTEM_NORMALIZED_CPU_USER",
+      "SYSTEM_NORMALIZED_CPU_KERNEL",
+      "SYSTEM_NORMALIZED_CPU_IOWAIT",
+      "SYSTEM_NORMALIZED_CPU_STEAL"
+    ],
+    "thresholds": {
+      "PROCESS_NORMALIZED_CPU_USER": {"warn": 70, "crit": 90, "units": "PERCENT"},
+      "SYSTEM_NORMALIZED_CPU_IOWAIT": {"warn": 10, "crit": 25, "units": "PERCENT"},
+      "SYSTEM_NORMALIZED_CPU_STEAL": {"warn": 5, "crit": 15, "units": "PERCENT"}
+    }
+  },
+  "memory-cache": {
+    "source": "process",
+    "description": "WiredTiger cache fill and dirtiness, cache traffic, resident memory, swap and page faults.",
+    "measurements": [
+      "CACHE_FILL_RATIO",
+      "DIRTY_FILL_RATIO",
+      "CACHE_USED_BYTES",
+      "CACHE_DIRTY_BYTES",
+      "CACHE_BYTES_READ_INTO",
+      "CACHE_BYTES_WRITTEN_FROM",
+      "SYSTEM_MEMORY_AVAILABLE",
+      "MEMORY_RESIDENT",
+      "SWAP_USAGE_USED",
+      "EXTRA_INFO_PAGE_FAULTS"
+    ],
+    "thresholds": {}
+  },
+  "operations": {
+    "source": "process",
+    "description": "Operation and document rates by type, plus in-memory sorts.",
+    "measurements": [
+      "OPCOUNTER_QUERY",
+      "OPCOUNTER_INSERT",
+      "OPCOUNTER_UPDATE",
+      "OPCOUNTER_DELETE",
+      "OPCOUNTER_GETMORE",
+      "OPCOUNTER_CMD",
+      "OPCOUNTER_TTL_DELETED",
+      "DOCUMENT_METRICS_RETURNED",
+      "DOCUMENT_METRICS_INSERTED",
+      "DOCUMENT_METRICS_UPDATED",
+      "DOCUMENT_METRICS_DELETED",
+      "OPERATIONS_SCAN_AND_ORDER"
+    ],
+    "thresholds": {}
+  },
+  "latency": {
+    "source": "process",
+    "description": "Average execution time of reads, writes and commands, and majority write-concern wait.",
+    "measurements": [
+      "OP_EXECUTION_TIME_READS",
+      "OP_EXECUTION_TIME_WRITES",
+      "OP_EXECUTION_TIME_COMMANDS",
+      "AVG_MAJORITY_WRITE_CONCERN_WRITE_TIME"
+    ],
+    "thresholds": {}
+  },
+  "query-efficiency": {
+    "source": "process",
+    "description": "How much work queries do per document returned: targeting ratios, scans, in-memory sorts, spills.",
+    "measurements": [
+      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED",
+      "QUERY_TARGETING_SCANNED_PER_RETURNED",
+      "QUERY_EXECUTOR_SCANNED",
+      "QUERY_EXECUTOR_SCANNED_OBJECTS",
+      "DOCUMENT_METRICS_RETURNED",
+      "OPERATIONS_SCAN_AND_ORDER",
+      "QUERY_SPILL_TO_DISK_DURING_SORT"
+    ],
+    "thresholds": {
+      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED": {"warn": 100, "crit": 1000, "units": "SCALAR"},
+      "QUERY_TARGETING_SCANNED_PER_RETURNED": {"warn": 100, "crit": 1000, "units": "SCALAR"}
+    }
+  },
+  "connections": {
+    "source": "process",
+    "description": "Open connections and cursors, request rate, and rejected connections.",
+    "measurements": [
+      "CONNECTIONS",
+      "CURSORS_TOTAL_OPEN",
+      "CURSORS_TOTAL_TIMED_OUT",
+      "NETWORK_NUM_REQUESTS",
+      "CONNECTION_RATE_LIMITING_REJECTED_CONNECTIONS"
+    ],
+    "thresholds": {}
+  },
+  "replication": {
+    "source": "process",
+    "description": "Replication lag, oplog window and oplog growth, and replicated operation rates.",
+    "measurements": [
+      "OPLOG_REPLICATION_LAG_TIME",
+      "OPLOG_MASTER_LAG_TIME_DIFF",
+      "OPLOG_RATE_GB_PER_HOUR",
+      "OPCOUNTER_REPL_INSERT",
+      "OPCOUNTER_REPL_UPDATE",
+      "OPCOUNTER_REPL_DELETE",
+      "OPCOUNTER_REPL_CMD"
+    ],
+    "thresholds": {}
+  },
+  "concurrency": {
+    "source": "process",
+    "description": "Read and write tickets, lock queues, throttled operations and ingress queue wait.",
+    "measurements": [
+      "TICKETS_AVAILABLE_READS",
+      "TICKETS_AVAILABLE_WRITE",
+      "GLOBAL_LOCK_CURRENT_QUEUE_READERS",
+      "GLOBAL_LOCK_CURRENT_QUEUE_WRITERS",
+      "GLOBAL_LOCK_CURRENT_QUEUE_TOTAL",
+      "OPERATION_THROTTLING_REJECTED_OPERATIONS",
+      "INGRESS_QUEUE_WAIT_TIME"
+    ],
+    "thresholds": {}
+  },
+  "network": {
+    "source": "process",
+    "description": "Bytes in and out at the process and the host, and request rate.",
+    "measurements": [
+      "NETWORK_BYTES_IN",
+      "NETWORK_BYTES_OUT",
+      "NETWORK_NUM_REQUESTS",
+      "SYSTEM_NETWORK_IN",
+      "SYSTEM_NETWORK_OUT"
+    ],
+    "thresholds": {}
+  },
+  "transactions": {
+    "source": "process",
+    "description": "Open, active and inactive transactions, and start / commit / abort rates.",
+    "measurements": [
+      "TRANSACTIONS_CURRENT_OPEN",
+      "TRANSACTIONS_CURRENT_ACTIVE",
+      "TRANSACTIONS_CURRENT_INACTIVE",
+      "TRANSACTIONS_STARTED",
+      "TRANSACTIONS_COMMITTED",
+      "TRANSACTIONS_ABORTED"
+    ],
+    "thresholds": {}
+  },
+  "errors": {
+    "source": "process",
+    "description": "Assertions, killed queries and restarts: the signs that something is failing, not just slow.",
+    "measurements": [
+      "ASSERT_REGULAR",
+      "ASSERT_WARNING",
+      "ASSERT_USER",
+      "ASSERT_MSG",
+      "OPERATIONS_QUERIES_KILLED",
+      "RESTARTS_IN_LAST_HOUR"
+    ],
+    "thresholds": {
+      "RESTARTS_IN_LAST_HOUR": {"warn": 1, "crit": 3, "units": "SCALAR"}
+    }
+  },
+  "disk": {
+    "source": "disk",
+    "description": "Disk space used, IOPS, read/write latency, throughput and queue depth, per partition.",
+    "measurements": [
+      "DISK_PARTITION_SPACE_PERCENT_USED",
+      "DISK_PARTITION_SPACE_FREE",
+      "DISK_PARTITION_IOPS_TOTAL",
+      "DISK_PARTITION_LATENCY_READ",
+      "DISK_PARTITION_LATENCY_WRITE",
+      "DISK_PARTITION_THROUGHPUT_READ",
+      "DISK_PARTITION_THROUGHPUT_WRITE",
+      "DISK_QUEUE_DEPTH"
+    ],
+    "thresholds": {
+      "DISK_PARTITION_SPACE_PERCENT_USED": {"warn": 80, "crit": 90, "units": "PERCENT"}
+    }
+  },
+  "database-size": {
+    "source": "database",
+    "description": "Per-database data, storage and index size, and document, collection and index counts.",
+    "measurements": [
+      "DATABASE_DATA_SIZE",
+      "DATABASE_STORAGE_SIZE",
+      "DATABASE_INDEX_SIZE",
+      "DATABASE_OBJECT_COUNT",
+      "DATABASE_COLLECTION_COUNT",
+      "DATABASE_INDEX_COUNT",
+      "DATABASE_AVERAGE_OBJECT_SIZE"
+    ],
+    "thresholds": {}
+  },
+  "collection-latency": {
+    "source": "collection",
+    "description": "Per-collection operation rates and average and p99 latency for reads, writes and commands.",
+    "measurements": [
+      "READS_OPS",
+      "WRITES_OPS",
+      "COMMANDS_OPS",
+      "AVERAGE_READS_LATENCY",
+      "AVERAGE_WRITES_LATENCY",
+      "AVERAGE_COMMANDS_LATENCY",
+      "READS_P99_VALUE",
+      "WRITES_P99_VALUE"
+    ],
+    "thresholds": {}
+  },
+  "collection-percentiles": {
+    "source": "collection",
+    "description": "Per-collection p50 / p95 / p99 latency for reads, writes, commands and all operations.",
+    "measurements": [
+      "READS_P50_VALUE",
+      "READS_P95_VALUE",
+      "READS_P99_VALUE",
+      "WRITES_P50_VALUE",
+      "WRITES_P95_VALUE",
+      "WRITES_P99_VALUE",
+      "COMMANDS_P50_VALUE",
+      "COMMANDS_P95_VALUE",
+      "COMMANDS_P99_VALUE",
+      "TOTAL_OPS_P50_VALUE",
+      "TOTAL_OPS_P95_VALUE",
+      "TOTAL_OPS_P99_VALUE"
+    ],
+    "thresholds": {}
+  },
+  "search-index": {
+    "source": "search-index",
+    "description": "Per Search / Vector Search index: query counts and errors, write rates, size on disk and index lag.",
+    "measurements": [
+      "TOTAL_NUMBER_OF_QUERIES",
+      "NUMBER_OF_SUCCESS_QUERIES",
+      "NUMBER_OF_ERROR_QUERIES",
+      "NUMBER_OF_INSERTS",
+      "NUMBER_OF_UPDATES",
+      "NUMBER_OF_DELETES",
+      "INDEX_SIZE_ON_DISK",
+      "REPLICATION_LAG"
+    ],
+    "thresholds": {}
+  },
+  "search-hardware": {
+    "source": "search-hardware",
+    "description": "The Search process itself: CPU, resident memory, JVM heap, disk use and page faults.",
+    "measurements": [
+      "FTS_PROCESS_NORMALIZED_CPU_USER",
+      "FTS_PROCESS_NORMALIZED_CPU_KERNEL",
+      "FTS_PROCESS_RESIDENT_MEMORY",
+      "JVM_CURRENT_MEMORY",
+      "JVM_MAX_MEMORY",
+      "FTS_DISK_USAGE",
+      "PAGE_FAULTS"
+    ],
+    "thresholds": {}
+  }
+}

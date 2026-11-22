@@ -14,6 +14,17 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Added
 
+- `atlas-metrics-*`: nine read-only skills for an Atlas cluster's monitoring data, through
+  the `atlas` CLI. They cover snapshot, history with comparison against an earlier window,
+  storage (disks and databases), per-collection latency, query-shape statistics, Atlas Search
+  and Vector Search, the Performance Advisor (slow queries, suggested and droppable indexes,
+  schema advice), an incident timeline of metrics, alerts and events, and profiles. They share
+  one standard-library Python engine, `scripts/atlas-metrics.sh`, which runs only allowlisted
+  read commands. It ships 18 built-in measurement profiles, accepts user profiles and thresholds
+  from `~/.config/atlas-metrics/config.json`, and returns exit code 1 when a threshold is
+  crossed. A `doctor` command checks the CLI version, auth and every operation the engine
+  uses. Documented in `knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md`.
+
 - `aae-roadmap`: a subagent (a skill in Codex) for questions about where Atlas Agent Engine
   is going. It labels each roadmap item shipped, announced, planned, concept or unknown,
   quotes the source's own timing, links every claim to its dated source, separates public

@@ -1,0 +1,188 @@
+{
+  "indexStatsMeasurements": [
+    {
+      "name": "TOTAL_NUMBER_OF_QUERIES",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "NUMBER_OF_SUCCESS_QUERIES",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "NUMBER_OF_ERROR_QUERIES",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "NUMBER_OF_INSERTS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "NUMBER_OF_UPDATES",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "NUMBER_OF_DELETES",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "INDEX_SIZE_ON_DISK",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    },
+    {
+      "name": "REPLICATION_LAG",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 7
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 8
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 9
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 8
+        }
+      ],
+      "indexName": "default"
+    }
+  ]
+}

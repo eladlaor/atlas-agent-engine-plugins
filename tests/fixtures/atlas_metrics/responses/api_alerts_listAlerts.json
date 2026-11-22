@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "id": "a1",
+      "clusterName": "demo-cluster",
+      "created": "2026-11-20T14:07:00Z",
+      "status": "CLOSED",
+      "resolved": "2026-11-20T14:30:00Z",
+      "eventTypeName": "OUTSIDE_METRIC_THRESHOLD",
+      "metricName": "NORMALIZED_SYSTEM_CPU_USER",
+      "severity": "WARNING",
+      "hostnameAndPort": "demo-cluster-shard-00-00.abcde.example.net:27017"
+    },
+    {
+      "id": "a2",
+      "clusterName": "demo-cluster",
+      "created": "2026-11-01T00:00:00Z",
+      "status": "CLOSED",
+      "resolved": "2026-11-01T01:00:00Z",
+      "eventTypeName": "HOST_DOWN",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "a3",
+      "clusterName": "other-cluster",
+      "created": "2026-11-20T14:08:00Z",
+      "status": "OPEN",
+      "eventTypeName": "HOST_DOWN",
+      "severity": "CRITICAL"
+    }
+  ]
+}

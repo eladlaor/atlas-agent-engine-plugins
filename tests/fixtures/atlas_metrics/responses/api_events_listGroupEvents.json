@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "id": "e2",
+      "created": "2026-11-20T14:06:00Z",
+      "eventTypeName": "PRIMARY_ELECTED",
+      "hostname": "atlas-abc123-shard-00-01.abcde.example.net",
+      "port": 27017
+    },
+    {
+      "id": "e1",
+      "created": "2026-11-20T14:01:00Z",
+      "eventTypeName": "CLUSTER_UPDATE_SUBMITTED",
+      "username": "someone@example.com"
+    }
+  ]
+}

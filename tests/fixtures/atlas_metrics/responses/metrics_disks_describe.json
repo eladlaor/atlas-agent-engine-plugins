@@ -1,0 +1,181 @@
+{
+  "partitionName": "data",
+  "measurements": [
+    {
+      "name": "DISK_PARTITION_SPACE_PERCENT_USED",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 85
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 85
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 86
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 86
+        }
+      ]
+    },
+    {
+      "name": "DISK_PARTITION_SPACE_FREE",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "name": "DISK_PARTITION_IOPS_TOTAL",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "name": "DISK_PARTITION_LATENCY_READ",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "name": "DISK_PARTITION_LATENCY_WRITE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "name": "DISK_PARTITION_THROUGHPUT_READ",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "name": "DISK_PARTITION_THROUGHPUT_WRITE",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "name": "DISK_QUEUE_DEPTH",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 6
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 6
+        }
+      ]
+    }
+  ]
+}

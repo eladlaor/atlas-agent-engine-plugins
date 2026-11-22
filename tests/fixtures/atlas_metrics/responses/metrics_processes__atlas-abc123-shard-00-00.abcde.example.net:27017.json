@@ -1,0 +1,1592 @@
+{
+  "groupId": "000000000000000000000000",
+  "hostId": "atlas-abc123-shard-00-00.abcde.example.net:27017",
+  "processId": "atlas-abc123-shard-00-00.abcde.example.net:27017",
+  "granularity": "PT5M",
+  "measurements": [
+    {
+      "name": "ASSERT_MSG",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "ASSERT_REGULAR",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "ASSERT_USER",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "ASSERT_WARNING",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "AVG_MAJORITY_WRITE_CONCERN_WRITE_TIME",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CACHE_BYTES_READ_INTO",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CACHE_BYTES_WRITTEN_FROM",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CACHE_DIRTY_BYTES",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CACHE_FILL_RATIO",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CACHE_USED_BYTES",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CONNECTIONS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CONNECTION_RATE_LIMITING_REJECTED_CONNECTIONS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CURSORS_TOTAL_OPEN",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "CURSORS_TOTAL_TIMED_OUT",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "DIRTY_FILL_RATIO",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "DOCUMENT_METRICS_DELETED",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "DOCUMENT_METRICS_INSERTED",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "DOCUMENT_METRICS_RETURNED",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "DOCUMENT_METRICS_UPDATED",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "EXTRA_INFO_PAGE_FAULTS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "GLOBAL_LOCK_CURRENT_QUEUE_READERS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "GLOBAL_LOCK_CURRENT_QUEUE_TOTAL",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "GLOBAL_LOCK_CURRENT_QUEUE_WRITERS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "INGRESS_QUEUE_WAIT_TIME",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "MEMORY_RESIDENT",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "NETWORK_BYTES_IN",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "NETWORK_BYTES_OUT",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "NETWORK_NUM_REQUESTS",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_CMD",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_DELETE",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_GETMORE",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_INSERT",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_QUERY",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_REPL_CMD",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_REPL_DELETE",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_REPL_INSERT",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_REPL_UPDATE",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_TTL_DELETED",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPCOUNTER_UPDATE",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPERATIONS_QUERIES_KILLED",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPERATIONS_SCAN_AND_ORDER",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPERATION_THROTTLING_REJECTED_OPERATIONS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPLOG_MASTER_LAG_TIME_DIFF",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPLOG_RATE_GB_PER_HOUR",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OPLOG_REPLICATION_LAG_TIME",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OP_EXECUTION_TIME_COMMANDS",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OP_EXECUTION_TIME_READS",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "OP_EXECUTION_TIME_WRITES",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "PROCESS_NORMALIZED_CPU_KERNEL",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "PROCESS_NORMALIZED_CPU_USER",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 40
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": null
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 95
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 60
+        }
+      ]
+    },
+    {
+      "name": "QUERY_EXECUTOR_SCANNED",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "QUERY_EXECUTOR_SCANNED_OBJECTS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "QUERY_SPILL_TO_DISK_DURING_SORT",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "QUERY_TARGETING_SCANNED_PER_RETURNED",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "RESTARTS_IN_LAST_HOUR",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SWAP_USAGE_USED",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_MEMORY_AVAILABLE",
+      "units": "BYTES",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_NETWORK_IN",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_NETWORK_OUT",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_NORMALIZED_CPU_IOWAIT",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_NORMALIZED_CPU_KERNEL",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_NORMALIZED_CPU_STEAL",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "SYSTEM_NORMALIZED_CPU_USER",
+      "units": "PERCENT",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TICKETS_AVAILABLE_READS",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TICKETS_AVAILABLE_WRITE",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TRANSACTIONS_ABORTED",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TRANSACTIONS_COMMITTED",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TRANSACTIONS_CURRENT_ACTIVE",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TRANSACTIONS_CURRENT_INACTIVE",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TRANSACTIONS_CURRENT_OPEN",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    },
+    {
+      "name": "TRANSACTIONS_STARTED",
+      "units": "SCALAR",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 10
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 12
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 11
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 13
+        }
+      ]
+    }
+  ]
+}

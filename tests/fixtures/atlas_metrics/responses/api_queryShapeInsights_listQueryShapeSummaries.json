@@ -1,0 +1,46 @@
+{
+  "summaries": [
+    {
+      "namespace": "app.orders",
+      "command": "find",
+      "execCount": 100,
+      "totalWorkingMillis": 5000,
+      "avgWorkingMillis": 50.0,
+      "p99ExecMicros": 90000,
+      "docsExaminedRatio": 250.0,
+      "keysExaminedRatio": 1.0,
+      "queryShapeHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "systemQuery": false,
+      "cpuTime": 5,
+      "queryShape": "{\"filter\": {\"status\": \"?string\"}}"
+    },
+    {
+      "namespace": "app.users",
+      "command": "aggregate",
+      "execCount": 30,
+      "totalWorkingMillis": 9000,
+      "avgWorkingMillis": 300.0,
+      "p99ExecMicros": 90000,
+      "docsExaminedRatio": 250.0,
+      "keysExaminedRatio": 1.0,
+      "queryShapeHash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "systemQuery": false,
+      "cpuTime": 5,
+      "queryShape": "{\"filter\": {\"status\": \"?string\"}}"
+    },
+    {
+      "namespace": "local.oplog.rs",
+      "command": "find",
+      "execCount": 5,
+      "totalWorkingMillis": 99999,
+      "avgWorkingMillis": 19999.8,
+      "p99ExecMicros": 90000,
+      "docsExaminedRatio": 250.0,
+      "keysExaminedRatio": 1.0,
+      "queryShapeHash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "systemQuery": true,
+      "cpuTime": 5,
+      "queryShape": "{\"filter\": {\"status\": \"?string\"}}"
+    }
+  ]
+}

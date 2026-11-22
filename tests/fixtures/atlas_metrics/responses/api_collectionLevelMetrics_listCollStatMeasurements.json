@@ -1,0 +1,401 @@
+{
+  "clusterView": "PRIMARY",
+  "measurements": [
+    {
+      "name": "READS_OPS",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "WRITES_OPS",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "COMMANDS_OPS",
+      "units": "SCALAR_PER_SECOND",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "AVERAGE_READS_LATENCY",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "AVERAGE_WRITES_LATENCY",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "AVERAGE_COMMANDS_LATENCY",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "READS_P99_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "WRITES_P99_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "READS_P50_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "READS_P95_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "WRITES_P50_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "WRITES_P95_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "COMMANDS_P50_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "COMMANDS_P95_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "COMMANDS_P99_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "TOTAL_OPS_P50_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "TOTAL_OPS_P95_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "TOTAL_OPS_P99_VALUE",
+      "units": "MILLISECONDS",
+      "dataPoints": [
+        {
+          "timestamp": "2026-11-20T14:00:00Z",
+          "value": 3
+        },
+        {
+          "timestamp": "2026-11-20T14:05:00Z",
+          "value": 4
+        },
+        {
+          "timestamp": "2026-11-20T14:10:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-20T14:15:00Z",
+          "value": 4
+        }
+      ]
+    }
+  ]
+}

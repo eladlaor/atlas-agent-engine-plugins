@@ -1,0 +1,27 @@
+{
+  "slowQueries": [
+    {
+      "namespace": "app.orders",
+      "opType": "read",
+      "line": "{\"msg\":\"Slow query\"}",
+      "metrics": {
+        "operationExecutionTime": 1500,
+        "docsExamined": 200000,
+        "docsReturned": 10,
+        "docsExaminedReturnedRatio": 20000,
+        "hasIndexCoverage": false,
+        "hasSort": true
+      }
+    },
+    {
+      "namespace": "app.users",
+      "opType": "write",
+      "line": "{\"msg\":\"Slow query\"}",
+      "metrics": {
+        "operationExecutionTime": 300,
+        "docsExamined": 1,
+        "docsReturned": 1
+      }
+    }
+  ]
+}

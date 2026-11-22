@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "id": "atlas-abc123-shard-00-00.abcde.example.net:27017",
+      "hostname": "atlas-abc123-shard-00-00.abcde.example.net",
+      "port": 27017,
+      "userAlias": "demo-cluster-shard-00-00.abcde.example.net",
+      "typeName": "REPLICA_PRIMARY",
+      "replicaSetName": "atlas-abc123-shard-0",
+      "version": "8.0.4"
+    },
+    {
+      "id": "atlas-abc123-shard-00-01.abcde.example.net:27017",
+      "hostname": "atlas-abc123-shard-00-01.abcde.example.net",
+      "port": 27017,
+      "userAlias": "demo-cluster-shard-00-01.abcde.example.net",
+      "typeName": "REPLICA_SECONDARY",
+      "replicaSetName": "atlas-abc123-shard-0",
+      "version": "8.0.4"
+    },
+    {
+      "id": "atlas-abc123-shard-00-02.abcde.example.net:27017",
+      "hostname": "atlas-abc123-shard-00-02.abcde.example.net",
+      "port": 27017,
+      "userAlias": "demo-cluster-shard-00-02.abcde.example.net",
+      "typeName": "REPLICA_SECONDARY",
+      "replicaSetName": "atlas-abc123-shard-0",
+      "version": "8.0.4"
+    },
+    {
+      "id": "atlas-zzz999-shard-00-00.abcde.example.net:27017",
+      "hostname": "atlas-zzz999-shard-00-00.abcde.example.net",
+      "port": 27017,
+      "userAlias": "other-cluster-shard-00-00.abcde.example.net",
+      "typeName": "REPLICA_PRIMARY",
+      "replicaSetName": "atlas-zzz999-shard-0",
+      "version": "8.0.4"
+    }
+  ],
+  "totalCount": 4
+}
