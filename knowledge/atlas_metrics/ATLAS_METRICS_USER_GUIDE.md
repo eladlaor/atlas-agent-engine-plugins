@@ -107,8 +107,8 @@ The recommended setup, done once:
 
 | Step | Who | What |
 |---|---|---|
-| 1 | You, as a project or organization owner | In the organization that owns the project: **Organization → Identity & Access → Applications → Create service account**, named e.g. `atlas-metrics-readonly`. Keep its secret out of chats and repos. |
-| 2 | You | Add it to each project you want to monitor with **Project Read Only**, plus **Project Data Access Read Only** if you want slow-query logs and query shapes. Never Owner: the skills only read, so the identity shouldn't be able to write. |
+| 1 | You, as **Project Owner** (no organization role needed) | Inside the project: **Project Identity & Access → Applications → Create Application → Service Account**, named e.g. `atlas-metrics-readonly`. This creates a *project-level* service account, which Atlas adds to the organization as a member with no organization permissions. An organization owner can instead create one under **Organization → Identity & Access → Applications** and add it to several projects. Keep the secret out of chats and repos. |
+| 2 | You | Give it **Project Read Only**, plus **Project Data Access Read Only** if you want slow-query logs and query shapes. Never Owner: the skills only read, so the identity shouldn't be able to write. |
 | 3 | You, in your own terminal | `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`, choose **ServiceAccount**, and paste the ID and secret at the prompt. |
 | 4 | You | Set `"atlas_profile": "metrics"` and `"project_id"` in `~/.config/atlas-metrics/config.json`, then run `atlas-metrics.sh doctor --cluster <name>`. |
 
