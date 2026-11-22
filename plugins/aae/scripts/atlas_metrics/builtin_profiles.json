@@ -19,10 +19,31 @@
       "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED"
     ],
     "thresholds": {
-      "PROCESS_NORMALIZED_CPU_USER": {"warn": 70, "crit": 90, "units": "PERCENT"},
-      "SYSTEM_NORMALIZED_CPU_USER": {"warn": 70, "crit": 90, "units": "PERCENT"},
-      "SYSTEM_NORMALIZED_CPU_IOWAIT": {"warn": 10, "crit": 25, "units": "PERCENT"},
-      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED": {"warn": 100, "crit": 1000, "units": "SCALAR"}
+      "PROCESS_NORMALIZED_CPU_USER": {
+        "warn": 70,
+        "crit": 90,
+        "units": "PERCENT"
+      },
+      "SYSTEM_NORMALIZED_CPU_USER": {
+        "warn": 70,
+        "crit": 90,
+        "units": "PERCENT"
+      },
+      "SYSTEM_NORMALIZED_CPU_IOWAIT": {
+        "warn": 10,
+        "crit": 25,
+        "units": "PERCENT"
+      },
+      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED": {
+        "warn": 100,
+        "crit": 1000,
+        "units": "SCALAR"
+      },
+      "OPLOG_REPLICATION_LAG_TIME": {
+        "warn": 10,
+        "crit": 60,
+        "units": "SECONDS"
+      }
     }
   },
   "cpu": {
@@ -37,9 +58,21 @@
       "SYSTEM_NORMALIZED_CPU_STEAL"
     ],
     "thresholds": {
-      "PROCESS_NORMALIZED_CPU_USER": {"warn": 70, "crit": 90, "units": "PERCENT"},
-      "SYSTEM_NORMALIZED_CPU_IOWAIT": {"warn": 10, "crit": 25, "units": "PERCENT"},
-      "SYSTEM_NORMALIZED_CPU_STEAL": {"warn": 5, "crit": 15, "units": "PERCENT"}
+      "PROCESS_NORMALIZED_CPU_USER": {
+        "warn": 70,
+        "crit": 90,
+        "units": "PERCENT"
+      },
+      "SYSTEM_NORMALIZED_CPU_IOWAIT": {
+        "warn": 10,
+        "crit": 25,
+        "units": "PERCENT"
+      },
+      "SYSTEM_NORMALIZED_CPU_STEAL": {
+        "warn": 5,
+        "crit": 15,
+        "units": "PERCENT"
+      }
     }
   },
   "memory-cache": {
@@ -80,12 +113,11 @@
   },
   "latency": {
     "source": "process",
-    "description": "Average execution time of reads, writes and commands, and majority write-concern wait.",
+    "description": "Average execution time of reads, writes and commands.",
     "measurements": [
       "OP_EXECUTION_TIME_READS",
       "OP_EXECUTION_TIME_WRITES",
-      "OP_EXECUTION_TIME_COMMANDS",
-      "AVG_MAJORITY_WRITE_CONCERN_WRITE_TIME"
+      "OP_EXECUTION_TIME_COMMANDS"
     ],
     "thresholds": {}
   },
@@ -102,25 +134,32 @@
       "QUERY_SPILL_TO_DISK_DURING_SORT"
     ],
     "thresholds": {
-      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED": {"warn": 100, "crit": 1000, "units": "SCALAR"},
-      "QUERY_TARGETING_SCANNED_PER_RETURNED": {"warn": 100, "crit": 1000, "units": "SCALAR"}
+      "QUERY_TARGETING_SCANNED_OBJECTS_PER_RETURNED": {
+        "warn": 100,
+        "crit": 1000,
+        "units": "SCALAR"
+      },
+      "QUERY_TARGETING_SCANNED_PER_RETURNED": {
+        "warn": 100,
+        "crit": 1000,
+        "units": "SCALAR"
+      }
     }
   },
   "connections": {
     "source": "process",
-    "description": "Open connections and cursors, request rate, and rejected connections.",
+    "description": "Open connections and cursors, and request rate.",
     "measurements": [
       "CONNECTIONS",
       "CURSORS_TOTAL_OPEN",
       "CURSORS_TOTAL_TIMED_OUT",
-      "NETWORK_NUM_REQUESTS",
-      "CONNECTION_RATE_LIMITING_REJECTED_CONNECTIONS"
+      "NETWORK_NUM_REQUESTS"
     ],
     "thresholds": {}
   },
   "replication": {
     "source": "process",
-    "description": "Replication lag, oplog window and oplog growth, and replicated operation rates.",
+    "description": "Replication lag and oplog window (reported by secondaries only), oplog growth, and replicated operation rates.",
     "measurements": [
       "OPLOG_REPLICATION_LAG_TIME",
       "OPLOG_MASTER_LAG_TIME_DIFF",
@@ -130,19 +169,24 @@
       "OPCOUNTER_REPL_DELETE",
       "OPCOUNTER_REPL_CMD"
     ],
-    "thresholds": {}
+    "thresholds": {
+      "OPLOG_REPLICATION_LAG_TIME": {
+        "warn": 10,
+        "crit": 60,
+        "units": "SECONDS"
+      }
+    }
   },
   "concurrency": {
     "source": "process",
-    "description": "Read and write tickets, lock queues, throttled operations and ingress queue wait.",
+    "description": "Read and write tickets, lock queues and throttled operations.",
     "measurements": [
       "TICKETS_AVAILABLE_READS",
       "TICKETS_AVAILABLE_WRITE",
       "GLOBAL_LOCK_CURRENT_QUEUE_READERS",
       "GLOBAL_LOCK_CURRENT_QUEUE_WRITERS",
       "GLOBAL_LOCK_CURRENT_QUEUE_TOTAL",
-      "OPERATION_THROTTLING_REJECTED_OPERATIONS",
-      "INGRESS_QUEUE_WAIT_TIME"
+      "OPERATION_THROTTLING_REJECTED_OPERATIONS"
     ],
     "thresholds": {}
   },
@@ -158,33 +202,17 @@
     ],
     "thresholds": {}
   },
-  "transactions": {
-    "source": "process",
-    "description": "Open, active and inactive transactions, and start / commit / abort rates.",
-    "measurements": [
-      "TRANSACTIONS_CURRENT_OPEN",
-      "TRANSACTIONS_CURRENT_ACTIVE",
-      "TRANSACTIONS_CURRENT_INACTIVE",
-      "TRANSACTIONS_STARTED",
-      "TRANSACTIONS_COMMITTED",
-      "TRANSACTIONS_ABORTED"
-    ],
-    "thresholds": {}
-  },
   "errors": {
     "source": "process",
-    "description": "Assertions, killed queries and restarts: the signs that something is failing, not just slow.",
+    "description": "Assertions and killed queries: the signs that something is failing, not just slow.",
     "measurements": [
       "ASSERT_REGULAR",
       "ASSERT_WARNING",
       "ASSERT_USER",
       "ASSERT_MSG",
-      "OPERATIONS_QUERIES_KILLED",
-      "RESTARTS_IN_LAST_HOUR"
+      "OPERATIONS_QUERIES_KILLED"
     ],
-    "thresholds": {
-      "RESTARTS_IN_LAST_HOUR": {"warn": 1, "crit": 3, "units": "SCALAR"}
-    }
+    "thresholds": {}
   },
   "disk": {
     "source": "disk",
@@ -200,7 +228,11 @@
       "DISK_QUEUE_DEPTH"
     ],
     "thresholds": {
-      "DISK_PARTITION_SPACE_PERCENT_USED": {"warn": 80, "crit": 90, "units": "PERCENT"}
+      "DISK_PARTITION_SPACE_PERCENT_USED": {
+        "warn": 80,
+        "crit": 90,
+        "units": "PERCENT"
+      }
     }
   },
   "database-size": {

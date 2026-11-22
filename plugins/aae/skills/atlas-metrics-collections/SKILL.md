@@ -40,7 +40,7 @@ $AM collections --cluster <name> --view secondary --last 1h      # reads served 
 - Collection-level latency needs a dedicated (M10+) cluster. Atlas's own warning
   says so when it applies, so repeat it.
 
-Exit codes are as in `atlas-metrics-snapshot`. Report 2–4 as failures, never as "nothing found".
+Exit codes are as in `atlas-metrics-snapshot`. Report 2–5 as failures, never as "nothing found".
 
 ## Next steps
 

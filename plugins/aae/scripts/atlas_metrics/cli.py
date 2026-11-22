@@ -14,6 +14,7 @@ from atlas_metrics.commands_finer import SHAPE_SORTS, cmd_collections, cmd_query
 from atlas_metrics.constants import (
     ENGINE_NAME,
     EXIT_FINDINGS,
+    EXIT_INTERNAL,
     EXIT_OK,
     ClusterView,
     Granularity,
@@ -164,6 +165,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    ctx: Optional[RunContext] = None
     try:
         config = load_config(args.config or "")
         fmt = OutputFormat(args.format or config.default("format") or OutputFormat.TABLE.value)
@@ -174,10 +176,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                            profile=args.atlas_profile or config.default("atlas_profile"))
         ctx = RunContext(cli=cli, config=config, args=args, fmt=fmt)  # type: ignore[arg-type]
         report = _DISPATCH[args.command](ctx)
+        for note in ctx.notes:
+            report.add_warning(note)
+        rendered = render(report, fmt)
     except MetricsError as exc:
         log.error("command failed", extra={"command": args.command, "error": str(exc),
                                            "exit_code": exc.exit_code, **exc.context})
         print(f"error: {exc}", file=sys.stderr)
+        for note in (ctx.notes if ctx is not None else []):
+            print(f"note: {note}", file=sys.stderr)
         return exc.exit_code
-    print(render(report, fmt))
+    except Exception as exc:  # noqa: BLE001 - the last line before exit; logged and re-coded
+        log.exception("internal error", extra={"command": args.command})
+        print(f"internal error in atlas-metrics (a bug, not a cluster finding): "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return EXIT_INTERNAL
+    print(rendered)
     return EXIT_FINDINGS if report.verdict in (Severity.WARN, Severity.CRIT) else EXIT_OK

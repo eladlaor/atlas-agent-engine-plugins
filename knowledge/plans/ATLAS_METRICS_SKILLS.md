@@ -53,17 +53,17 @@ built and tested offline. Live verification against a real cluster is the remain
 |---|---|
 | Every command runs only allowlisted reads (proved against a recording fake CLI) | Done |
 | Failures exit non-zero and quote the command and the CLI's error. Never an empty report. | Done |
-| Thresholds, inheritance, unit checks, window and granularity rules are covered by tests | Done (42 offline tests) |
-| Every documented example command parses against the real argument parser | Done (44 examples) |
+| Thresholds, inheritance, unit checks, window and granularity rules are covered by tests | Done (66 offline tests) |
+| Every documented example command parses against the real argument parser | Done |
 | No real hostnames or IDs in the added files | Done (tested) |
 | Runs on Python 3.9 | Done (tested) |
-| Every command verified live against a real cluster, results recorded | **Pending:** needs a working `atlas` login with access to a dedicated cluster |
+| Independent code review; every finding fixed or answered | Done: 9 bugs fixed, each with a regression test |
+| Setup (service account, roles, CLI profile, access list) works live and is documented for every user | Done |
+| Cluster-level commands (collections, query shapes, advisor index and schema parts) verified live | Done: see `knowledge/atlas_metrics/LIVE_VERIFICATION.md` |
+| Per-node commands (snapshot, history, storage, Search, slow queries, incident) verified live | Done, against the paused cluster's recorded window: see `LIVE_VERIFICATION.md` |
 
 ## Open items
 
-- Run `tests/live/atlas_metrics_live.sh --cluster <name>`, fix whatever the live API
-  disagrees with, and record the result in `knowledge/atlas_metrics/LIVE_VERIFICATION.md`.
-- Things only a live run can settle: the units Atlas reports for the thresholded
-  measurements, the `since`/`until` encoding for query shapes and the advisor, how
-  per-index Search series are labelled, and which roles the slow-query logs and query
-  shapes need.
+- Re-run the live suite on a cluster under real load, to see query shapes, index
+  suggestions and a crossed threshold with live data.
+- Sharded clusters (mongos, config servers) are untested live.

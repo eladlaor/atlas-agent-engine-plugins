@@ -22,6 +22,7 @@ of this `SKILL.md`. Call it `$AM` below.
 $AM search --cluster <name>                                       # Search process, primary node
 $AM search --cluster <name> --nodes all --last 24h
 $AM search --cluster <name> --namespace app.products              # every index on the collection
+$AM search --cluster <name> --namespace app.products --namespace app.articles
 $AM search --cluster <name> --namespace app.products --index default --last 7d
 ```
 
@@ -38,7 +39,9 @@ $AM search --cluster <name> --namespace app.products --index default --last 7d
 - **`REPLICATION_LAG` on an index means Search results are stale** by about that
   much. New documents aren't searchable yet.
 - **JVM current memory close to JVM max** means the Search process is short of heap.
+- **Several indexes on one collection:** the engine stops and asks for `--index <name>`,
+  because Atlas's per-collection response doesn't say which series belongs to which index.
 - **No data:** Search metrics exist only where an Atlas Search or Vector Search index
   is defined. The engine says so, and you should repeat it rather than report "healthy".
 
-Exit codes are as in `atlas-metrics-snapshot`. Report 2–4 as failures, never as "nothing found".
+Exit codes are as in `atlas-metrics-snapshot`. Report 2–5 as failures, never as "nothing found".

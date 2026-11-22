@@ -110,6 +110,15 @@ test_a_named_profile_is_not_overridden_by_exported_credentials() {
     || { fail "the named profile was not passed to the CLI"; return 1; }
 }
 
+# Found live: doctor's auth row reported the CLI's default profile while the
+# data commands used the named one, so it vouched for the wrong identity.
+test_doctor_checks_the_identity_of_the_named_profile() {
+  am_setup
+  am doctor --atlas-profile metrics
+  grep -q '\["auth", "whoami", "--profile", "metrics"\]' "${FAKE_ATLAS_LOG}" \
+    || { fail "auth whoami must run with the named profile: $(grep whoami "${FAKE_ATLAS_LOG}")"; return 1; }
+}
+
 test_without_a_named_profile_exported_credentials_are_left_alone() {
   am_setup
   export FAKE_ATLAS_ENV_LOG="${SANDBOX}/env.log"
@@ -141,9 +150,62 @@ test_a_paused_cluster_fails_loudly() {
 import json, sys
 p = sys.argv[1]; d = json.load(open(p)); d["paused"] = True; json.dump(d, open(p, "w"))
 EOF
-  am snapshot "${AM_WINDOW[@]}"
-  assert_eq 3 "$AM_RC" "paused cluster exit" || return 1
-  assert_contains "$AM_ERR" "paused" "the error must say the cluster is paused"
+  am snapshot --cluster demo-cluster --last 15m
+  assert_eq 3 "$AM_RC" "a 'now' question on a paused cluster must fail" || return 1
+  assert_contains "$AM_ERR" "is paused" "the error must say the cluster is paused" || return 1
+  assert_contains "$AM_ERR" "--start" "and point to an explicit past window"
+}
+
+# Atlas keeps what a cluster recorded before it was paused; an explicit past
+# window is a legitimate post-mortem and must work, with a warning.
+test_a_paused_cluster_answers_for_an_explicit_past_window() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/clusters_describe__demo-cluster.json" 'd["paused"] = True'
+  am_edit_json "${SANDBOX}/fx/processes_list.json" \
+    'for p in d["results"]: p["lastPing"] = "2026-11-20T22:59:39Z"'
+  am snapshot "${AM_WINDOW[@]}" --nodes primary
+  case "$AM_RC" in 0|1) : ;; *) fail "explicit window on a paused cluster exited $AM_RC: $AM_ERR"; return 1 ;; esac
+  assert_contains "$AM_OUT" "is paused; it last reported at 2026-11-20T22:59:39Z" "paused warning"
+}
+
+test_doctor_warns_on_a_paused_cluster() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/clusters_describe__demo-cluster.json" 'd["paused"] = True'
+  am doctor --cluster demo-cluster
+  assert_contains "$AM_OUT" "PAUSED" "doctor names the paused state"
+}
+
+# Live 2026-11-22: a primary rejects oplog-lag measurements (INVALID_METRIC_NAME);
+# one rejected name must not fail the whole node, and must be named in the report.
+test_a_measurement_a_node_rejects_is_dropped_and_named() {
+  am_setup
+  export FAKE_ATLAS_REJECT="shard-00-00:OPLOG_REPLICATION_LAG_TIME"
+  am snapshot "${AM_WINDOW[@]}" --format json
+  case "$AM_RC" in 0|1) : ;; *) fail "one rejected measurement failed the run ($AM_RC): $AM_ERR"; return 1 ;; esac
+  assert_contains "$AM_OUT" "does not offer OPLOG_REPLICATION_LAG_TIME" "the rejection is reported" || return 1
+  assert_contains "$AM_OUT" "secondaries only" "with the reason" || return 1
+  local lag_rows
+  lag_rows="$(am_json 'sorted({r["scope"].split()[0] for r in d["sections"][0]["rows"] if r["name"]=="OPLOG_REPLICATION_LAG_TIME"})')"
+  assert_not_contains "$lag_rows" "shard-00-00" "the primary has no lag row" || return 1
+  assert_contains "$lag_rows" "shard-00-01" "the secondaries still do"
+}
+
+# Live 2026-11-22: some data points arrive without a "value" key at all.
+test_a_data_point_without_a_value_key_is_a_gap() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'for m in d["measurements"]: del m["dataPoints"][1]["value"]'
+  am history "${AM_WINDOW[@]}" --nodes primary --format json
+  case "$AM_RC" in 0|1) : ;; *) fail "missing value key crashed ($AM_RC): $AM_ERR"; return 1 ;; esac
+  assert_contains "$(am_json '[r["gaps"] for r in d["sections"][0]["rows"]][:1]')" "1" "counted as a gap"
+}
+
+test_units_seen_live_are_formatted() {
+  local out
+  out="$(cd "${REPO_ROOT}/plugins/aae/scripts" && python3 -c '
+from atlas_metrics.summarize import human
+print(human(2048, "KILOBYTES"), "|", human(3, "MEGABYTES"), "|", human(12, "SECONDS"), "|", human(600, "SECONDS"), "|", human(18000, "SECONDS"), "|", human(3319014, "SECONDS"))')"
+  assert_eq "2.0 MB | 3.0 MB | 12.0 s | 10.0 min | 5.0 h | 38.4 days" "$out" "KILOBYTES / MEGABYTES / SECONDS formatting"
 }
 
 test_an_unknown_cluster_fails_with_the_describe_error() {
@@ -252,7 +314,8 @@ test_missing_points_are_gaps_not_zeros() {
 test_a_threshold_flag_overrides_the_profile() {
   am_setup
   am snapshot "${AM_WINDOW[@]}" --threshold PROCESS_NORMALIZED_CPU_USER:warn=99,crit=100 \
-     --threshold SYSTEM_NORMALIZED_CPU_IOWAIT:warn=50,crit=60 --format json
+     --threshold SYSTEM_NORMALIZED_CPU_IOWAIT:warn=50,crit=60 \
+     --threshold OPLOG_REPLICATION_LAG_TIME:warn=100,crit=200 --format json
   assert_eq 0 "$AM_RC" "with relaxed thresholds nothing is crossed" || return 1
   assert_eq ok "$(am_json 'd["verdict"]')" "verdict"
 }
@@ -387,7 +450,31 @@ test_query_shapes_rejects_an_unknown_command_type() {
 test_search_index_mode_labels_rows_by_index() {
   am_setup
   am search "${AM_WINDOW[@]}" --namespace app.orders --format json
-  assert_contains "$(am_json 'd["sections"][0]["rows"][0]["scope"]')" "default" "index name in scope"
+  assert_contains "$(am_json 'd["sections"][0]["rows"][0]["scope"]')" "index fake-index-id-1" \
+    "the collection's only index is named in scope" || return 1
+  am search "${AM_WINDOW[@]}" --namespace app.orders --index default --format json
+  assert_contains "$(am_json 'd["sections"][0]["rows"][0]["scope"]')" "app.orders default" "--index names it"
+}
+
+# Live 2026-11-22: the per-collection response's series carry no index name, so
+# with several indexes they can't be attributed. Refuse rather than merge them.
+test_search_refuses_to_merge_several_indexes() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/api_monitoringAndLogs_listIndexMeasurements.json" \
+    'd["indexIds"] = ["fake-index-id-1", "fake-index-id-2"]'
+  am search "${AM_WINDOW[@]}" --namespace app.orders
+  assert_eq 2 "$AM_RC" "several indexes without --index" || return 1
+  assert_contains "$AM_ERR" "Name one with --index" "message"
+}
+
+# Live 2026-11-22: PT10S on an old window is a bare HTTP 500 from Atlas.
+test_a_fine_granularity_server_error_explains_retention() {
+  am_setup
+  printf 'Error: GET: HTTP 500 Internal Server Error (Error code: "UNEXPECTED_ERROR")\n' \
+    > "${SANDBOX}/fx/metrics_processes.error"
+  am history "${AM_WINDOW[@]}" --granularity PT10S --nodes secondaries
+  assert_eq 3 "$AM_RC" "server error exit" || return 1
+  assert_contains "$AM_ERR" "10-second points only for a short time" "retention hint"
 }
 
 test_advisor_unwraps_the_content_envelope_and_passes_bool_flags_correctly() {
@@ -435,6 +522,218 @@ test_doctor_warns_on_a_different_cli_version() {
   export FAKE_ATLAS_VERSION="1.70.0"
   am doctor
   assert_contains "$AM_OUT" "1.70.0 (skills verified on" "version drift is reported"
+}
+
+# --------------------------------------- regressions from the code review
+
+am_edit_json() {  # am_edit_json <file> <python statement over d>; aborts the test on a bad edit
+  python3 - "$1" "$2" <<'PY' || { fail "fixture edit failed: $2"; return 1; }
+import json, sys
+path, stmt = sys.argv[1], sys.argv[2]
+d = json.load(open(path))
+exec(stmt)
+json.dump(d, open(path, "w"))
+PY
+}
+
+test_all_empty_series_are_no_data_not_healthy() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'for m in d["measurements"]:
+    for p in m["dataPoints"]: p["value"] = None'
+  am snapshot "${AM_WINDOW[@]}" --nodes primary
+  assert_eq 4 "$AM_RC" "only-empty series must exit 4, never 0" || return 1
+  assert_contains "$AM_ERR" "only empty series" "message"
+}
+
+test_a_node_that_stopped_reporting_is_marked_stale() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'for m in d["measurements"]:
+    m["dataPoints"][-1]["value"] = None; m["dataPoints"][-2]["value"] = None'
+  am snapshot "${AM_WINDOW[@]}" --nodes primary
+  assert_contains "$AM_OUT" "stale (2 latest points missing)" "stale status" || return 1
+  assert_contains "$AM_OUT" "stale series:" "header counts stale series"
+}
+
+test_an_invalid_config_default_is_a_config_error_not_a_crash() {
+  am_setup
+  mkdir -p "${HOME}/.config/atlas-metrics"
+  printf '{"defaults": {"nodes": "primaries"}}' > "${HOME}/.config/atlas-metrics/config.json"
+  am hosts --cluster demo-cluster
+  assert_eq 2 "$AM_RC" "bad default exit" || return 1
+  assert_contains "$AM_ERR" "defaults.nodes" "names the bad key"
+}
+
+test_an_unexpected_crash_exits_5_not_1() {
+  am_setup
+  printf '{"rankedNamespaces": [123]}' > "${SANDBOX}/fx/api_collectionLevelMetrics_getClusterNamespaces.json"
+  am collections "${AM_WINDOW[@]}"
+  assert_eq 5 "$AM_RC" "a bug must not look like a threshold finding (1)" || return 1
+  assert_contains "$AM_ERR" "internal error" "message"
+}
+
+test_a_cluster_whose_name_prefixes_another_does_not_take_its_nodes() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/processes_list.json" \
+    'd["results"].append({"id": "atlas-qqq-shard-00-00.abcde.example.net:27017", "hostname": "atlas-qqq-shard-00-00.abcde.example.net", "port": 27017, "userAlias": "demo-cluster-analytics-shard-00-00.abcde.example.net", "typeName": "REPLICA_PRIMARY", "replicaSetName": "atlas-qqq-shard-0"})'
+  am hosts --cluster demo-cluster
+  assert_not_contains "$AM_OUT" "analytics" "demo-cluster-analytics must not be part of demo-cluster"
+}
+
+test_a_threshold_for_a_measurement_not_in_the_profile_is_rejected() {
+  am_setup
+  mkdir -p "${HOME}/.config/atlas-metrics"
+  printf '{"profiles": {"mine": {"extends": "cpu", "thresholds": {"NOT_A_METRIC": {"warn": 1}}}}}' \
+    > "${HOME}/.config/atlas-metrics/config.json"
+  am profiles list
+  assert_eq 2 "$AM_RC" "unknown threshold name exit" || return 1
+  assert_contains "$AM_ERR" "NOT_A_METRIC" "names it"
+}
+
+test_a_missing_response_field_is_an_error_not_an_empty_result() {
+  am_setup
+  printf '{"groupId": "x"}' > "${SANDBOX}/fx/api_collectionLevelMetrics_getClusterNamespaces.json"
+  am collections "${AM_WINDOW[@]}"
+  assert_eq 3 "$AM_RC" "changed response format exit" || return 1
+  assert_contains "$AM_ERR" "expected a 'rankedNamespaces' list" "message"
+}
+
+test_incident_never_asks_for_the_future_and_keeps_granularity() {
+  am_setup
+  local start
+  start="$(python3 -c 'import datetime as d; print((d.datetime.now(d.timezone.utc)-d.timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+  am incident --cluster demo-cluster --start "$start" --granularity PT10S --nodes primary --format json
+  case "$AM_RC" in 0|1) : ;; *) fail "incident exited $AM_RC: $AM_ERR"; return 1 ;; esac
+  python3 - "${FAKE_ATLAS_LOG}" <<'PY' || return 1
+import datetime as d, json, sys
+now = d.datetime.now(d.timezone.utc) + d.timedelta(seconds=5)
+for line in open(sys.argv[1]):
+    argv = json.loads(line)
+    for flag in ("--end", "--maxDate"):
+        if flag in argv:
+            end = d.datetime.fromisoformat(argv[argv.index(flag) + 1].replace("Z", "+00:00"))
+            if end > now:
+                sys.exit(f"{flag} {end} is in the future")
+    if argv[:2] == ["metrics", "processes"] and argv[argv.index("--granularity") + 1] != "PT10S":
+        sys.exit("user granularity was replaced")
+PY
+  am incident --cluster demo-cluster --start "$start" --pad-minutes -5
+  assert_eq 2 "$AM_RC" "negative padding is rejected"
+}
+
+test_alerts_page_until_the_total_is_reached() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/api_alerts_listAlerts.json" \
+    'd["results"] = (d["results"] * 167)[:500]; d["totalCount"] = 600'
+  am incident "${AM_WINDOW[@]}" --nodes primary
+  grep -q '"--pageNum", "2"' "${FAKE_ATLAS_LOG}" || { fail "page 2 was not requested"; return 1; }
+  ! grep -q '"--pageNum", "3"' "${FAKE_ATLAS_LOG}" || { fail "paged past totalCount"; return 1; }
+}
+
+test_every_api_call_pins_its_version() {
+  am_setup
+  am collections "${AM_WINDOW[@]}"
+  am advisor "${AM_WINDOW[@]}"
+  local unpinned
+  unpinned="$(python3 -c '
+import json, sys
+bad = [a[:3] for a in map(json.loads, open(sys.argv[1])) if a[:1] == ["api"] and "--help" not in a and "--version" not in a]
+print(bad)' "${FAKE_ATLAS_LOG}")"
+  assert_eq "[]" "$unpinned" "every atlas api call must carry --version" || return 1
+  grep -q '"listClusterSuggestedIndexes".*"--version", "2024-08-05"' "${FAKE_ATLAS_LOG}" \
+    || { fail "cluster advisor ops must pin 2024-08-05"; return 1; }
+}
+
+test_a_lowercase_z_time_is_accepted() {
+  am_setup
+  am snapshot --cluster demo-cluster --start 2026-11-20t14:00:00z --end 2026-11-20T14:20:00Z --nodes primary
+  case "$AM_RC" in 0|1) : ;; *) fail "lowercase z rejected: $AM_ERR"; return 1 ;; esac
+}
+
+test_storage_rejects_an_unknown_database() {
+  am_setup
+  am storage "${AM_WINDOW[@]}" --part databases --database nosuch
+  assert_eq 2 "$AM_RC" "unknown --database exit" || return 1
+  assert_contains "$AM_ERR" "nosuch" "names it"
+}
+
+# ------------------------------------ regressions from the second review
+
+test_a_node_that_rejects_every_measurement_is_no_data_not_ok() {
+  am_setup
+  local all
+  all="$(cd "${REPO_ROOT}/plugins/aae/scripts" && python3 -c '
+import json
+p = json.load(open("atlas_metrics/builtin_profiles.json"))["disk"]["measurements"]
+print(",".join("shard-00:" + m for m in p))')"
+  export FAKE_ATLAS_REJECT="$all"
+  am storage "${AM_WINDOW[@]}" --part disks
+  assert_eq 4 "$AM_RC" "every disk measurement rejected must be exit 4, never 0" || return 1
+  assert_contains "$AM_ERR" "offers none of profile disk" "message"
+}
+
+test_cluster_level_commands_refuse_now_on_a_paused_cluster() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/clusters_describe__demo-cluster.json" 'd["paused"] = True'
+  local c
+  for c in collections query-shapes advisor; do
+    am "$c" --cluster demo-cluster --last 1h
+    assert_eq 3 "$AM_RC" "$c --last on a paused cluster" || return 1
+    assert_contains "$AM_ERR" "is paused" "$c names the paused state" || return 1
+  done
+  am collections "${AM_WINDOW[@]}"
+  case "$AM_RC" in 0|1) : ;; *) fail "collections past window on paused cluster: $AM_RC $AM_ERR"; return 1 ;; esac
+  assert_contains "$AM_OUT" "is paused" "past-window report carries the paused warning"
+}
+
+test_the_paused_note_survives_a_no_data_failure() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/clusters_describe__demo-cluster.json" 'd["paused"] = True'
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'for m in d["measurements"]:
+    for p in m["dataPoints"]: p["value"] = None'
+  am snapshot "${AM_WINDOW[@]}" --nodes primary
+  assert_eq 4 "$AM_RC" "no data" || return 1
+  assert_contains "$AM_ERR" "note: cluster demo-cluster is paused" "paused note kept on failure"
+}
+
+test_database_filter_tolerates_a_shard_without_that_database() {
+  am_setup
+  printf '{"results": [{"databaseName": "admin"}]}' \
+    > "${SANDBOX}/fx/metrics_databases_list__atlas-abc123-shard-00-01.abcde.example.net:27017.json"
+  am storage "${AM_WINDOW[@]}" --part databases --database app
+  case "$AM_RC" in 0|1) : ;; *) fail "a node lacking 'app' broke the run ($AM_RC): $AM_ERR"; return 1 ;; esac
+  assert_contains "$AM_OUT" "app" "the database is still reported"
+}
+
+test_rejected_names_are_not_re_requested_per_disk() {
+  am_setup
+  export FAKE_ATLAS_REJECT="shard-00-00:DISK_QUEUE_DEPTH"
+  am_edit_json "${SANDBOX}/fx/metrics_disks_list.json" \
+    'd["results"] = [{"partitionName": "data"}, {"partitionName": "journal"}]'
+  am storage "${AM_WINDOW[@]}" --part disks --nodes primary
+  local asks
+  asks="$(grep -c 'DISK_QUEUE_DEPTH' "${FAKE_ATLAS_LOG}")"
+  assert_eq 1 "$asks" "DISK_QUEUE_DEPTH asked once, then remembered for the node's other disk"
+}
+
+# Live 2026-11-22: database sizes are sampled rarely; a 15-minute window was all-empty.
+test_storage_databases_default_to_a_six_hour_window() {
+  am_setup
+  am storage --cluster demo-cluster --part databases
+  case "$AM_RC" in 0|1) : ;; *) fail "storage exited $AM_RC: $AM_ERR"; return 1 ;; esac
+  python3 - "${FAKE_ATLAS_LOG}" <<'PY' || return 1
+import datetime as d, json, sys
+for argv in map(json.loads, open(sys.argv[1])):
+    if argv[:3] == ["metrics", "databases", "describe"]:
+        start = d.datetime.fromisoformat(argv[argv.index("--start") + 1].replace("Z", "+00:00"))
+        end = d.datetime.fromisoformat(argv[argv.index("--end") + 1].replace("Z", "+00:00"))
+        if end - start < d.timedelta(hours=5, minutes=59):
+            sys.exit(f"database window is only {end - start}")
+        sys.exit(0)
+sys.exit("no database describe call was made")
+PY
 }
 
 # ------------------------------------------------------------ portability

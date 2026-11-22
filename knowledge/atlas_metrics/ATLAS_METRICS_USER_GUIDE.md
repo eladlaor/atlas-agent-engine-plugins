@@ -21,6 +21,7 @@
   - [Why does every command fail with "unauthorized"?](#why-does-every-command-fail-with-unauthorized)
   - [Why does every read fail with "ORG_REQUIRES_ACCESS_LIST" when the login works?](#why-does-every-read-fail-with-org_requires_access_list-when-the-login-works)
   - [Do I have to add every network I work from?](#do-i-have-to-add-every-network-i-work-from)
+  - [Can I look at a cluster that is paused now?](#can-i-look-at-a-cluster-that-is-paused-now)
   - [Why does it say no processes belong to my cluster?](#why-does-it-say-no-processes-belong-to-my-cluster)
   - [Why is my collection missing from the collection-latency report?](#why-is-my-collection-missing-from-the-collection-latency-report)
   - [Why are query shapes, the Performance Advisor or Search metrics empty?](#why-are-query-shapes-the-performance-advisor-or-search-metrics-empty)
@@ -192,8 +193,9 @@ so the engine picks it from the window length:
 | longer | 1 day (`P1D`) |
 
 Override it with `--granularity PT10S` when you need finer points over a short
-window. Atlas keeps fine-grained points only for a limited time, so a fine
-granularity on an old window comes back coarse or empty.
+window. Atlas keeps fine-grained points only for a limited time. A 10-second
+request for a window a couple of days old fails with an HTTP 500 from Atlas, and
+the engine's error says to use `PT1M` instead.
 
 ## How do I choose which nodes to look at?
 
@@ -222,14 +224,13 @@ every name you can add.
 | `cpu` | process | Process and host CPU: user, kernel, I/O wait, steal |
 | `memory-cache` | process | Cache fill and dirtiness, cache traffic, resident memory, swap, page faults |
 | `operations` | process | Operation and document rates by type, in-memory sorts |
-| `latency` | process | Average read / write / command execution time, majority write-concern wait |
+| `latency` | process | Average read / write / command execution time |
 | `query-efficiency` | process | Documents and keys scanned per returned, in-memory sorts, sort spills |
-| `connections` | process | Connections, cursors, request rate, rejected connections |
-| `replication` | process | Replication lag, oplog window and growth, replicated operation rates |
-| `concurrency` | process | Read/write tickets, lock queues, throttled operations, ingress wait |
+| `connections` | process | Connections, cursors, request rate |
+| `replication` | process | Replication lag and oplog window (secondaries only), oplog growth, replicated operation rates |
+| `concurrency` | process | Read/write tickets, lock queues, throttled operations |
 | `network` | process | Bytes in and out, requests |
-| `transactions` | process | Open / active / inactive transactions; start, commit and abort rates |
-| `errors` | process | Assertions, killed queries, restarts |
+| `errors` | process | Assertions, killed queries |
 | `disk` | disk | Space used and free, IOPS, read/write latency, throughput, queue depth |
 | `database-size` | database | Data, storage and index size; document, collection and index counts |
 | `collection-latency` | collection | Read / write / command rates, average and p99 latency |
@@ -239,6 +240,15 @@ every name you can add.
 
 The process source alone has over 170 measurements. The profiles are starting
 points, not the limit.
+
+**The built-in profiles contain only measurements a live cluster accepted.** The
+published API spec lists some names that real clusters reject (`INVALID_METRIC_NAME`):
+on a MongoDB 8.0 replica set, the transaction counters, majority write-concern time,
+restarts, connection rate-limiting and ingress queue wait were all refused, so they
+aren't in the built-ins. You can still add any spec name to your own profile. If a node
+rejects it, the report says so for that node, and the rest of the run continues.
+**Oplog lag and the oplog window are reported by secondaries only.** A primary rejects
+them, which the report notes, so look at the secondaries' rows.
 
 ## How do I adjust a profile for one run?
 
@@ -341,7 +351,7 @@ Every report has the same parts:
 | `last`, `avg`, `max`, `p95`, `min` | Statistics over the window, in readable units |
 | `peak at` | When the maximum happened |
 | `gaps` | Intervals with no sample. **Gaps are never counted as zero**: a node that stops reporting must not look idle. |
-| `status` | `ok`, `warn`, `crit`, or `no-data` |
+| `status` | `ok`, `warn`, `crit`, or `no-data`. A `stale (N latest points missing)` suffix means the node stopped reporting partway through the window. |
 
 ## Which output format should I use?
 
@@ -413,6 +423,18 @@ read-only one. So the skills stop at telling you the IP and the exact command, a
 adding it stays a deliberate step by an owner. If the requirement itself is a burden,
 take it to your organization owner rather than working around it.
 
+### Can I look at a cluster that is paused now?
+
+Yes, for the time before it was paused. A paused cluster reports nothing new, but
+Atlas keeps what it recorded. Questions about "now" (`--last`) are refused with the
+cluster's last report time. An explicit window (`--start … --end …`) ending before
+that time works, and the report carries a warning that the cluster is paused:
+
+```bash
+$AM hosts --cluster prod                                   # shows when it last reported
+$AM history --cluster prod --start 2026-11-20T18:00:00Z --end 2026-11-20T22:55:00Z
+```
+
 ### Why does it say no processes belong to my cluster?
 
 The engine maps a cluster to its processes by the hostnames in the cluster's
@@ -439,6 +461,8 @@ Each has a precondition, and Atlas usually names the missing one in an `ATLAS WA
 - **The Performance Advisor** needs a dedicated cluster, and slow-query data needs
   queries that were actually slow during the window.
 - **Search metrics** exist only where an Atlas Search or Vector Search index is defined.
+  For a collection with several Search indexes, name one with `--index`: Atlas's
+  per-collection response doesn't say which series belongs to which index.
 
 An empty section with no warning means Atlas had nothing for that window. Widen it
 with `--last 7d` before concluding there is no problem.
@@ -512,8 +536,9 @@ Every command takes `--cluster`, `--project-id`, `--atlas-profile`, `--format`,
 | 0 | Ran; no threshold crossed |
 | 1 | Ran; at least one threshold crossed |
 | 2 | Usage or config error: bad flag, unknown profile, invalid config |
-| 3 | The `atlas` CLI failed, timed out or returned non-JSON. The message quotes the command and its error. |
-| 4 | Atlas answered with no data for the request |
+| 3 | The `atlas` CLI failed, timed out or returned non-JSON, or the cluster can't answer (not found, or paused for a "now" question). The message quotes the command and its error. |
+| 4 | Atlas answered with no data for the request, including when every series came back empty |
+| 5 | Internal error in the engine. This is a bug to report, never a finding about the cluster. |
 
 ### Files and environment variables
 

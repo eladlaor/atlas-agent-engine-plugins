@@ -31,6 +31,7 @@ EXIT_FINDINGS = 1  # ran fine, and at least one threshold was crossed
 EXIT_USAGE = 2
 EXIT_ATLAS = 3
 EXIT_NO_DATA = 4
+EXIT_INTERNAL = 5  # a bug in the engine, never a finding about the cluster
 
 
 class StrValueEnum(str, Enum):
@@ -165,6 +166,11 @@ CREDENTIAL_ENV_VARS = frozenset({
     "MONGODB_ATLAS_PRIVATE_API_KEY",
     "MONGODB_ATLAS_ORG_ID",
     "MONGODB_ATLAS_PROJECT_ID",
+    # Legacy names some atlascli versions still read.
+    "MCLI_PUBLIC_API_KEY",
+    "MCLI_PRIVATE_API_KEY",
+    "MCLI_ORG_ID",
+    "MCLI_PROJECT_ID",
 })
 CURATED_OUTPUT_ARGS = ("--output", "json")
 
@@ -207,6 +213,38 @@ ACCESS_LIST_HINT = (
     "These skills never run that command themselves. A laptop's address changes with the "
     "network; a VPN with a fixed exit IP needs one entry."
 )
+
+# Every `atlas api` call pins the version its `--help` lists on CLI 1.59.1, so a
+# CLI upgrade cannot silently change a response shape under the engine.
+API_VERSIONS = {
+    "collectionLevelMetrics": "2023-11-15",
+    "queryShapeInsights": "2025-03-12",
+    "monitoringAndLogs": "2023-01-01",
+    "alerts": "2023-01-01",
+    "events": "2023-01-01",
+    ("performanceAdvisor", "listPerformanceAdvisorNamespaces"): "2023-01-01",
+    ("performanceAdvisor", "listSlowQueryLogs"): "2023-01-01",
+    ("performanceAdvisor", "listClusterSuggestedIndexes"): "2024-08-05",
+    ("performanceAdvisor", "listDropIndexSuggestions"): "2024-08-05",
+    ("performanceAdvisor", "listSchemaAdvice"): "2024-08-05",
+}
+API_VERSION_FLAG = "--version"
+
+# Atlas's error code when a measurement name is not offered for a node.
+INVALID_MEASUREMENT_CODE = "INVALID_METRIC_NAME"
+
+# Paging for list endpoints (alerts, events).
+PAGE_SIZE = 500
+MAX_PAGES = 20
+
+# A series whose last N points are all missing is reported as stale: the node
+# stopped reporting. One trailing gap is normal (the current bucket is open).
+STALE_TRAILING_GAPS = 2
+
+# Query shape summaries requested per call (Atlas returns them in its own order).
+SHAPE_SUMMARY_LIMIT = 100
+# Databases are ranked by this measurement when the profile has it.
+DATABASE_SIZE_MEASUREMENT = "DATABASE_STORAGE_SIZE"
 
 DEFAULT_SNAPSHOT_WINDOW = "PT15M"
 DEFAULT_HISTORY_WINDOW = "PT6H"

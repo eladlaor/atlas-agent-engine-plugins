@@ -87,6 +87,15 @@ def main():
     if key == ("auth", "whoami"):
         print("Logged in as fake-service-account service account")
         return 0
+    reject = os.environ.get("FAKE_ATLAS_REJECT", "")  # "<host substring>:<NAME>,..."
+    if reject and "--type" in argv:
+        requested = argv[argv.index("--type") + 1].split(",")
+        for rule in reject.split(","):
+            host_part, _, name = rule.rpartition(":")
+            if name in requested and positionals and host_part in positionals[0]:
+                sys.stderr.write(f'Error: GET: HTTP 404 Not Found (Error code: "INVALID_METRIC_NAME") '
+                                 f"Detail: An invalid metric name {name} was specified.\n")
+                return 1
     candidates = []
     if positionals:
         candidates.append(fixtures / f"{base}__{'__'.join(positionals)}.json")

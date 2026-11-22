@@ -45,4 +45,4 @@ $AM advisor --cluster <name> --part slow-queries --nodes all --format json   # f
 - The Performance Advisor needs a dedicated (M10+) cluster. Repeat Atlas's warning
   when it appears.
 
-Exit codes are as in `atlas-metrics-snapshot`. Report 2–4 as failures, never as "nothing found".
+Exit codes are as in `atlas-metrics-snapshot`. Report 2–5 as failures, never as "nothing found".

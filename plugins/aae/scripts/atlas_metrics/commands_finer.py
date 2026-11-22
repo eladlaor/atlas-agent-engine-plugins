@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Tuple
 from atlas_metrics.constants import (
     DEFAULT_HISTORY_WINDOW,
     DEFAULT_TOP_N,
+    SHAPE_SUMMARY_LIMIT,
     ClusterView,
     Command,
     Source,
@@ -14,11 +15,18 @@ from atlas_metrics.constants import (
 from atlas_metrics.commands_cluster import (
     add_series_section,
     nodes_for,
+    require_answerable,
     resolve_profile,
     summarize_payload,
     window_for,
 )
-from atlas_metrics.context import SERIES_COLUMNS, RunContext, collect_atlas_notes, window_context
+from atlas_metrics.context import (
+    SERIES_COLUMNS,
+    RunContext,
+    collect_atlas_notes,
+    require_list,
+    window_context,
+)
 from atlas_metrics.errors import AtlasCliError, NoDataError, UsageError
 from atlas_metrics.logging_setup import get_logger
 from atlas_metrics.measurement_catalog import QUERY_SHAPE_COMMANDS
@@ -53,6 +61,7 @@ def cmd_collections(ctx: RunContext) -> Report:
     cluster = ctx.flag("cluster")
     if not cluster:
         raise UsageError("--cluster is required")
+    require_answerable(ctx, cluster)
     view = ClusterView(ctx.args.view.upper()) if ctx.args.view else ClusterView.PRIMARY
     top = ctx.args.top or DEFAULT_TOP_N
     span = {"start": iso(window.start), "end": iso(window.end)}
@@ -64,9 +73,9 @@ def cmd_collections(ctx: RunContext) -> Report:
     ranked_payload = ctx.cli.api(Command.COLL_NAMESPACES,
                                  {"clusterName": cluster, "clusterView": str(view), **span})
     collect_atlas_notes(report, ranked_payload)
-    ranked = list((ranked_payload or {}).get("rankedNamespaces") or [])
+    ranked = list(require_list(ranked_payload, "rankedNamespaces", "collection ranking"))
     pinned_payload = ctx.cli.api(Command.COLL_PINNED, {"clusterName": cluster})
-    pinned = list((pinned_payload or {}).get("pinnedNamespaces") or [])
+    pinned = list(require_list(pinned_payload, "pinnedNamespaces", "pinned namespaces"))
 
     ranking = Section("Busiest namespaces by total execution time", ["rank", "namespace", "pinned"])
     for i, ns in enumerate(ranked[:top], 1):
@@ -106,6 +115,7 @@ def cmd_query_shapes(ctx: RunContext) -> Report:
     cluster = ctx.flag("cluster")
     if not cluster:
         raise UsageError("--cluster is required")
+    require_answerable(ctx, cluster)
     commands = ctx.args.shape_command or []
     bad = [c for c in commands if c not in QUERY_SHAPE_COMMANDS]
     if bad:
@@ -119,10 +129,10 @@ def cmd_query_shapes(ctx: RunContext) -> Report:
     sort_key = _SHAPE_SORT_KEYS[ctx.args.sort or "total-time"]
     payload = ctx.cli.api(Command.SHAPE_SUMMARIES, {
         "clusterName": cluster, "namespaces": ctx.args.namespace or [], "commands": commands,
-        "nSummaries": max(top, 100), **span})
+        "nSummaries": max(top, SHAPE_SUMMARY_LIMIT), **span})
     collect_atlas_notes(report, payload)
-    summaries = [s for s in (payload or {}).get("summaries") or []
-                 if ctx.args.include_system or not s.get("systemQuery")]
+    returned = require_list(payload, "summaries", "query shape summaries")
+    summaries = [s for s in returned if ctx.args.include_system or not s.get("systemQuery")]
     summaries.sort(key=lambda s: s.get(sort_key) or 0, reverse=True)
     report.context["sorted by"] = ctx.args.sort or "total-time"
     section = Section(f"Top {top} query shapes", ["#", "namespace", "command", "count", "avg",
@@ -136,8 +146,14 @@ def cmd_query_shapes(ctx: RunContext) -> Report:
             human(s.get("keysExaminedRatio"), "SCALAR"), (s.get("queryShapeHash") or "")[:16]])
         section.data.append(s)
     if not summaries:
-        section.notes.append("No query shapes recorded. Query shape insights need MongoDB 8.0+ "
-                             "and a dedicated (M10+) cluster.")
+        section.notes.append("No query shapes recorded in this window. Either no matching "
+                             "queries ran (a paused or idle cluster has none), or the cluster "
+                             "doesn't meet the requirements: MongoDB 8.0+ on a dedicated (M10+) "
+                             "cluster. Widen --last before concluding.")
+    if len(returned) >= SHAPE_SUMMARY_LIMIT:
+        section.notes.append(f"Ranked among the {len(returned)} summaries Atlas returned, not "
+                             "every shape in the window. Narrow with --namespace or --command "
+                             "for an exact top list.")
     section.notes.append("Show one shape in full with --shape <hash>.")
     report.sections.append(section)
     return report
@@ -179,22 +195,27 @@ def cmd_search(ctx: RunContext) -> Report:
         if mode == "hardware":
             payload = ctx.cli.api(Command.FTS_HARDWARE, base)
             collect_atlas_notes(report, payload)
-            for key in ("hardwareMeasurements", "statusMeasurements"):
-                rows += [(proc.label(), s) for s in
-                         summarize_payload({"measurements": (payload or {}).get(key) or []},
-                                           profile, "search hardware")]
+            series = require_list(payload, "hardwareMeasurements", "search hardware")
+            if isinstance((payload or {}).get("statusMeasurements"), list):
+                series = series + payload["statusMeasurements"]
+            rows += [(proc.label(), s) for s in
+                     summarize_payload({"measurements": series}, profile, "search hardware")]
             continue
         if not ctx.args.namespace:
             raise UsageError("--index needs --namespace <database>.<collection>")
-        db, coll = _split_namespace(ctx.args.namespace[0])
-        params = {**base, "databaseName": db, "collectionName": coll}
-        if ctx.args.index:
-            payload = ctx.cli.api(Command.FTS_ONE_INDEX, {**params, "indexName": ctx.args.index})
-        else:
-            payload = ctx.cli.api(Command.FTS_INDEXES, params)
-        collect_atlas_notes(report, payload)
-        rows += [(f"{proc.alias} {_index_label(raw, ctx.args.index)}", s)
-                 for raw, s in _index_series(payload, profile)]
+        if ctx.args.index and len(ctx.args.namespace) > 1:
+            raise UsageError("--index names one index, so give exactly one --namespace")
+        for namespace in ctx.args.namespace:
+            db, coll = _split_namespace(namespace)
+            params = {**base, "databaseName": db, "collectionName": coll}
+            if ctx.args.index:
+                payload = ctx.cli.api(Command.FTS_ONE_INDEX, {**params, "indexName": ctx.args.index})
+            else:
+                payload = ctx.cli.api(Command.FTS_INDEXES, params)
+            collect_atlas_notes(report, payload)
+            label = ctx.args.index or _single_index_label(payload, namespace)
+            rows += [(f"{proc.alias} {namespace} {label}", s)
+                     for _, s in _index_series(payload, profile)]
     if not rows:
         raise NoDataError(f"no Atlas Search {mode} metrics for {cluster} in {window.describe()}. "
                           "Search metrics exist only where an Atlas Search or Vector Search index "
@@ -207,11 +228,20 @@ def _index_series(payload: Any, profile) -> List[Tuple[Dict[str, Any], SeriesSum
     if not isinstance(payload, dict):
         raise AtlasCliError(f"search index metrics returned an unexpected shape: {str(payload)[:200]}")
     out = []
-    for raw in payload.get("indexStatsMeasurements") or []:
+    for raw in require_list(payload, "indexStatsMeasurements", "search index metrics"):
         summaries = summarize_payload({"measurements": [raw]}, profile, "search index")
         out += [(raw, s) for s in summaries]
     return out
 
 
-def _index_label(raw: Dict[str, Any], explicit: str) -> str:
-    return explicit or raw.get("indexName") or raw.get("indexId") or ""
+def _single_index_label(payload: Any, namespace: str) -> str:
+    """The per-collection response lists the collection's index IDs, but its series carry
+    only a name and a unit (checked live 2026-11-22). With one index the series are
+    unambiguous; with several, they can't be attributed, so ask for --index."""
+    ids = require_list(payload, "indexIds", "search index metrics")
+    if len(ids) == 1:
+        return f"index {ids[0]}"
+    if not ids:
+        return "(no index)"
+    raise UsageError(f"{namespace} has {len(ids)} Search indexes, and Atlas's per-collection "
+                     "response doesn't say which series belongs to which. Name one with --index <name>.")

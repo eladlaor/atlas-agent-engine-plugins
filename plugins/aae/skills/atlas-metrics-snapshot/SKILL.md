@@ -30,11 +30,13 @@ $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_
 2. **Concern → profile.** Pick the built-in profile that matches the question:
    `overview` (default), `cpu`, `memory-cache`, `operations`, `latency`,
    `query-efficiency`, `connections`, `replication`, `concurrency`, `network`,
-   `transactions`, `errors`. `$AM profiles list` shows all of them, including the
+   `errors`. `$AM profiles list` shows all of them, including the
    user's own.
-3. **Narrow when asked:** `--nodes primary|secondaries|all`, `--shard <replica set>`,
+3. **Replication lag lives on the secondaries.** A primary doesn't report oplog lag;
+   the report notes it once per primary. That's expected, not an error.
+4. **Narrow when asked:** `--nodes primary|secondaries|all`, `--shard <replica set>`,
    `--host <text>`.
-4. Use `--format json` when you will reason over the numbers, and `--format markdown`
+5. Use `--format json` when you will reason over the numbers, and `--format markdown`
    when you'll paste the result to the user.
 
 ## Read the result
@@ -44,6 +46,8 @@ $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_
 - **`ATLAS WARNING` lines are Atlas explaining itself,** for example a tier too small
   for that metric. Repeat them to the user and don't drop them.
 - **Gaps are missing samples, not zeros.** A node with many gaps is a finding in itself.
+  A status ending in `stale (N latest points missing)` means the node reported earlier
+  in the window and then stopped. Report that before any threshold result.
 - Thresholds are starting points, not universal truths. If the user says a value is
   normal for them, offer to save it in a profile (`atlas-metrics-profiles`).
 
@@ -54,10 +58,11 @@ $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_
 | 0 | Ran, and nothing crossed a threshold |
 | 1 | Ran, and something crossed a threshold |
 | 2 | Bad flag, profile or config |
-| 3 | The atlas CLI failed. The message names the command and quotes its error. |
-| 4 | Atlas returned no data |
+| 3 | The atlas CLI failed, or the cluster can't answer (not found, or paused for a "now" question). The message names the command and quotes its error. |
+| 4 | Atlas returned no data, including a window where every series came back empty |
+| 5 | An internal error in the engine. This is a bug, never a finding about the cluster. |
 
-Report exit codes 2–4 as failures, quoting the message. Never present them as "no issues found".
+Report exit codes 2–5 as failures, quoting the message. Never present them as "no issues found".
 
 ## Next steps
 

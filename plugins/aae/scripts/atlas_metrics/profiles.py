@@ -31,6 +31,8 @@ from atlas_metrics.constants import (
     CONFIG_PATH_ENV,
     DEFAULT_CONFIG_RELATIVE_PATH,
     Direction,
+    NodeSelector,
+    OutputFormat,
     Source,
 )
 from atlas_metrics.errors import ConfigError, UsageError
@@ -146,6 +148,7 @@ def load_config(explicit_path: str = "") -> Config:
     if bad_defaults:
         raise ConfigError(f"{path}: unknown defaults {sorted(bad_defaults)}; "
                           f"allowed: {sorted(_DEFAULT_KEYS)}")
+    _check_defaults(path, defaults)
     raw_all: Dict[str, Tuple[Dict[str, Any], str]] = {
         name: (body, "builtin") for name, body in builtin_raw.items()
     }
@@ -156,6 +159,21 @@ def load_config(explicit_path: str = "") -> Config:
                                      "profiles": len(profiles)})
     return Config(path if path.exists() else None,
                   {k: str(v) for k, v in defaults.items()}, profiles)
+
+
+def _check_defaults(path: Path, defaults: Dict[str, Any]) -> None:
+    """Fail at load time, not as a crash deep inside a command."""
+    allowed = {"nodes": [n.value for n in NodeSelector], "format": [f.value for f in OutputFormat]}
+    for key, values in allowed.items():
+        if key in defaults and defaults[key] not in values:
+            raise ConfigError(f"{path}: defaults.{key} is {defaults[key]!r}; use one of {values}")
+    if "last" in defaults:
+        from atlas_metrics.time_window import parse_duration  # avoids an import cycle
+
+        try:
+            parse_duration(str(defaults["last"]))
+        except UsageError as exc:
+            raise ConfigError(f"{path}: defaults.last: {exc}") from exc
 
 
 def _build(
@@ -203,6 +221,10 @@ def _build(
     if not measurements:
         raise ConfigError(f"profile {name!r} has no measurements")
     _check_names(name, source, measurements)
+    unknown = sorted(set(body.get("thresholds") or {}) - set(measurements))
+    if unknown:
+        raise ConfigError(f"profile {name!r}: thresholds for {unknown}, which are not "
+                          "measurements of this profile (add them with 'add', or fix the name)")
     for metric, spec in (body.get("thresholds") or {}).items():
         thresholds[metric] = _threshold(name, metric, spec, thresholds.get(metric))
     thresholds = {k: v for k, v in thresholds.items() if k in measurements}

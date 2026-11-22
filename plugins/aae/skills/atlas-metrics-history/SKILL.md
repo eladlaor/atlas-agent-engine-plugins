@@ -27,6 +27,9 @@ $AM history --cluster <name> --last 7d --profile connections --nodes primary --f
   1 day → 5 minutes, up to 7 days → 1 hour, longer → 1 day). Override it with
   `--granularity` only when the user asks for finer or coarser points. Atlas keeps
   fine-grained data for a limited time, so very old windows come back coarse or empty.
+- **A paused cluster** answers only for an explicit `--start`/`--end` ending before it
+  paused (`$AM hosts` shows when it last reported). That's how to do a post-mortem on
+  a cluster someone paused afterwards.
 - **Profile and nodes** work as in `atlas-metrics-snapshot`. `$AM profiles list`
   shows the choices.
 
@@ -40,7 +43,7 @@ $AM history --cluster <name> --last 7d --profile connections --nodes primary --f
 - `gaps` counts missing samples. They are never treated as zero.
 
 Exit codes are as in `atlas-metrics-snapshot` (0 ok, 1 thresholds crossed, 2 usage,
-3 CLI failure, 4 no data). Report 2–4 as failures, never as "nothing found".
+3 CLI failure or cluster unavailable, 4 no data, 5 engine bug). Report 2–5 as failures, never as "nothing found".
 
 ## Next steps
 

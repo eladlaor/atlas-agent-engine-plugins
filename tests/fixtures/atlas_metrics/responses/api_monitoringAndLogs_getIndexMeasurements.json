@@ -1,4 +1,7 @@
 {
+  "indexIds": [
+    "fake-index-id-1"
+  ],
   "indexStatsMeasurements": [
     {
       "name": "TOTAL_NUMBER_OF_QUERIES",

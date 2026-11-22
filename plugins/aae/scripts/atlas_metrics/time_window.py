@@ -56,7 +56,9 @@ def parse_duration(text: str) -> timedelta:
 
 def parse_instant(text: str) -> datetime:
     """Accept ISO 8601 with Z or offset; a naive value is taken as UTC."""
-    raw = text.strip().replace("Z", "+00:00")
+    raw = text.strip()
+    if raw[-1:] in ("Z", "z"):
+        raw = raw[:-1] + "+00:00"
     try:
         value = datetime.fromisoformat(raw)
     except ValueError as exc:
@@ -96,9 +98,12 @@ class Window:
         """The same-length window `back` earlier, at the same granularity."""
         return Window(self.start - back, self.end - back, self.granularity)
 
-    def padded(self, pad: timedelta) -> "Window":
-        start, end = self.start - pad, self.end + pad
-        return Window(start, end, choose_granularity(end - start))
+    def padded(self, pad: timedelta, keep_granularity: bool = False,
+               now: Optional[datetime] = None) -> "Window":
+        """Widen by `pad` on each side, never past now. Keeps a user-chosen granularity."""
+        now = now or datetime.now(timezone.utc)
+        start, end = self.start - pad, min(self.end + pad, now)
+        return Window(start, end, self.granularity if keep_granularity else choose_granularity(end - start))
 
     def describe(self) -> str:
         return f"{iso(self.start)} → {iso(self.end)} @ {self.granularity}"

@@ -35,6 +35,18 @@ class AtlasCliError(MetricsError):
     exit_code = EXIT_ATLAS
 
 
+class InvalidMeasurementError(AtlasCliError):
+    """Atlas rejected one measurement name for this node (INVALID_METRIC_NAME).
+
+    Real clusters reject names the published spec lists: oplog lag exists only on
+    secondaries, and some names are not offered on some tiers or versions.
+    """
+
+    def __init__(self, measurement: str, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message, context)
+        self.measurement = measurement
+
+
 class ReadOnlyViolation(MetricsError):
     """A command outside the read-only allowlist was about to run."""
 

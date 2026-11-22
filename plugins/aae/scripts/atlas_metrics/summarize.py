@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
-from atlas_metrics.constants import Direction, Severity
+from atlas_metrics.constants import STALE_TRAILING_GAPS, Direction, Severity
 from atlas_metrics.errors import ConfigError
 from atlas_metrics.profiles import Threshold
 
@@ -28,16 +28,24 @@ class SeriesSummary:
     last: Optional[float]
     p95: Optional[float]
     peak_at: str
+    trailing_gaps: int = 0
     severity: Severity = Severity.OK
     threshold: Optional[Dict[str, Any]] = None
     baseline: Optional[Dict[str, Any]] = None
+
+    @property
+    def stale(self) -> bool:
+        """Reported earlier in the window, then stopped. An all-empty series is no-data."""
+        return self.severity is not Severity.NO_DATA and self.trailing_gaps >= STALE_TRAILING_GAPS
 
     def stat(self, key: str) -> Optional[float]:
         return getattr(self, key)
 
     def to_dict(self) -> Dict[str, Any]:
         out = {k: getattr(self, k) for k in
-               ("name", "units", "points", "gaps", "min", "avg", "max", "last", "p95", "peak_at")}
+               ("name", "units", "points", "gaps", "trailing_gaps", "min", "avg", "max", "last",
+                "p95", "peak_at")}
+        out["stale"] = self.stale
         out["severity"] = str(self.severity)
         if self.threshold:
             out["threshold"] = self.threshold
@@ -58,9 +66,15 @@ def summarize_series(raw: Dict[str, Any]) -> SeriesSummary:
     present = [(p.get("timestamp", ""), p["value"]) for p in points if p.get("value") is not None]
     values = [float(v) for _, v in present]
     if not values:
-        return SeriesSummary(name, raw.get("units", ""), len(points), len(points),
-                             None, None, None, None, None, "", Severity.NO_DATA)
+        return SeriesSummary(name=name, units=raw.get("units", ""), points=len(points),
+                             gaps=len(points), min=None, avg=None, max=None, last=None, p95=None,
+                             peak_at="", trailing_gaps=len(points), severity=Severity.NO_DATA)
     peak_ts, _ = max(present, key=lambda item: item[1])
+    trailing = 0
+    for point in reversed(points):
+        if point.get("value") is not None:
+            break
+        trailing += 1
     return SeriesSummary(
         name=name,
         units=raw.get("units", ""),
@@ -72,6 +86,7 @@ def summarize_series(raw: Dict[str, Any]) -> SeriesSummary:
         last=values[-1],
         p95=_p95(values),
         peak_at=peak_ts,
+        trailing_gaps=trailing,
     )
 
 
@@ -139,6 +154,18 @@ def human(value: Optional[float], units: str) -> str:
         return f"{size:.1f} {_BYTE_UNITS[step]}"
     if units == "BYTES_PER_SECOND":
         return human(value, "BYTES") + "/s"
+    if units == "KILOBYTES":
+        return human(float(value) * 1024, "BYTES")
+    if units == "MEGABYTES":
+        return human(float(value) * 1024 * 1024, "BYTES")
+    if units == "SECONDS":
+        if value < 120:
+            return f"{value:.1f} s"
+        if value < 2 * 3600:
+            return f"{value / 60:.1f} min"
+        if value < 2 * 86400:
+            return f"{value / 3600:.1f} h"
+        return f"{value / 86400:.1f} days"
     if units == "PERCENT":
         return f"{value:.1f}%"
     if units == "MICROSECONDS":

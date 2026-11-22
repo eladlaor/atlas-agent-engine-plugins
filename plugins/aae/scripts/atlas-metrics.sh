@@ -12,7 +12,8 @@
 #   atlas-metrics.sh <command> --help
 #
 # Exit codes: 0 = ok, 1 = a threshold was crossed, 2 = usage or config error,
-#             3 = the atlas CLI failed, 4 = Atlas returned no data.
+#             3 = the atlas CLI failed, 4 = Atlas returned no data,
+#             5 = internal error (a bug in the engine, not a finding).
 #
 # Needs: python3 (3.9+) and the atlas CLI. Nothing else.
 

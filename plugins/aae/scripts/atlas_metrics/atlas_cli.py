@@ -31,16 +31,29 @@ from atlas_metrics.constants import (
     READ_ONLY_COMMANDS,
     SETUP_HINT,
     AUTH_FAILURE_MARKERS,
+    API_VERSIONS,
+    API_VERSION_FLAG,
+    INVALID_MEASUREMENT_CODE,
     ACCESS_LIST_ERROR_CODES,
     ACCESS_LIST_HINT,
 )
-from atlas_metrics.errors import AtlasCliError, ReadOnlyViolation
+from atlas_metrics.errors import AtlasCliError, InvalidMeasurementError, ReadOnlyViolation
 from atlas_metrics.logging_setup import get_logger
 
 log = get_logger("atlas_cli")
 
 # Wrapper keys some `atlas api` operations put around the payload.
 _ENVELOPE_KEY = "content"
+
+
+def api_version(argv: Sequence[str]) -> str:
+    """The pinned API version for an `atlas api <tag> <operation>` argv."""
+    tag, operation = argv[1], argv[2]
+    version = API_VERSIONS.get((tag, operation)) or API_VERSIONS.get(tag)
+    if not version:
+        raise AtlasCliError(f"no pinned API version for atlas api {tag} {operation}; "
+                            "add it to constants.API_VERSIONS")
+    return version
 
 
 def _command_prefix(argv: Sequence[str]) -> Optional[Tuple[str, ...]]:
@@ -55,6 +68,9 @@ def _is_auth_failure(detail: str) -> bool:
     return any(marker in lowered for marker in AUTH_FAILURE_MARKERS)
 
 
+FINE_GRANULARITY = "--granularity PT10S"
+SERVER_ERROR_CODE = "UNEXPECTED_ERROR"
+_INVALID_MEASUREMENT = re.compile(r"invalid metric name (\w+)", re.IGNORECASE)
 _PARAMS_IP = re.compile(r"Params:\s*\[([0-9a-fA-F.:]+)\]")
 
 
@@ -111,7 +127,8 @@ class AtlasCli:
 
     def api(self, argv: Sequence[str], params: Optional[Dict[str, Any]] = None) -> Any:
         """Run an `atlas api <tag> <operation>` with flag params; unwraps `content`."""
-        args = list(argv) + self._flags(params or {}) + self._target(API_PROJECT_FLAG)
+        args = (list(argv) + self._flags(params or {}) + [API_VERSION_FLAG, api_version(argv)]
+                + self._target(API_PROJECT_FLAG))
         payload = self._run_json(argv, args)
         if isinstance(payload, dict) and isinstance(payload.get(_ENVELOPE_KEY), dict):
             return payload[_ENVELOPE_KEY]
@@ -137,20 +154,27 @@ class AtlasCli:
         return proc.returncode == 0 and usage_line in proc.stdout, proc.stdout + proc.stderr
 
     def text(self, argv: Sequence[str]) -> str:
-        """Run an allowlisted command whose output is plain text (auth whoami)."""
+        """Run an allowlisted command whose output is plain text (auth whoami).
+
+        Carries the CLI profile but not the project: `auth whoami` must report the
+        identity the data commands will use, and it takes no project flag.
+        """
         self._guard(argv)
+        profile_args = [PROFILE_FLAG, self.profile] if self.profile else []
         try:
-            proc = subprocess.run([self.binary, *argv], capture_output=True, text=True,
+            proc = subprocess.run([self.binary, *argv, *profile_args], capture_output=True, text=True,
                                   timeout=CLI_TIMEOUT_SECONDS, check=False, env=self.env)
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise AtlasCliError(f"could not run atlas {' '.join(argv)}: {exc}") from exc
         if proc.returncode != 0:
             detail = (proc.stderr or proc.stdout).strip()
-            hint = f" {failure_hint(detail)}" if failure_hint(detail) else ""
+            fix = failure_hint(detail)
+            hint = f" {fix}" if fix else ""
             raise AtlasCliError(f"atlas {' '.join(argv)} failed: {detail}{hint}")
         return proc.stdout.strip()
 
     def version(self) -> str:
+        """`atlas --version`. Not allowlist-checked: it is not an Atlas call."""
         try:
             proc = subprocess.run(
                 [self.binary, "--version"], capture_output=True, text=True,
@@ -214,9 +238,21 @@ class AtlasCli:
             raise AtlasCliError(f"could not start atlas: {exc}", {"command": shown}) from exc
         if proc.returncode != 0:
             detail = (proc.stderr or proc.stdout).strip()
+            rejected = _INVALID_MEASUREMENT.search(detail)
+            if INVALID_MEASUREMENT_CODE in detail and rejected:
+                log.info("measurement rejected", extra={"command": shown,
+                                                           "measurement": rejected.group(1)})
+                raise InvalidMeasurementError(rejected.group(1), f"{shown}\n  {detail}",
+                                              {"command": shown})
             log.error("atlas failed", extra={"command": shown, "rc": proc.returncode,
                                              "stderr": detail[:2000]})
-            hint = f"\n  {failure_hint(detail)}" if failure_hint(detail) else ""
+            fix = failure_hint(detail)
+            if not fix and FINE_GRANULARITY in shown and SERVER_ERROR_CODE in detail:
+                # Live 2026-11-22: a PT10S request for a window two days old returns a
+                # bare 500 instead of an empty series.
+                fix = ("Atlas keeps 10-second points only for a short time. For an older "
+                       "window, use --granularity PT1M or leave it out.")
+            hint = f"\n  {fix}" if fix else ""
             raise AtlasCliError(f"{shown}\n  failed (exit {proc.returncode}): {detail}{hint}",
                                 {"command": shown, "rc": proc.returncode})
         text = proc.stdout.strip()

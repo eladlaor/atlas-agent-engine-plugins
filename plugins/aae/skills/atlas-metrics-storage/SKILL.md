@@ -26,6 +26,9 @@ $AM storage --cluster <name> --threshold DISK_PARTITION_SPACE_PERCENT_USED:warn=
   are `disk` and `database-size`. The user can define their own (`atlas-metrics-profiles`).
 - Sizes are the latest sample in the window. A longer `--last` doesn't change the size.
   It widens the IOPS and latency statistics.
+- **Database sizes are sampled only every few hours.** With no window given, the
+  databases part looks back 6 hours. A shorter window you choose may come back empty
+  (exit 4, with a hint to widen it). That's a sampling gap, not a missing database.
 
 ## Read the result
 
@@ -37,7 +40,7 @@ $AM storage --cluster <name> --threshold DISK_PARTITION_SPACE_PERCENT_USED:warn=
 - High disk latency together with high I/O wait in `atlas-metrics-snapshot --profile cpu`
   means storage is the bottleneck.
 
-Exit codes are as in `atlas-metrics-snapshot`. Report 2–4 as failures, never as "nothing found".
+Exit codes are as in `atlas-metrics-snapshot`. Report 2–5 as failures, never as "nothing found".
 
 ## Next steps
 

@@ -9,8 +9,9 @@ config servers and shard members a mongos-only connection string omits).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Set
+from typing import Any, Dict, Iterable, List, Set, Tuple
 from urllib.parse import urlsplit
 
 from atlas_metrics.atlas_cli import AtlasCli
@@ -29,6 +30,7 @@ class Process:
     role: str  # typeName, e.g. REPLICA_PRIMARY
     replica_set: str
     shard: str
+    last_ping: str = ""
 
     @property
     def is_primary(self) -> bool:
@@ -76,31 +78,36 @@ def _to_process(raw: Dict[str, Any]) -> Process:
         role=raw.get("typeName", ""),
         replica_set=raw.get("replicaSetName", ""),
         shard=raw.get("shardName", ""),
+        last_ping=raw.get("lastPing", ""),
     )
 
 
-def cluster_processes(cli: AtlasCli, cluster_name: str) -> List[Process]:
-    """All processes of one cluster. Fails loudly if none match."""
+def cluster_processes(cli: AtlasCli, cluster_name: str,
+                      allow_paused: bool = False) -> Tuple[List[Process], bool]:
+    """All processes of one cluster, and whether it is paused. Fails loudly if none match.
+
+    A paused cluster reports nothing new, but Atlas keeps what it recorded before the
+    pause. So a paused cluster is allowed only for an explicit past window
+    (`allow_paused`), and refused for "now"-relative questions.
+    """
     if not cluster_name:
         raise UsageError("--cluster is required")
     try:
         cluster = cli.curated([*Command.CLUSTERS_DESCRIBE, cluster_name])
     except AtlasCliError as exc:
         raise TopologyError(f"could not describe cluster {cluster_name!r}: {exc}") from exc
-    if (cluster or {}).get("paused"):
-        raise TopologyError(
-            f"cluster {cluster_name!r} is paused; a paused cluster reports no metrics. "
-            "Resume it first (this engine will not)."
-        )
+    paused = bool((cluster or {}).get("paused"))
     conn_hosts = _hosts_in_connection_strings(cluster or {})
-    prefix = f"{cluster_name.lower()}-"
+    # Atlas member hostnames: <name>-shard-00-01.<domain> or <name>-config-00-00.<domain>.
+    # A bare "<name>-" prefix would also take in cluster "<name>-analytics".
+    member = re.compile(rf"^{re.escape(cluster_name.lower())}-(shard|config)-\d+-\d+\.")
     raw = _results(cli.curated([*Command.PROCESSES_LIST, "--limit", _PROCESS_PAGE_LIMIT]),
                    "processes list")
     matched = []
     for item in raw:
         proc = _to_process(item)
         alias_host = proc.alias.rsplit(":", 1)[0].lower()
-        if alias_host in conn_hosts or alias_host.startswith(prefix):
+        if alias_host in conn_hosts or member.match(alias_host):
             matched.append(proc)
     log.info("resolved cluster", extra={"cluster": cluster_name, "matched": len(matched),
                                         "project_processes": len(raw)})
@@ -112,7 +119,20 @@ def cluster_processes(cli: AtlasCli, cluster_name: str) -> List[Process]:
             "per-process metrics.",
             {"cluster": cluster_name},
         )
-    return sorted(matched, key=lambda p: (p.shard, p.replica_set, not p.is_primary, p.alias))
+    ordered = sorted(matched, key=lambda p: (p.shard, p.replica_set, not p.is_primary, p.alias))
+    if paused and not allow_paused:
+        last = last_report(ordered)
+        raise TopologyError(
+            f"cluster {cluster_name!r} is paused (last report {last or 'unknown'}), so it has "
+            "no current metrics. Resume it (this engine will not), or look at the time before "
+            f"the pause with an explicit window, e.g. --start <time> --end {last or '<time>'}."
+        )
+    return ordered, paused
+
+
+def last_report(processes: Iterable[Process]) -> str:
+    pings = sorted(p.last_ping for p in processes if p.last_ping)
+    return pings[-1] if pings else ""
 
 
 def select_nodes(

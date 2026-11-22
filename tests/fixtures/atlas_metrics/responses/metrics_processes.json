@@ -93,28 +93,6 @@
       ]
     },
     {
-      "name": "AVG_MAJORITY_WRITE_CONCERN_WRITE_TIME",
-      "units": "MILLISECONDS",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
       "name": "CACHE_BYTES_READ_INTO",
       "units": "BYTES",
       "dataPoints": [
@@ -226,28 +204,6 @@
     },
     {
       "name": "CONNECTIONS",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "CONNECTION_RATE_LIMITING_REJECTED_CONNECTIONS",
       "units": "SCALAR",
       "dataPoints": [
         {
@@ -491,28 +447,6 @@
     {
       "name": "GLOBAL_LOCK_CURRENT_QUEUE_WRITERS",
       "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "INGRESS_QUEUE_WAIT_TIME",
-      "units": "MILLISECONDS",
       "dataPoints": [
         {
           "timestamp": "2026-11-20T14:00:00Z",
@@ -930,7 +864,7 @@
     },
     {
       "name": "OPLOG_MASTER_LAG_TIME_DIFF",
-      "units": "MILLISECONDS",
+      "units": "SECONDS",
       "dataPoints": [
         {
           "timestamp": "2026-11-20T14:00:00Z",
@@ -974,7 +908,7 @@
     },
     {
       "name": "OPLOG_REPLICATION_LAG_TIME",
-      "units": "MILLISECONDS",
+      "units": "SECONDS",
       "dataPoints": [
         {
           "timestamp": "2026-11-20T14:00:00Z",
@@ -1215,28 +1149,6 @@
       ]
     },
     {
-      "name": "RESTARTS_IN_LAST_HOUR",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
       "name": "SWAP_USAGE_USED",
       "units": "BYTES",
       "dataPoints": [
@@ -1436,138 +1348,6 @@
     },
     {
       "name": "TICKETS_AVAILABLE_WRITE",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "TRANSACTIONS_ABORTED",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "TRANSACTIONS_COMMITTED",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "TRANSACTIONS_CURRENT_ACTIVE",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "TRANSACTIONS_CURRENT_INACTIVE",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "TRANSACTIONS_CURRENT_OPEN",
-      "units": "SCALAR",
-      "dataPoints": [
-        {
-          "timestamp": "2026-11-20T14:00:00Z",
-          "value": 10
-        },
-        {
-          "timestamp": "2026-11-20T14:05:00Z",
-          "value": 12
-        },
-        {
-          "timestamp": "2026-11-20T14:10:00Z",
-          "value": 11
-        },
-        {
-          "timestamp": "2026-11-20T14:15:00Z",
-          "value": 13
-        }
-      ]
-    },
-    {
-      "name": "TRANSACTIONS_STARTED",
       "units": "SCALAR",
       "dataPoints": [
         {

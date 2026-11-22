@@ -28,6 +28,8 @@ $AM query-shapes --cluster <name> --shape <queryShapeHash> --format json
 - `--command` filters by MongoDB command type: find, aggregate, distinct, count,
   insert, update or delete. Repeat it for several.
 - Internal system queries are hidden. `--include-system` shows them.
+- The ranking covers the summaries Atlas returns (up to 100). When the report notes that
+  limit, narrow with `--namespace` or `--command` for an exact top list.
 
 ## Read the result
 
@@ -37,8 +39,9 @@ $AM query-shapes --cluster <name> --shape <queryShapeHash> --format json
 - **The shape hash identifies the shape.** Open it with `--shape <hash>` to see the
   full shape and the `firstSeen`/`lastSeen` application and driver, which answers
   "who sends this".
-- **No shapes returned:** this feature needs MongoDB 8.0+ on a dedicated (M10+)
-  cluster. Atlas's warning, or the report's own note, says so. Repeat it rather than
-  reporting "no slow queries".
+- **No shapes returned** has two possible causes. Either no matching queries ran in the
+  window (an idle or paused cluster has none), or the cluster doesn't meet the
+  requirements: MongoDB 8.0+ on a dedicated (M10+) cluster. Check the cluster's state
+  and widen `--last` before telling the user anything. Never report it as "no slow queries".
 
-Exit codes are as in `atlas-metrics-snapshot`. Report 2–4 as failures, never as "nothing found".
+Exit codes are as in `atlas-metrics-snapshot`. Report 2–5 as failures, never as "nothing found".

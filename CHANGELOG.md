@@ -20,7 +20,7 @@ is why their headers carry a separate "Plugin version:" line.
   and Vector Search, the Performance Advisor (slow queries, suggested and droppable indexes,
   schema advice), an incident timeline of metrics, alerts and events, and profiles. They share
   one standard-library Python engine, `scripts/atlas-metrics.sh`, which runs only allowlisted
-  read commands. It ships 18 built-in measurement profiles, accepts user profiles and thresholds
+  read commands. It ships 17 built-in measurement profiles, accepts user profiles and thresholds
   from `~/.config/atlas-metrics/config.json`, and returns exit code 1 when a threshold is
   crossed. A `doctor` command checks the CLI version, auth and every operation the engine
   uses. Documented in `knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md`.
@@ -30,6 +30,22 @@ is why their headers carry a separate "Plugin version:" line.
   credentials. Refused credentials print the setup steps. An `ORG_REQUIRES_ACCESS_LIST`
   refusal prints the caller's IP and how an owner can list it; the skills never list it
   themselves.
+- `atlas-metrics-*` hardening from code review and live runs:
+  - A window where every series is empty now exits 4 instead of reporting healthy.
+  - A node that stops reporting is marked stale.
+  - Engine crashes exit 5 instead of looking like a threshold finding (1).
+  - A missing response field is an error rather than "nothing found".
+  - Every `atlas api` call pins its API version.
+  - Alerts and events are paged in full.
+  - Incident windows never extend past now.
+  - Clusters whose names prefix another no longer absorb its nodes.
+  - Invalid config defaults and misnamed thresholds are rejected at load time.
+  - `doctor` checks the identity of the named profile.
+  - Measurements a node rejects are dropped for that node and named in the report. The
+    built-in profiles keep only names a live cluster accepted.
+  - A paused cluster answers for an explicit past window, with a warning.
+  - Search per-index metrics refuse to merge several indexes.
+  - Formatting covers the `KILOBYTES`, `MEGABYTES` and `SECONDS` units seen live.
 
 - `aae-roadmap`: a subagent (a skill in Codex) for questions about where Atlas Agent Engine
   is going. It labels each roadmap item shipped, announced, planned, concept or unknown,
@@ -108,6 +124,11 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Removed
 
+- `atlas-metrics`: the built-in `transactions` profile, and the measurements a live MongoDB 8.0
+  cluster rejected (`AVG_MAJORITY_WRITE_CONCERN_WRITE_TIME`, `RESTARTS_IN_LAST_HOUR`,
+  `CONNECTION_RATE_LIMITING_REJECTED_CONNECTIONS`, `INGRESS_QUEUE_WAIT_TIME`), were dropped from
+  the built-in profiles. A user profile that `extends` `transactions` now fails validation;
+  define it from scratch with `source` and `measurements` to keep it.
 - The Codex marketplace manifest no longer requests `authentication: ON_INSTALL`. Nothing in
   this plugin needs credentials — the docs repository it reads is public — so asking to
   authenticate on install bought nothing and cost trust.

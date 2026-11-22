@@ -123,8 +123,14 @@ def cmd_doctor(ctx: RunContext) -> Report:
         from atlas_metrics.topology import cluster_processes  # local: only when asked
 
         try:
-            procs = cluster_processes(ctx.cli, cluster)
-            section.rows.append([f"cluster {cluster}", "ok", f"{len(procs)} processes"])
+            procs, paused = cluster_processes(ctx.cli, cluster, allow_paused=True)
+            if paused:
+                section.rows.append([f"cluster {cluster}", "warn",
+                                     f"{len(procs)} processes, PAUSED: no current metrics; "
+                                     "past windows (--start/--end) still work"])
+                report.severities.append(Severity.WARN)
+            else:
+                section.rows.append([f"cluster {cluster}", "ok", f"{len(procs)} processes"])
         except MetricsError as exc:
             log.error("doctor cluster check failed", extra={"cluster": cluster, "error": str(exc)})
             section.rows.append([f"cluster {cluster}", "crit", str(exc)[:300]])

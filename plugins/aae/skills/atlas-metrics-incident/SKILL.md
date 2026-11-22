@@ -38,7 +38,7 @@ Then say what came first. A primary election 2 minutes before the CPU peak reads
 differently from one 2 minutes after. Mark what is correlation and what the evidence
 supports as cause.
 
-Exit codes are as in `atlas-metrics-snapshot`. Report 2–4 as failures, never as "nothing found".
+Exit codes are as in `atlas-metrics-snapshot`. Report 2–5 as failures, never as "nothing found".
 
 ## Next steps
 
