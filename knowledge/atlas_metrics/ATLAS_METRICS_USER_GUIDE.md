@@ -3,6 +3,7 @@
 - [Summary](#summary)
 - [What do these skills do, and what will they never do?](#what-do-these-skills-do-and-what-will-they-never-do)
 - [What do I need before the first run?](#what-do-i-need-before-the-first-run)
+  - [Which identity should the skills run as, and with what permissions?](#which-identity-should-the-skills-run-as-and-with-what-permissions)
 - [How do I run my first check?](#how-do-i-run-my-first-check)
 - [Which skill answers which question?](#which-skill-answers-which-question)
 - [Do I ask Claude, or run the engine myself?](#do-i-ask-claude-or-run-the-engine-myself)
@@ -78,6 +79,41 @@ and can't see your documents.
 
 Pick the project with `--project-id`, with a CLI profile (`--atlas-profile`), or in the
 config file. Otherwise the CLI's default profile decides.
+
+### Which identity should the skills run as, and with what permissions?
+
+Use **a dedicated service account that can only read**, stored in its own CLI profile.
+
+**Logging in is not the same as having access.** Atlas checks two separate things:
+who you are (authentication), and what that identity may do (roles). Roles are granted
+per organization or per project. A service account that logs in fine but holds no role
+on your project gets `unauthorized` on every command, and no new login fixes that.
+
+**A service account belongs to exactly one organization.** It can only get roles on
+projects inside that organization. One created in organization A can never be added to
+a project in organization B, however long you look in B's access screens. Create the
+metrics account in the organization that owns the project.
+
+**The CLI prefers exported variables over saved profiles.** When your shell exports
+`MONGODB_ATLAS_CLIENT_ID` / `MONGODB_ATLAS_CLIENT_SECRET` (common when other tools
+need Atlas access), the CLI authenticates as that identity whatever profile is saved,
+and even `atlas auth login` reports "already authenticated" as it. The engine guards
+against this: **when you name a profile (`--atlas-profile` or `defaults.atlas_profile`),
+it removes the `MONGODB_ATLAS_*` credential variables before calling the CLI**, so the
+profile you chose is the one that answers. With no profile named, the CLI's normal
+order applies.
+
+The recommended setup, done once:
+
+| Step | Who | What |
+|---|---|---|
+| 1 | You, as a project or organization owner | In the organization that owns the project: **Organization → Identity & Access → Applications → Create service account**, named e.g. `atlas-metrics-readonly`. Keep its secret out of chats and repos. |
+| 2 | You | Add it to each project you want to monitor with **Project Read Only**, plus **Project Data Access Read Only** if you want slow-query logs and query shapes. Never Owner: the skills only read, so the identity shouldn't be able to write. |
+| 3 | You, in your own terminal | `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`, choose **ServiceAccount**, and paste the ID and secret at the prompt. |
+| 4 | You | Set `"atlas_profile": "metrics"` and `"project_id"` in `~/.config/atlas-metrics/config.json`, then run `atlas-metrics.sh doctor --cluster <name>`. |
+
+Service-account secrets have an expiry date that you choose when you create them. When
+`doctor` starts failing authentication months later, rotate the secret and repeat step 3.
 
 ## How do I run my first check?
 
@@ -323,11 +359,13 @@ A typical path, which the skills suggest at each step:
 
 ### Why does every command fail with "unauthorized"?
 
-The CLI's credentials are missing, expired, or can't see the project. Run
-`atlas auth whoami`, then `$AM doctor`. A user login expires; a service account
-doesn't. When `MONGODB_ATLAS_CLIENT_ID`/`_SECRET` are set in the environment they take
-precedence over the saved profile, so a stale pair there overrides a good login. The
-`atlas-cli` specialist covers auth in depth.
+Either the identity is logged in but holds no role on the project, or the credentials
+are missing or expired. Run `atlas auth whoami` to see *who* the CLI is, then `$AM doctor`.
+Two traps cause most cases. Exported `MONGODB_ATLAS_CLIENT_ID`/`_SECRET` variables
+override the saved login; naming a profile with `--atlas-profile` makes the engine
+ignore them. And a service account from a different organization can never reach the
+project. See [Which identity should the skills run as](#which-identity-should-the-skills-run-as-and-with-what-permissions).
+The `atlas-cli` specialist covers auth in depth.
 
 ### Why does it say no processes belong to my cluster?
 

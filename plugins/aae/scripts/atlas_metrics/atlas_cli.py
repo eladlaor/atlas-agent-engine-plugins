@@ -25,6 +25,7 @@ from atlas_metrics.constants import (
     CURATED_OUTPUT_ARGS,
     CURATED_PROJECT_FLAG,
     DEFAULT_ATLAS_BINARY,
+    CREDENTIAL_ENV_VARS,
     PROFILE_FLAG,
     READ_ONLY_COMMANDS,
 )
@@ -44,6 +45,25 @@ def _command_prefix(argv: Sequence[str]) -> Optional[Tuple[str, ...]]:
     return None
 
 
+def child_environment(profile: str) -> Dict[str, str]:
+    """The environment for the atlas child process.
+
+    The CLI lets MONGODB_ATLAS_* credential variables beat any saved profile, so
+    an exported key from unrelated work silently replaces the identity the user
+    configured. When a profile is named explicitly, those variables are removed
+    for the child so the named profile is what authenticates.
+    """
+    env = dict(os.environ)
+    if profile:
+        dropped = sorted(k for k in env if k in CREDENTIAL_ENV_VARS)
+        for key in dropped:
+            del env[key]
+        if dropped:
+            log.info("named profile wins over exported credentials",
+                     extra={"atlas_profile": profile, "ignored_env": dropped})
+    return env
+
+
 class AtlasCli:
     """Runs read-only atlas commands for one project and one CLI profile."""
 
@@ -51,6 +71,7 @@ class AtlasCli:
         self.project_id = project_id
         self.profile = profile
         self.binary = binary or os.environ.get(ATLAS_BINARY_ENV) or DEFAULT_ATLAS_BINARY
+        self.env = child_environment(profile)
         if shutil.which(self.binary) is None:
             raise AtlasCliError(
                 f"atlas binary not found: {self.binary!r}. Install the MongoDB Atlas CLI "
@@ -82,7 +103,7 @@ class AtlasCli:
                 capture_output=True,
                 text=True,
                 timeout=CLI_TIMEOUT_SECONDS,
-                check=False,
+                check=False, env=self.env,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             log.error("help check failed", extra={"argv": list(argv), "error": str(exc)})
@@ -97,7 +118,7 @@ class AtlasCli:
         self._guard(argv)
         try:
             proc = subprocess.run([self.binary, *argv], capture_output=True, text=True,
-                                  timeout=CLI_TIMEOUT_SECONDS, check=False)
+                                  timeout=CLI_TIMEOUT_SECONDS, check=False, env=self.env)
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise AtlasCliError(f"could not run atlas {' '.join(argv)}: {exc}") from exc
         if proc.returncode != 0:
@@ -108,7 +129,7 @@ class AtlasCli:
         try:
             proc = subprocess.run(
                 [self.binary, "--version"], capture_output=True, text=True,
-                timeout=CLI_TIMEOUT_SECONDS, check=False,
+                timeout=CLI_TIMEOUT_SECONDS, check=False, env=self.env,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise AtlasCliError(f"could not run atlas --version: {exc}") from exc
@@ -158,7 +179,7 @@ class AtlasCli:
         log.info("atlas call", extra={"command": shown})
         try:
             proc = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=CLI_TIMEOUT_SECONDS, check=False
+                cmd, capture_output=True, text=True, timeout=CLI_TIMEOUT_SECONDS, check=False, env=self.env
             )
         except subprocess.TimeoutExpired as exc:
             log.error("atlas timed out", extra={"command": shown})

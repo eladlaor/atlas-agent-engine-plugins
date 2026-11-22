@@ -93,6 +93,31 @@ print(bad)' "${FAKE_ATLAS_LOG}")"
   assert_eq "[]" "$bad" "every command sent to atlas must be allowlisted"
 }
 
+# ------------------------------------------------------------ credentials
+
+# The atlas CLI lets exported MONGODB_ATLAS_* credentials beat a saved profile.
+# A named profile must therefore reach the CLI without them, or an unrelated
+# exported key silently replaces the identity the user configured.
+test_a_named_profile_is_not_overridden_by_exported_credentials() {
+  am_setup
+  export FAKE_ATLAS_ENV_LOG="${SANDBOX}/env.log"
+  MONGODB_ATLAS_CLIENT_ID=stale MONGODB_ATLAS_CLIENT_SECRET=stale MONGODB_ATLAS_BASE_URL=keep \
+    am hosts --cluster demo-cluster --atlas-profile metrics
+  assert_eq 0 "$AM_RC" "hosts with a named profile" || return 1
+  assert_eq '["MONGODB_ATLAS_BASE_URL"]' "$(sort -u "${SANDBOX}/env.log")" \
+    "only non-credential variables may reach the CLI" || return 1
+  grep -q '"--profile", "metrics"' "${FAKE_ATLAS_LOG}" \
+    || { fail "the named profile was not passed to the CLI"; return 1; }
+}
+
+test_without_a_named_profile_exported_credentials_are_left_alone() {
+  am_setup
+  export FAKE_ATLAS_ENV_LOG="${SANDBOX}/env.log"
+  MONGODB_ATLAS_CLIENT_ID=x MONGODB_ATLAS_CLIENT_SECRET=y am hosts --cluster demo-cluster
+  assert_eq '["MONGODB_ATLAS_CLIENT_ID", "MONGODB_ATLAS_CLIENT_SECRET"]' "$(sort -u "${SANDBOX}/env.log")" \
+    "with no profile named, the CLI's normal precedence applies"
+}
+
 # ---------------------------------------------------------------- topology
 
 test_hosts_lists_only_the_named_clusters_processes() {

@@ -60,6 +60,11 @@ def main():
     if log:
         with open(log, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(argv) + "\n")
+    env_log = os.environ.get("FAKE_ATLAS_ENV_LOG")
+    if env_log:
+        with open(env_log, "a", encoding="utf-8") as fh:
+            seen = sorted(k for k in os.environ if k.startswith("MONGODB_ATLAS_"))
+            fh.write(json.dumps(seen) + "\n")
     if argv == ["--version"]:
         print(f"atlascli version: {os.environ.get('FAKE_ATLAS_VERSION', '1.59.1')}")
         return 0

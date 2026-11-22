@@ -155,6 +155,17 @@ KNOWN_MUTATING_OPERATIONS = frozenset(
 CURATED_PROJECT_FLAG = "--projectId"
 API_PROJECT_FLAG = "--groupId"
 PROFILE_FLAG = "--profile"
+
+# Variables through which the atlas CLI takes credentials or a default target.
+# They outrank saved profiles, so they are removed when a profile is named.
+CREDENTIAL_ENV_VARS = frozenset({
+    "MONGODB_ATLAS_CLIENT_ID",
+    "MONGODB_ATLAS_CLIENT_SECRET",
+    "MONGODB_ATLAS_PUBLIC_API_KEY",
+    "MONGODB_ATLAS_PRIVATE_API_KEY",
+    "MONGODB_ATLAS_ORG_ID",
+    "MONGODB_ATLAS_PROJECT_ID",
+})
 CURATED_OUTPUT_ARGS = ("--output", "json")
 
 # Granularity is chosen from the window so Atlas never rejects the pair.
