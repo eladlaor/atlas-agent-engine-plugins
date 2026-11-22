@@ -74,7 +74,7 @@ and can't see your documents.
 | `atlas` CLI | Verified on **1.59.1**. Another version works if `doctor` finds every command. |
 | `python3` 3.9+ | The engine uses the standard library only. macOS's built-in `python3` is enough. |
 | Authentication | `atlas auth login`, or a service account through `MONGODB_ATLAS_CLIENT_ID` / `MONGODB_ATLAS_CLIENT_SECRET`. A service account doesn't expire mid-session the way a user login can. |
-| Atlas role | **Project Read Only** covers the metrics. Slow-query logs and query shapes show query text, so they may need a data-access role. If one of those fails with a permissions error, that is why. |
+| Atlas role | **Project Read Only** plus **Project Observability Viewer**. Read Only covers the metrics. Observability Viewer adds query shape statistics and un-redacted query values in the Performance Advisor, without the right to read documents that a data-access role would grant. |
 | Cluster tier | Most metrics need a dedicated cluster (M10 and up). Free (M0) and Flex clusters expose little or no per-process data, and Atlas says so in the report. Query shapes also need MongoDB 8.0+. |
 
 Pick the project with `--project-id`, with a CLI profile (`--atlas-profile`), or in the
@@ -108,7 +108,7 @@ The recommended setup, done once:
 | Step | Who | What |
 |---|---|---|
 | 1 | You, as **Project Owner** (no organization role needed) | Inside the project: **Project Identity & Access → Applications → Create Application → Service Account**, named e.g. `atlas-metrics-readonly`. This creates a *project-level* service account, which Atlas adds to the organization as a member with no organization permissions. An organization owner can instead create one under **Organization → Identity & Access → Applications** and add it to several projects. Keep the secret out of chats and repos. |
-| 2 | You | Give it **Project Read Only**, plus **Project Data Access Read Only** if you want slow-query logs and query shapes. Never Owner: the skills only read, so the identity shouldn't be able to write. |
+| 2 | You | Give it **Project Read Only** and **Project Observability Viewer**. Together they cover every skill, including query shapes and the query values in slow-query logs and index suggestions. Don't use a data-access role, which would also let the account read documents, and never Owner. |
 | 3 | You, in your own terminal | `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`, choose **ServiceAccount**, and paste the ID and secret at the prompt. |
 | 4 | You | Set `"atlas_profile": "metrics"` and `"project_id"` in `~/.config/atlas-metrics/config.json`, then run `atlas-metrics.sh doctor --cluster <name>`. |
 
