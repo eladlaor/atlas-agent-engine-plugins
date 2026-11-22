@@ -177,6 +177,51 @@ test_an_atlas_failure_surfaces_the_command_and_its_error() {
   assert_eq "" "$AM_OUT" "no report may be printed on failure"
 }
 
+# A refused credential is almost always the missing service-account setup, so
+# the error must say how to do it, not just "unauthorized".
+test_an_auth_failure_prints_the_service_account_setup() {
+  am_setup
+  printf 'Error: https://cloud.mongodb.com/api/atlas/v2/groups/x/processes GET: HTTP 401 Unauthorized (Error code: "UNAUTHORIZED")\n' \
+    > "${SANDBOX}/fx/processes_list.error"
+  am hosts --cluster demo-cluster
+  assert_eq 3 "$AM_RC" "auth failure exit" || return 1
+  assert_contains "$AM_ERR" "atlas-metrics-readonly" "names the service account to create" || return 1
+  assert_contains "$AM_ERR" "Project Read Only + Project Observability Viewer" "names its roles" || return 1
+  assert_contains "$AM_ERR" "--profile metrics" "names the CLI profile"
+}
+
+# An org that enforces an API access list accepts the login and refuses every
+# read. The message must name the IP Atlas saw and how to list it, and must not
+# send the user off to recreate a service account that is fine.
+test_an_access_list_refusal_names_the_ip_to_add() {
+  am_setup
+  printf 'Error: https://cloud.mongodb.com/api/atlas/v2/groups/x/clusters/demo-cluster GET: HTTP 403 Forbidden (Error code: "ORG_REQUIRES_ACCESS_LIST") Detail: This organization requires access through an access list of ip ranges. Reason: Forbidden. Params: [203.0.113.7]\n' \
+    > "${SANDBOX}/fx/clusters_describe.error"
+  am hosts --cluster demo-cluster
+  assert_eq 3 "$AM_RC" "access-list exit" || return 1
+  assert_contains "$AM_ERR" "come from 203.0.113.7" "names the caller IP" || return 1
+  assert_contains "$AM_ERR" '[{"ipAddress": "203.0.113.7"}]' "gives the request body" || return 1
+  assert_contains "$AM_ERR" "never run that command themselves" "says it will not self-list" || return 1
+  assert_not_contains "$AM_ERR" "create a service account" "not the account-setup hint"
+}
+
+test_a_non_auth_failure_does_not_print_the_setup() {
+  am_setup
+  printf 'Error: cluster is being created\n' > "${SANDBOX}/fx/processes_list.error"
+  am hosts --cluster demo-cluster
+  assert_not_contains "$AM_ERR" "atlas-metrics-readonly" "setup hint only on auth failures"
+}
+
+test_doctor_shows_the_setup_when_auth_fails() {
+  am_setup
+  printf 'Error: not logged in with an Atlas account, Service Account or API key\n' \
+    > "${SANDBOX}/fx/auth_whoami.error"
+  am doctor
+  assert_eq 1 "$AM_RC" "doctor reports findings" || return 1
+  assert_contains "$AM_OUT" "setup" "a setup row" || return 1
+  assert_contains "$AM_OUT" "Project Observability Viewer" "with the roles"
+}
+
 test_non_json_output_is_an_error_not_an_empty_report() {
   am_setup
   printf 'not json' > "${SANDBOX}/fx/metrics_processes.json"

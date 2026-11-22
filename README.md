@@ -98,9 +98,34 @@ plugins/aae/scripts/atlas-metrics.sh snapshot --cluster prod --profile replicati
 plugins/aae/scripts/atlas-metrics.sh history --cluster prod --last 24h --compare 7d
 ```
 
-They need the `atlas` CLI, logged in with read access to the project, and they never
-change the cluster. Everything else, including profiles, thresholds, troubleshooting
-and what is out of scope, is in the
+**Before the first run, create the identity they use.** Do this once per Atlas project
+you want to monitor; a Project Owner can do it, and no organization role is needed:
+
+1. In the project: **Project Identity & Access → Applications → Service Accounts → Create
+   service account**, named `atlas-metrics-readonly`, with exactly two roles:
+   **Project Read Only** (all metrics, disks, databases, collection latency, Search,
+   alerts, events) and **Project Observability Viewer** (query shapes, plus query values
+   in the Performance Advisor, without access to your documents). Store the secret in a
+   password manager. Never paste it into a chat or a screenshot.
+2. **API access list.** Some organizations only accept API calls from listed IP
+   addresses. If yours does, the account logs in fine but every read fails with
+   `403 ORG_REQUIRES_ACCESS_LIST`. Add the IP addresses you work from on the service
+   account's **API Access List**. The engine prints the IP Atlas saw, so you know
+   what to add. A laptop gets a new address on each network; a VPN with a fixed exit
+   IP needs only one entry.
+3. Save it as an `atlas` CLI profile named `metrics`:
+   `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`
+   (choose **ServiceAccount**). The `env -u` keeps any credentials already exported in
+   your shell from hijacking the login. To script it from a password manager instead,
+   `atlas config set client_id <id> -P metrics` and `atlas config set client_secret <secret> -P metrics`
+   do the same, provided the secret is piped in, never typed into the chat.
+4. Point the skills at it: `"atlas_profile": "metrics"` in
+   `~/.config/atlas-metrics/config.json` (`atlas-metrics.sh profiles init` writes a
+   starter), then run `atlas-metrics.sh doctor --cluster <name>`.
+
+The skills never change the cluster. If Atlas refuses the credentials, the engine prints
+these steps. Everything else, including profiles, thresholds, troubleshooting and what is
+out of scope, is in the
 **[Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md)**.
 
 ## Install

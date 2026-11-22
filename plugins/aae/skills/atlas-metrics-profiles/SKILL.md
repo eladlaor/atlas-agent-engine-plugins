@@ -55,6 +55,28 @@ The config lives at `~/.config/atlas-metrics/config.json`. `ATLAS_METRICS_CONFIG
   names come from `profiles measurements --source <source>`; a typo fails the
   validation with the bad name.
 
+## First-time setup: the service account every user needs
+
+The skills are meant to run as a dedicated, read-only service account. Walk the user
+through this once per Atlas project. A Project Owner can do it, and no organization
+role is needed.
+
+1. In the project: **Project Identity & Access → Applications → Service Accounts →
+   Create service account**, named `atlas-metrics-readonly`, with exactly two roles:
+   **Project Read Only** and **Project Observability Viewer**. Never a data-access role
+   (it can read documents), never Owner. The user stores the secret in a password
+   manager. Never ask them to paste it into the chat.
+2. **If the organization enforces an API access list** (reads fail with
+   `403 ORG_REQUIRES_ACCESS_LIST` while `atlas auth whoami` works), the user adds their
+   current IP to the account's **API Access List**. The engine's error names the IP.
+   Never add it for them: listing an IP is a write that needs an Owner, and making it
+   automatic would defeat the control.
+3. In the user's own terminal:
+   `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`
+   (choose ServiceAccount). The `env -u` stops exported credentials from taking over.
+4. Set `"atlas_profile": "metrics"` in the config (`$AM profiles init` writes one), then
+   run `$AM doctor --cluster <name>`.
+
 ## When something fails
 
 `$AM doctor` checks, in order:

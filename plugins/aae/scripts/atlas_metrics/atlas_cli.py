@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -28,6 +29,10 @@ from atlas_metrics.constants import (
     CREDENTIAL_ENV_VARS,
     PROFILE_FLAG,
     READ_ONLY_COMMANDS,
+    SETUP_HINT,
+    AUTH_FAILURE_MARKERS,
+    ACCESS_LIST_ERROR_CODES,
+    ACCESS_LIST_HINT,
 )
 from atlas_metrics.errors import AtlasCliError, ReadOnlyViolation
 from atlas_metrics.logging_setup import get_logger
@@ -43,6 +48,24 @@ def _command_prefix(argv: Sequence[str]) -> Optional[Tuple[str, ...]]:
         if tuple(argv[: len(allowed)]) == allowed:
             return allowed
     return None
+
+
+def _is_auth_failure(detail: str) -> bool:
+    lowered = detail.lower()
+    return any(marker in lowered for marker in AUTH_FAILURE_MARKERS)
+
+
+_PARAMS_IP = re.compile(r"Params:\s*\[([0-9a-fA-F.:]+)\]")
+
+
+def failure_hint(detail: str) -> str:
+    """The fix for a refused call: the access list first, then the account setup."""
+    if any(code in detail for code in ACCESS_LIST_ERROR_CODES):
+        match = _PARAMS_IP.search(detail)
+        return ACCESS_LIST_HINT.format(ip=match.group(1) if match else "your current IP")
+    if _is_auth_failure(detail):
+        return SETUP_HINT
+    return ""
 
 
 def child_environment(profile: str) -> Dict[str, str]:
@@ -122,7 +145,9 @@ class AtlasCli:
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise AtlasCliError(f"could not run atlas {' '.join(argv)}: {exc}") from exc
         if proc.returncode != 0:
-            raise AtlasCliError(f"atlas {' '.join(argv)} failed: {(proc.stderr or proc.stdout).strip()}")
+            detail = (proc.stderr or proc.stdout).strip()
+            hint = f" {failure_hint(detail)}" if failure_hint(detail) else ""
+            raise AtlasCliError(f"atlas {' '.join(argv)} failed: {detail}{hint}")
         return proc.stdout.strip()
 
     def version(self) -> str:
@@ -191,7 +216,8 @@ class AtlasCli:
             detail = (proc.stderr or proc.stdout).strip()
             log.error("atlas failed", extra={"command": shown, "rc": proc.returncode,
                                              "stderr": detail[:2000]})
-            raise AtlasCliError(f"{shown}\n  failed (exit {proc.returncode}): {detail}",
+            hint = f"\n  {failure_hint(detail)}" if failure_hint(detail) else ""
+            raise AtlasCliError(f"{shown}\n  failed (exit {proc.returncode}): {detail}{hint}",
                                 {"command": shown, "rc": proc.returncode})
         text = proc.stdout.strip()
         try:

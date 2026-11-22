@@ -20,6 +20,11 @@ $AM snapshot --cluster <name> --profile cpu --last 5m --granularity PT10S
 $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_NORMALIZED_CPU_USER:warn=50,crit=80
 ```
 
+0. **First run on this machine?** The skills need the read-only service account
+   `atlas-metrics-readonly` (Project Read Only + Project Observability Viewer) saved
+   as the CLI profile `metrics`. If any command fails with `unauthorized`, `not logged in`
+   or `ORG_REQUIRES_ACCESS_LIST`, the engine prints the fix. Follow it, using the setup
+   in `atlas-metrics-profiles`.
 1. **Cluster.** If the user didn't name one and no config default exists, run
    `$AM hosts --cluster <guess>` or ask. Never guess silently between clusters.
 2. **Concern → profile.** Pick the built-in profile that matches the question:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from atlas_metrics.constants import READ_ONLY_COMMANDS, VERIFIED_CLI_VERSION, Command, Severity, Source
+from atlas_metrics.constants import READ_ONLY_COMMANDS, SETUP_HINT, VERIFIED_CLI_VERSION, Command, Severity, Source
 from atlas_metrics.context import RunContext
 from atlas_metrics.errors import AtlasCliError, ConfigError, MetricsError, UsageError
 from atlas_metrics.logging_setup import get_logger
@@ -101,7 +101,8 @@ def cmd_doctor(ctx: RunContext) -> Report:
         who = ctx.cli.text(Command.AUTH_WHOAMI)
         section.rows.append(["authentication", "ok", who.splitlines()[0] if who else ""])
     except AtlasCliError as exc:
-        section.rows.append(["authentication", "crit", str(exc)[:200]])
+        section.rows.append(["authentication", "crit", str(exc).split(" Setup:")[0][:200]])
+        section.rows.append(["setup", "todo", SETUP_HINT])
         report.severities.append(Severity.CRIT)
     missing = []
     for argv in sorted(READ_ONLY_COMMANDS):

@@ -24,6 +24,12 @@ is why their headers carry a separate "Plugin version:" line.
   from `~/.config/atlas-metrics/config.json`, and returns exit code 1 when a threshold is
   crossed. A `doctor` command checks the CLI version, auth and every operation the engine
   uses. Documented in `knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md`.
+- `atlas-metrics-*` setup: the skills run as a dedicated project-level service account,
+  `atlas-metrics-readonly`, with Project Read Only and Project Observability Viewer, saved as
+  the CLI profile `metrics`. A named profile now wins over exported `MONGODB_ATLAS_*`
+  credentials. Refused credentials print the setup steps. An `ORG_REQUIRES_ACCESS_LIST`
+  refusal prints the caller's IP and how an owner can list it; the skills never list it
+  themselves.
 
 - `aae-roadmap`: a subagent (a skill in Codex) for questions about where Atlas Agent Engine
   is going. It labels each roadmap item shipped, announced, planned, concept or unknown,

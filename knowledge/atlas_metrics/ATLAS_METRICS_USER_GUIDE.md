@@ -19,6 +19,8 @@
 - [How do I drill from "the cluster is slow" down to one query?](#how-do-i-drill-from-the-cluster-is-slow-down-to-one-query)
 - [Troubleshooting](#troubleshooting)
   - [Why does every command fail with "unauthorized"?](#why-does-every-command-fail-with-unauthorized)
+  - [Why does every read fail with "ORG_REQUIRES_ACCESS_LIST" when the login works?](#why-does-every-read-fail-with-org_requires_access_list-when-the-login-works)
+  - [Do I have to add every network I work from?](#do-i-have-to-add-every-network-i-work-from)
   - [Why does it say no processes belong to my cluster?](#why-does-it-say-no-processes-belong-to-my-cluster)
   - [Why is my collection missing from the collection-latency report?](#why-is-my-collection-missing-from-the-collection-latency-report)
   - [Why are query shapes, the Performance Advisor or Search metrics empty?](#why-are-query-shapes-the-performance-advisor-or-search-metrics-empty)
@@ -41,10 +43,15 @@ creates, drops, pins, pauses or acknowledges anything.
 
 To start:
 
-1. Install the `atlas` CLI and log in with a service account (Project Read Only is enough for most of it).
-2. Run `plugins/aae/scripts/atlas-metrics.sh doctor --cluster <name>`.
+1. **Create the required service account in the project you want to monitor:**
+   `atlas-metrics-readonly`, with the roles **Project Read Only** and **Project
+   Observability Viewer**, saved as the `atlas` CLI profile `metrics`. The steps are in
+   [Which identity should the skills run as](#which-identity-should-the-skills-run-as-and-with-what-permissions).
+   Every user needs this once per project.
+2. Run `atlas-metrics.sh profiles init`, set `"atlas_profile": "metrics"` in the config it
+   writes, then run `plugins/aae/scripts/atlas-metrics.sh doctor --cluster <name>`.
 3. Ask Claude "how is my cluster `<name>` doing?", or run `atlas-metrics.sh snapshot --cluster <name>`.
-4. Save your own thresholds and default cluster with `atlas-metrics.sh profiles init`.
+4. Save your own thresholds and default cluster in the same config file.
 
 ## What do these skills do, and what will they never do?
 
@@ -109,11 +116,12 @@ The recommended setup, done once:
 |---|---|---|
 | 1 | You, as **Project Owner** (no organization role needed) | Inside the project: **Project Identity & Access → Applications → Create Application → Service Account**, named e.g. `atlas-metrics-readonly`. This creates a *project-level* service account, which Atlas adds to the organization as a member with no organization permissions. An organization owner can instead create one under **Organization → Identity & Access → Applications** and add it to several projects. Keep the secret out of chats and repos. |
 | 2 | You | Give it **Project Read Only** and **Project Observability Viewer**. Together they cover every skill, including query shapes and the query values in slow-query logs and index suggestions. Don't use a data-access role, which would also let the account read documents, and never Owner. |
-| 3 | You, in your own terminal | `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`, choose **ServiceAccount**, and paste the ID and secret at the prompt. |
-| 4 | You | Set `"atlas_profile": "metrics"` and `"project_id"` in `~/.config/atlas-metrics/config.json`, then run `atlas-metrics.sh doctor --cluster <name>`. |
+| 3 | You, if your organization requires it | **API access list.** If the organization only accepts API calls from listed IPs, the account logs in but every read fails with `403 ORG_REQUIRES_ACCESS_LIST`. Add each IP you work from under the service account's **API Access List**. See [Do I have to add every network I work from?](#do-i-have-to-add-every-network-i-work-from) |
+| 4 | You, in your own terminal | `env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login --profile metrics`, choose **ServiceAccount**, and paste the ID and secret at the prompt. **Scripted alternative** (for example from a password manager): `atlas config set client_id <id> -P metrics` and `atlas config set client_secret <secret> -P metrics`, with the secret piped from the vault, never typed into a chat. Add `atlas config set project_id <project-id> -P metrics` to give the profile a default project. |
+| 5 | You | Set `"atlas_profile": "metrics"` in `~/.config/atlas-metrics/config.json` (and `"project_id"` if the profile has none), then run `atlas-metrics.sh doctor --cluster <name>`. |
 
 Service-account secrets have an expiry date that you choose when you create them. When
-`doctor` starts failing authentication months later, rotate the secret and repeat step 3.
+`doctor` starts failing authentication months later, rotate the secret and repeat step 4.
 
 ## How do I run my first check?
 
@@ -366,6 +374,44 @@ override the saved login; naming a profile with `--atlas-profile` makes the engi
 ignore them. And a service account from a different organization can never reach the
 project. See [Which identity should the skills run as](#which-identity-should-the-skills-run-as-and-with-what-permissions).
 The `atlas-cli` specialist covers auth in depth.
+
+### Why does every read fail with "ORG_REQUIRES_ACCESS_LIST" when the login works?
+
+Your organization only accepts Admin API calls from IP addresses on the service
+account's access list, and the address you're calling from isn't on it. Logging in
+still succeeds (`atlas auth whoami` reports the account), so this looks like a
+permissions problem, but it isn't. The roles are fine.
+
+The engine prints the IP Atlas saw, taken from the error itself. Add that address in the
+project: **Project Identity & Access → Applications → `atlas-metrics-readonly` → API
+Access List → Add Access List Entry**. Or, as a Project Owner with your own login (never
+the read-only profile):
+
+```bash
+echo '[{"ipAddress": "203.0.113.7"}]' | atlas api serviceAccounts createAccessList \
+  --groupId <project-id> --clientId <service-account-client-id> --version 2024-08-05 -P <your-owner-profile>
+```
+
+### Do I have to add every network I work from?
+
+Yes, while the organization enforces an access list. A laptop takes a new public IP on
+each network (office, home, hotspot, VPN), and each new one needs an entry before the
+account works from it. To make that rare:
+
+| Option | Entries | When it fits |
+|---|---|---|
+| A VPN with a fixed exit IP (a corporate VPN's egress range, or a dedicated-IP VPN) | One address or range | You move between networks often |
+| List the networks you really use | One per network | Home and office, where addresses change rarely |
+| Run the skills from a fixed host (a small VM or CI runner with a static IP) | One | Scheduled health checks |
+
+**Why don't the skills add the current IP automatically?** It would take a Project
+Owner credential stored on the same machine, so that a refused call could list itself.
+That defeats the control. An access list exists so that a stolen secret is useless from
+an unknown network, and if whatever holds the secret can also list its own network,
+holding the secret is enough again. It would also put an Owner credential next to a
+read-only one. So the skills stop at telling you the IP and the exact command, and
+adding it stays a deliberate step by an owner. If the requirement itself is a burden,
+take it to your organization owner rather than working around it.
 
 ### Why does it say no processes belong to my cluster?
 

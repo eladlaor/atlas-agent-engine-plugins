@@ -177,6 +177,37 @@ GRANULARITY_RULES = (
 )
 GRANULARITY_FALLBACK = Granularity.ONE_DAY
 
+# The identity these skills are meant to run as. Printed whenever Atlas refuses
+# the credentials, because the fix is almost always this setup.
+SERVICE_ACCOUNT_NAME = "atlas-metrics-readonly"
+SERVICE_ACCOUNT_ROLES = ("Project Read Only", "Project Observability Viewer")
+METRICS_CLI_PROFILE = "metrics"
+AUTH_FAILURE_MARKERS = ("unauthorized", "not logged in", "forbidden")
+SETUP_HINT = (
+    "Setup: in the Atlas project that holds the cluster, create a service account "
+    f"'{SERVICE_ACCOUNT_NAME}' (Project Identity & Access > Applications > Create service "
+    f"account) with the roles {' + '.join(SERVICE_ACCOUNT_ROLES)}; then run "
+    "`env -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET atlas auth login "
+    f"--profile {METRICS_CLI_PROFILE}` (choose ServiceAccount) and pass "
+    f"--atlas-profile {METRICS_CLI_PROFILE}, or set defaults.atlas_profile in the config."
+)
+
+# Organizations can require every API call to come from an access-listed IP.
+# The account then authenticates fine and every read fails with one of these
+# codes. Atlas puts the caller's IP in "Params: [<ip>]".
+ACCESS_LIST_ERROR_CODES = ("ORG_REQUIRES_ACCESS_LIST", "IP_ADDRESS_NOT_ON_ACCESS_LIST")
+ACCESS_LIST_HINT = (
+    "Access list: this organization only accepts API calls from listed IP addresses, and "
+    "Atlas saw this request come from {ip}. Add it in the project: Project Identity & Access "
+    f"> Applications > '{SERVICE_ACCOUNT_NAME}' > API Access List > Add Access List Entry, "
+    "or run as a Project Owner (your own login, never the read-only profile): "
+    "echo '[{{\"ipAddress\": \"{ip}\"}}]' | atlas api serviceAccounts createAccessList "
+    "--groupId <project-id> --clientId <service-account-client-id> --version 2024-08-05 "
+    "-P <your-owner-profile>. "
+    "These skills never run that command themselves. A laptop's address changes with the "
+    "network; a VPN with a fixed exit IP needs one entry."
+)
+
 DEFAULT_SNAPSHOT_WINDOW = "PT15M"
 DEFAULT_HISTORY_WINDOW = "PT6H"
 DEFAULT_TOP_N = 10
