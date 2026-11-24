@@ -101,20 +101,48 @@ command -v mongodump >/dev/null 2>&1 \
 # ------------------------------------------------------------------- atlas auth
 head_ "Atlas authentication"
 
-AUTH_TYPE=""
-if command -v atlas >/dev/null 2>&1; then
-  AUTH_TYPE="$(atlas config describe "${ATLAS_PROFILE:-default}" 2>/dev/null | jqf auth_type)"
+# What the atlas CLI actually reads. A service account is a client ID + secret;
+# a user-account login (browser/PKCE since atlascli 1.60.0, device flow before
+# that, now kept as `--authType UserAccountLegacy`) is an access + refresh token
+# pair that expires. Profiles written with `atlas config set` carry no
+# `auth_type`, so a service-account profile is recognised by its fields.
+PROFILE="${ATLAS_PROFILE:-default}"
+SA_ENV_HINT="export MONGODB_ATLAS_CLIENT_ID and MONGODB_ATLAS_CLIENT_SECRET, or point ATLAS_PROFILE at a service-account profile"
+USER_ACCOUNT_WHY="Its refresh token expires (atlas reports 'session expired') and will fail mid-migration. Create a service account with Project Owner on the target project, then ${SA_ENV_HINT}."
+
+profile_field() { jqf "$1" <<<"$PROFILE_JSON"; }
+
+if [ -n "${MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID:-}${MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_SECRET:-}" ]; then
+  warn "MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID / _SECRET are set, but the atlas CLI does not read those names; it reads MONGODB_ATLAS_CLIENT_ID / MONGODB_ATLAS_CLIENT_SECRET"
 fi
 
-if [ -n "${MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID:-}" ] \
-   && [ -n "${MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_SECRET:-}" ]; then
-  ok "service account supplied via environment"
-elif [ "$AUTH_TYPE" = "service_account" ]; then
-  ok "profile '${ATLAS_PROFILE:-default}' authenticates with a service account"
-elif [ "$AUTH_TYPE" = "user_account" ]; then
-  block "profile '${ATLAS_PROFILE:-default}' is a USER account. Its refresh token expires and will fail mid-migration. Create a service account with Project Owner on the target project and export MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID / _SECRET."
+if [ -n "${MONGODB_ATLAS_CLIENT_ID:-}" ] && [ -n "${MONGODB_ATLAS_CLIENT_SECRET:-}" ]; then
+  ok "service account supplied via environment (MONGODB_ATLAS_CLIENT_ID / _SECRET)"
+elif [ -n "${MONGODB_ATLAS_CLIENT_ID:-}${MONGODB_ATLAS_CLIENT_SECRET:-}" ]; then
+  block "only one of MONGODB_ATLAS_CLIENT_ID / MONGODB_ATLAS_CLIENT_SECRET is set; a service account needs both"
+elif [ -n "${MONGODB_ATLAS_ACCESS_TOKEN:-}${MONGODB_ATLAS_REFRESH_TOKEN:-}" ]; then
+  block "MONGODB_ATLAS_ACCESS_TOKEN / _REFRESH_TOKEN are USER-account tokens. ${USER_ACCOUNT_WHY}"
+elif ! command -v atlas >/dev/null 2>&1; then
+  block "cannot inspect Atlas credentials without the atlas CLI"
+elif ! PROFILE_JSON="$(atlas config describe "$PROFILE" -o json 2>&1)"; then
+  block "atlas profile '${PROFILE}' could not be read (${PROFILE_JSON##*$'\n'}). ${SA_ENV_HINT}."
 else
-  block "no usable Atlas credential found. Export MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID / _SECRET, or point ATLAS_PROFILE at a service-account profile."
+  AUTH_TYPE="$(profile_field auth_type)"
+  # 1.60.0 spells it UserAccount / UserAccountLegacy; older profiles user_account.
+  AUTH_TYPE_NORM="$(printf '%s' "$AUTH_TYPE" | tr '[:upper:]' '[:lower:]' | tr -d '_')"
+  if [ -n "$(profile_field client_id)" ] && [ -n "$(profile_field client_secret)" ]; then
+    ok "profile '${PROFILE}' authenticates with a service account (client_id + client_secret)"
+  elif [ "$AUTH_TYPE_NORM" = "useraccountlegacy" ]; then
+    block "profile '${PROFILE}' is a USER account on the deprecated device-code flow (UserAccountLegacy; atlascli 1.60.0 converted it). ${USER_ACCOUNT_WHY}"
+  elif [ "$AUTH_TYPE_NORM" = "useraccount" ]; then
+    block "profile '${PROFILE}' is a USER account (atlas auth login). ${USER_ACCOUNT_WHY}"
+  elif [ -n "$(profile_field access_token)$(profile_field refresh_token)" ]; then
+    block "profile '${PROFILE}' holds user-login tokens but no service-account client_id / client_secret. ${USER_ACCOUNT_WHY}"
+  elif [ -n "$(profile_field client_id)" ]; then
+    block "profile '${PROFILE}' has a client_id but no client_secret; set it with atlas config set client_secret -P ${PROFILE}"
+  else
+    block "no usable Atlas credential found in profile '${PROFILE}' (auth_type '${AUTH_TYPE:-unset}'). To fix, ${SA_ENV_HINT}."
+  fi
 fi
 
 # --------------------------------------------------------------- local state
@@ -160,7 +188,7 @@ fi
 head_ "Clusters"
 
 if [ "$BLOCKERS" -eq 0 ] && [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "-" ]; then
-  CLUSTERS="$(atlas clusters list --projectId "$PROJECT_ID" -o json 2>/dev/null)"
+  CLUSTERS="$(atlas clusters list --projectId "$PROJECT_ID" ${ATLAS_PROFILE:+-P "$ATLAS_PROFILE"} -o json 2>/dev/null)"
   if [ -z "$CLUSTERS" ]; then
     block "could not list clusters in project ${PROJECT_ID} — check the service account has Project Owner there"
   else

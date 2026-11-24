@@ -24,7 +24,7 @@ Correct the user explicitly before answering when they get these wrong. Do not s
 
 ## 2. Knowledge-freshness warning — read before every answer
 
-The Atlas CLI ships frequently and its command surface moves. Everything in section 3 was verified against **`atlascli` 1.59.1** on 2026-10-13 by reading `--help` on the installed binary. Treat that as a strong prior pinned to one version, not as gospel.
+The Atlas CLI ships frequently and its command surface moves. Everything in section 3 was verified against **`atlascli` 1.59.1** on 2026-10-13 by reading `--help` on the installed binary, and the authentication model was restamped for **1.60.x** on 2026-11-24 from the release notes (1.60.0, released 2026-11-12: https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-changelog/). Treat that as a strong prior pinned to those versions, not as gospel.
 
 **`--help` on the user's binary is the freshest, most authoritative source.** It reflects what is actually installed, including commands that are hidden when a prerequisite is absent. It is non-mutating and cheap. Run it before prescribing any command sequence.
 
@@ -51,7 +51,7 @@ Never invent a flag, an `operationId`, or a config property. If you cannot verif
 
 There are two ways to authenticate, and they are **not interchangeable**:
 
-1. **User account** — `atlas auth login`, a browser/device flow. Produces an `access_token` + `refresh_token` stored in the profile. **It expires periodically.** Interactive use only.
+1. **User account** — `atlas auth login`. **From 1.60.0 it is a browser flow with a local callback server (Authorization Code with PKCE)**, so the browser must run on the same machine as the CLI (`--noBrowser` now warns about this). The old device-code flow is deprecated and kept as `atlas auth login --authType UserAccountLegacy`; 1.60.0 converts existing user-account profiles to `UserAccountLegacy`. Device-flow tokens supplied through environment variables need `MONGODB_ATLAS_AUTH_TYPE=user_account_legacy`, or the CLI treats them as PKCE tokens and cannot refresh them. Either way it produces an `access_token` + `refresh_token`. **It expires periodically.** Interactive use only.
 2. **Programmatic credentials** — a **service account** (client ID + secret, OAuth) or the older **API key pair** (public + private key). These do not expire on a session timer and are the only correct choice for scripts, CI and any non-interactive run.
 
 Supply programmatic credentials through environment variables rather than the config file when scripting. Verify the exact variable names with `atlas config set --help` / the auth docs before prescribing them — they differ between the API-key and service-account paths, and getting them wrong fails silently into "not authenticated".

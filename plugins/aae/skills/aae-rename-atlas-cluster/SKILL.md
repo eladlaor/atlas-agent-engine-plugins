@@ -63,8 +63,10 @@ say so and stop — it is one field in project settings and none of this applies
 ## Preconditions
 
 - The `atlas` CLI, and an **Atlas service account** with Project Owner on the
-  project — `MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID` / `_SECRET` exported, or a
-  service-account `ATLAS_PROFILE`. A *user-account* login is rejected: its refresh
+  project — `MONGODB_ATLAS_CLIENT_ID` / `MONGODB_ATLAS_CLIENT_SECRET` exported (the
+  names the atlas CLI reads), or an `ATLAS_PROFILE` holding a service account's
+  `client_id` / `client_secret`. A *user-account* login (`UserAccount`, or
+  `UserAccountLegacy` from atlascli 1.60.0 on) is rejected: its refresh
   token expires and the Atlas CLI fails with "session expired" mid-migration,
   which is exactly the long-running unattended case this skill serves.
 - `agentengine` authenticated (`agentengine auth login` — a separate identity from
@@ -176,7 +178,7 @@ Stop active sessions first, then:
 ## Phase 4 — redeploy
 
 ```bash
-agentengine deploy --auto
+agentengine deploy --build
 ```
 
 A **redeploy is required**; a rebuild is not, since neither scaling nor egress mode

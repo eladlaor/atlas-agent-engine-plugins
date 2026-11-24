@@ -27,7 +27,7 @@ The path that worked on CLI 0.1.118 (2026-10-04), all from the agent directory:
    platform secret.
 4. `agentengine atlas setup` → picks an existing Flex/M10+ cluster, creates a per-workspace DB
    user, uploads `MONGODB_URI`, allowlists the platform's Atlas-lane IPs.
-5. `agentengine deploy --auto`.
+5. `agentengine deploy --build` (CLI 0.1.123+; `--auto` before that, now a deprecated alias).
 
 The numbered procedure is in [RUNBOOKS.md](RUNBOOKS.md#first-deploy-of-a-scaffolded-agent).
 

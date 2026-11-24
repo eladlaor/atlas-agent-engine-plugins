@@ -102,6 +102,7 @@ test_a_named_profile_is_not_overridden_by_exported_credentials() {
   am_setup
   export FAKE_ATLAS_ENV_LOG="${SANDBOX}/env.log"
   MONGODB_ATLAS_CLIENT_ID=stale MONGODB_ATLAS_CLIENT_SECRET=stale MONGODB_ATLAS_BASE_URL=keep \
+  MONGODB_ATLAS_ACCESS_TOKEN=stale MONGODB_ATLAS_REFRESH_TOKEN=stale \
     am hosts --cluster demo-cluster --atlas-profile metrics
   assert_eq 0 "$AM_RC" "hosts with a named profile" || return 1
   assert_eq '["MONGODB_ATLAS_BASE_URL"]' "$(sort -u "${SANDBOX}/env.log")" \

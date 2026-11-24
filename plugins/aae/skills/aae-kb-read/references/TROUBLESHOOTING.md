@@ -12,6 +12,7 @@ description: Symptom-first Q&A for Atlas Agent Engine failures - misleading erro
 - [Why does an invoke with a bad LLM key hang instead of failing?](#why-does-an-invoke-with-a-bad-llm-key-hang-instead-of-failing)
 - [Why does `secret set --sync` time out when the new value already works?](#why-does-secret-set---sync-time-out-when-the-new-value-already-works)
 - [Why does invoke return 503 while `status` says healthy?](#why-does-invoke-return-503-while-status-says-healthy)
+- [Why does invoke return 503 "All agent instances are currently busy"?](#why-does-invoke-return-503-all-agent-instances-are-currently-busy)
 - [Why did my deploy fail with `OENotReady`?](#why-did-my-deploy-fail-with-oenotready)
 - [What does a deploy success rate below 100% tell me?](#what-does-a-deploy-success-rate-below-100-tell-me)
 - [Why does the deploy hang at `Memory: waiting`?](#why-does-the-deploy-hang-at-memory-waiting)
@@ -22,6 +23,8 @@ description: Symptom-first Q&A for Atlas Agent Engine failures - misleading erro
 - [Why does the build fail after I changed the package version?](#why-does-the-build-fail-after-i-changed-the-package-version)
 - [Why does the first invoke after a rollout lose its tool pod?](#why-does-the-first-invoke-after-a-rollout-lose-its-tool-pod)
 - [Why isn't the fact my agent just learned in memory yet?](#why-isnt-the-fact-my-agent-just-learned-in-memory-yet)
+- [Why does a tool call fail now and then with `tool pod request failed: … EOF`?](#why-does-a-tool-call-fail-now-and-then-with-tool-pod-request-failed--eof)
+- [Why does a streamed run end in an `error` chunk with no message?](#why-does-a-streamed-run-end-in-an-error-chunk-with-no-message)
 - [Which misdiagnoses keep recurring?](#which-misdiagnoses-keep-recurring)
 
 ## Summary
@@ -97,6 +100,18 @@ paused cluster shows `egress sync: ok (no clusters)` with a hint that paused clu
 omitted. There are no runtime logs in this state. `workspace sessions list` failing with
 "Failed to query execution data from Orchestration Engine" is the same cause. Resume the
 cluster and follow [the recovery runbook](RUNBOOKS.md#recover-after-the-atlas-cluster-pauses).
+
+## Why does invoke return 503 "All agent instances are currently busy"?
+
+The **pool is full**: every sandbox pair is reserved by a session, and `scaling.replicas` caps
+concurrent sessions. It is not the paused-cluster 503 above; read the message. Raise
+`scaling.replicas` and **rebuild** (it is snapshotted at build time), then look at who holds
+the slots with `agentengine workspace sessions list` and free them with
+`agentengine workspace sessions stop <session-id>`. Idle sessions keep their slot until the
+idle TTL (default 10 minutes). Only Playground and `agentengine invoke` test sessions are
+reclaimed at capacity; REST and service-account sessions are not (0.1.126 `--help`). If the
+workspace is an A2A callee, its slots are also taken by other agents' calls. Detail:
+[DRIFT_LOG.md](DRIFT_LOG.md#2026-11-24--pool-full-raise-replicas-first-and-a-shared-session-id-shares-state).
 
 ## Why did my deploy fail with `OENotReady`?
 
@@ -195,6 +210,35 @@ retry once in a fresh session. Investigate tool logs and traces if it repeats.
 Long-term memory extraction is **asynchronous**. A turn recorded now is available in a later
 conversation, not the next turn. Test recall in a new session after extraction has had time
 to run.
+
+## Why does a tool call fail now and then with `tool pod request failed: … EOF`?
+
+*Field observation, 2026-10-25, CLI 0.1.120, SDK 0.11.10; one project; not in the docs.*
+
+A connection keep-alive race, not a broken tool. The tool sandbox's server closes idle
+connections after **5 seconds**, while the Orchestration Engine reuses pooled connections to
+it. A tool call sent about 5 seconds after the previous one on the same connection can go out
+just as the server closes it: it fails in milliseconds, never reaches the tool (no access-log
+line), and the next call works. Nothing retries it: the SDK retries only when the
+Orchestration Engine marks a failure retryable, and here it does not. The error surfaces as an
+exception from the tool call, not as an error result. Graphs that call tools on a steady
+4.5 to 5.5 second rhythm (progress reports, for example) hit it repeatedly.
+
+- Add a bounded retry for this transport error in your tool-call helper, and only for tools
+  that are safe to repeat.
+- Make fewer, larger tool round trips.
+- Report it with the timestamps; the fix belongs in the platform.
+
+## Why does a streamed run end in an `error` chunk with no message?
+
+*Field observation, 2026-10-25, CLI 0.1.120; not in the docs.*
+
+The `invokeStream` `error` chunk can arrive with **empty `content`**. The real message is on
+the execution record: `GET /api/v1/projects/<project_id>/executions?workspace_id=<workspace_id>&session_id=<session_id>`
+and read `.error`. One message seen this way, `workflow operation failed`, came from the
+platform after every graph step had succeeded; treat it as a transient and retry from a point
+that is safe to repeat. `agentengine logs --session-id <id>` may find nothing for such a
+session; search an unfiltered time window instead.
 
 ## Which misdiagnoses keep recurring?
 

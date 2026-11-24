@@ -113,7 +113,7 @@ Source column: **D** docs, **S** SDK source, **C** CLI behavior.
 | `name` | string | no | — | Lowercase alphanumerics and hyphens, no leading or trailing hyphen. In a monorepo, also the workspace name and the A2A discovery name. | D |
 | `description` | string | no | — | Up to 500 characters | D |
 | `language` | string | no | — | `python` \| `typescript`. In the create-project docs, not the contract table. | S, C |
-| `framework` | string | no | — | e.g. `langgraph`, `adk`. Same caveat. | S, C |
+| `framework` | string | no | — | e.g. `langgraph`, `adk`, and `openai-agents` (experimental; the OpenAI Agents SDK page, 2026-11-24). Same caveat. | S, C |
 | `version` | string | no | — | Not in the contract table. `deploy list` shows it as `VERSION` (e.g. `v0.1.0 (r2)`). | C |
 | `agent_card.summary` | string | no | — | Shown in the UI | D |
 | `agent_card.capabilities` | list[string] | no | — | Shown in the UI; A2A discovery can filter on them | D |

@@ -18,7 +18,7 @@ description: Numbered Atlas Agent Engine procedures - first deploy, build and pr
 |---|---|---|
 | First deploy of a scaffolded agent | 0.1.118 | 2026-10-04 to 2026-10-05, end to end |
 | Build, deploy and prove a hosted invocation | 0.1.118 | 2026-10-04 |
-| Connect an external client | 0.1.118 | 2026-10-10, from the console's *Connect to workspace* dialog |
+| Connect an external client | 0.1.118 | 2026-10-10, from the console's *Connect to workspace* dialog; role and flags re-checked on 0.1.126 `--help` 2026-11-24 |
 | Recover after the Atlas cluster pauses | 0.1.118 | 2026-10-05 |
 
 Adding or removing one agent in a monorepo: use the `aae-add-agent` and `aae-delete-agent`
@@ -53,7 +53,9 @@ Flex or M10+ tier (not free/shared); the LLM key in a secret manager.
 9. If the model goes through a gateway, make sure its host is in the egress policy **for both
    sandboxes**, and allowlist AAE's non-Atlas egress IPs on the gateway (fetch them live from
    `GET https://agentengine.mongodb.com/api/v1/platform/agent-egress-ips`).
-10. `agentengine deploy --auto`. Build and deploy take roughly 5 to 10 minutes each. If the
+10. `agentengine deploy --build` (CLI 0.1.123+; `--auto` is a deprecated alias, and a bare
+    `deploy` only redeploys the last successful image). Build and deploy take roughly 5 to 10
+    minutes each. If the
     CLI reports "session expired" (for example after the laptop sleeps), check
     `agentengine deploy list` before re-running: the server side often finishes anyway.
 11. Verify: `agentengine deploy list` shows the new row as `succeeded`, then
@@ -126,7 +128,10 @@ Source: the workspace page's **Connect to workspace** dialog in the AAE console 
 2026-10-10, CLI 0.1.118.
 
 1. **Create a service account** (the secret is shown once):
-   `agentengine service-account create <client-name> --project-id '<project_id>' --role AGENT_DEVELOPER`
+   `agentengine service-account create <client-name> --project-id '<project_id>' --role PROJECT_OWNER`
+   (CLI 0.1.126; `AGENT_DEVELOPER` is gone). If the org or project has Atlas service-account
+   pairing off, the CLI asks before turning it on; in a script pass `--enable-atlas-pairing`,
+   otherwise it creates nothing.
 2. **Mint an access token** (1 h; curl prompts for the secret without echoing it):
    ```bash
    read -r -p "Client ID: " CLIENT_ID
@@ -141,7 +146,8 @@ Source: the workspace page's **Connect to workspace** dialog in the AAE console 
      -d '{"message": "Hello, agent!"}'
    ```
    Non-streaming: the same path ending in `/invoke`. Send `X-Session-ID` to reuse a session;
-   otherwise each call reserves a fresh sandbox pair.
+   otherwise each call reserves a fresh sandbox pair. Reuse one only within one user's
+   conversation: requests that share a session ID share its state (docs, 2026-11-24).
 4. **Optional, forward credentials:** any header prefixed `X-Mdb-Agent-Engine-Custom-` reaches
    the agent with the prefix stripped and lower-cased (`…-Custom-Authorization` →
    `authorization`), readable with `get_current_custom_headers()`. Headers are not persisted;
@@ -149,11 +155,15 @@ Source: the workspace page's **Connect to workspace** dialog in the AAE console 
 
 Name these traps when prescribing it:
 
-- **Memory identity collapse:** every end user behind this service account shares one memory
-  scope, and `user_id` in the request is ignored.
+- **Memory identity, unverified:** until 2026-10-19 the docs said every end user behind a
+  service account shares one memory scope and `user_id` is ignored. That warning is gone and
+  CLI 0.1.126 says a service account may name another user, but the OpenAPI spec still says it
+  cannot. Run the two-user test in
+  [DRIFT_LOG.md](DRIFT_LOG.md#2026-11-24--the-docs-no-longer-say-service-account-invokes-share-one-memory-identity)
+  before promising per-user memory.
 - The token lasts 1 h with no refresh; the client must re-mint it.
 - `--project-id` is the AAE project ID, which equals the Atlas project ID.
-- `AGENT_DEVELOPER` also grants build and deploy; no invoke-only role exists.
+- `PROJECT_OWNER` also grants build and deploy; no invoke-only role exists.
 - In the console, `scaling.replicas` appears as **INSTANCES** ("Standby: warmed up and ready";
   "Active: currently handling a request").
 

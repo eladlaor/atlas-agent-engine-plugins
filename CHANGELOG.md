@@ -121,6 +121,14 @@ is why their headers carry a separate "Plugin version:" line.
 - The user guide and `HOW_IT_WORKS.md` no longer imply that the knowledge-base update or the
   daily schedule belongs to the hashing watcher; both detectors support `--update-kb`, and
   the git-sourced one is what the schedule runs.
+- Knowledge base and `aae-guide` card re-synced to the docs and to CLI 0.1.126 / SDK 0.11.15
+  (2026-11-24): `deploy --build` replaces `deploy --auto`, `create-tool` and `validate` live
+  under `agentengine agent`, service-account roles are `PROJECT_OWNER` / `PROJECT_READ_ONLY`,
+  the OpenAI Agents adapter, trace export, 60-minute runs and API version pinning are covered,
+  the memory-identity trap is marked as documented-changed but unverified live, resolved doc
+  contradictions are closed, and previously uncited guide pages get short pointers.
+- `atlas-cli` card restamped for Atlas CLI 1.60: user login is a browser flow with a local
+  callback, and the device flow is deprecated behind `--authType UserAccountLegacy`.
 
 ### Removed
 
@@ -146,6 +154,12 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Fixed
 
+- `aae-rename-atlas-cluster` preflight: accepts the variables the Atlas CLI actually reads
+  (`MONGODB_ATLAS_CLIENT_ID` / `_SECRET`), recognises service-account profiles that carry no
+  `auth_type`, blocks user-account and `UserAccountLegacy` profiles, and lists clusters with
+  the profile named in `ATLAS_PROFILE`.
+- `atlas-metrics`: exported `MONGODB_ATLAS_ACCESS_TOKEN` / `_REFRESH_TOKEN` no longer override
+  the named profile.
 - Egress IPs: `/network-egress.md` now lists all four addresses for destinations outside Atlas,
   so the drift log, troubleshooting, first-deploy write-up and the `aae-guide` card no longer
   say the docs list only the non-Atlas pair, and advise external services to allowlist all four.

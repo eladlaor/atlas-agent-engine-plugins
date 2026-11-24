@@ -53,7 +53,7 @@ for the same project, and both carry the same org name.
 
 ## Can I move a linked project to another org?
 
-**No.** Product-team statement, 2026-11-05; not in the docs as of 2026-11-12: moving an
+**No.** Product-team statement, 2026-11-05; not in the docs as of 2026-11-24: moving an
 Atlas project that Agent Engine is linked to into a different Atlas organization **breaks
 Agent Engine for that project**, and it is not supported. Atlas does not block the move
 today, which is what makes it a trap: the move succeeds and the agents stop working.
@@ -112,8 +112,10 @@ Two unrelated credentials share the name, and mixing them up wastes a whole debu
 
 They are not interchangeable, and holding one tells you nothing about the other.
 
-**Why AAE has its own at all:** it carries roles with no Atlas counterpart. `AGENT_DEVELOPER`
-("can invoke, build, and deploy agents") does not map onto Atlas's role model at all. The docs
+**Why AAE has its own at all:** it authenticates against the Agent Engine API, not the Atlas
+Admin API. Until 0.1.120 it also carried a role with no Atlas counterpart (`AGENT_DEVELOPER`);
+since then its roles reuse Atlas role names, and it can be paired with an Atlas service account
+(see [below](#which-role-should-a-service-account-get)). The docs
 also distinguish projects "that the Atlas Agent Engine manages" from **Atlas-backed** projects
 — an org-scoped `ORG_GROUP_CREATOR` account can invoke only in the former — so AAE can own
 projects Atlas does not. That is about project *ownership*, not about where MongoDB runs.
@@ -124,12 +126,20 @@ Atlas Search and Vector Search on Flex or larger.
 
 ## Which role should a service account get?
 
-As of 2026-10-10 (CLI 0.1.118), project roles are `PROJECT_OWNER`, `PROJECT_READ_ONLY` and
-`AGENT_DEVELOPER`; org roles `ORG_GROUP_CREATOR` and `ORG_READ_ONLY`. Detail in
-[DRIFT_LOG.md](DRIFT_LOG.md#2026-10-10--new-service-account-role-agent_developer).
+As of 2026-11-24 (CLI 0.1.126 `--help` and `/api-keys-service-accounts.md`), roles use Atlas
+role names: project `PROJECT_OWNER` and `PROJECT_READ_ONLY`; org `ORG_OWNER` (only where the
+org has the owner role enabled), `ORG_GROUP_CREATOR` and `ORG_READ_ONLY`. `AGENT_DEVELOPER`,
+offered by CLI 0.1.118, is gone. Detail in
+[DRIFT_LOG.md](DRIFT_LOG.md#2026-11-24--service-account-roles-now-use-atlas-names-agent_developer-is-gone).
 
-- `AGENT_DEVELOPER` can invoke, build and deploy. There is no invoke-only role, so a client
-  that only invokes still receives build and deploy rights. Say so.
+- To invoke, a project account needs `PROJECT_OWNER`; an org account needs `ORG_GROUP_CREATOR`
+  (only in projects Agent Engine manages) or `ORG_OWNER`. There is no invoke-only role, so a
+  client that only invokes still receives build and deploy rights. Say so.
+- `service-account create` can also create a **paired Atlas service account**, if Atlas
+  service-account pairing is on for the org or project. In a terminal the CLI asks before
+  turning it on; `--enable-atlas-pairing` does it without a prompt (use it in scripts);
+  declining, or no terminal and no flag, creates nothing. Pairing links the two accounts; it
+  does not make them interchangeable.
 - Agent management needs an **explicit** Project Owner assignment; Organization Owner alone
   does not grant it in AAE. (Atlas model API keys are the exception: there Organization Owner
   works. See [VERIFIED_DETAILS.md](VERIFIED_DETAILS.md#where-does-the-voyage-key-for-memory-come-from).)

@@ -1,14 +1,16 @@
 ---
 name: aae-sdk-adapters
-description: The LangGraph and Google ADK App surfaces as verified from the SDK wheels (0.11.7 and 0.11.8), deep_agent, where model calls run, the in-process test harness, and install traps.
+description: The LangGraph and Google ADK App surfaces as verified from the SDK wheels (0.11.7 and 0.11.8), the experimental OpenAI Agents adapter, per-execution graph builds, deep_agent, where model calls run, the in-process test harness, and install traps.
 ---
 
-# SDK adapters: LangGraph vs Google ADK
+# SDK adapters: LangGraph, Google ADK and OpenAI Agents
 
 - [Summary](#summary)
 - [What do the two adapters share?](#what-do-the-two-adapters-share)
 - [What can only the LangGraph adapter do?](#what-can-only-the-langgraph-adapter-do)
 - [Does code port between them?](#does-code-port-between-them)
+- [Is there an OpenAI Agents adapter?](#is-there-an-openai-agents-adapter)
+- [Can the graph depend on who is calling?](#can-the-graph-depend-on-who-is-calling)
 - [Is `deep_agent` a platform feature or a LangGraph one?](#is-deep_agent-a-platform-feature-or-a-langgraph-one)
 - [Where do model calls actually run?](#where-do-model-calls-actually-run)
 - [How do I unit-test an agent without deploying it?](#how-do-i-unit-test-an-agent-without-deploying-it)
@@ -18,13 +20,15 @@ description: The LangGraph and Google ADK App surfaces as verified from the SDK 
 ## Summary
 
 Verified by installing the wheels and reading the `App` classes, not from the docs:
-SDK **0.11.7** on 2026-10-05, **0.11.8** on 2026-10-10. Re-verify on any SDK bump.
+SDK **0.11.7** on 2026-10-05, **0.11.8** on 2026-10-10. Re-verify on any SDK bump: the
+current release is **0.11.15** (2026-11-19), so method lists below may be incomplete.
 
 - The shared contract is tiny; "the SDK" is not one interface.
 - LangGraph has 14 `App` methods ADK lacks, including guardrails, A2A, checkpointer and
   `deep_agent`. ADK has none LangGraph lacks.
 - Tool bodies port; `main.py` is a rewrite.
 - **Pick LangGraph** if you want deep agents, guardrails hooks or A2A helpers out of the box.
+- A third adapter, for the OpenAI Agents SDK, is experimental and Python-only (2026-11-24).
 
 ## What do the two adapters share?
 
@@ -63,6 +67,39 @@ What that means on ADK:
 `@app.tool` bodies port nearly unchanged (same kwargs: `is_local`, `network`, `timeout`,
 `redact_fields`). `main.py` is a rewrite. Moving off ADK early is cheap.
 
+## Is there an OpenAI Agents adapter?
+
+Yes, **experimental and Python-only** (verified 2026-11-24 against
+`/sdk/python/packages/agent-engine-sdk-openai-agents.md`, PyPI and the 0.1.120–0.1.122 release
+notes; not exercised here).
+
+- Package `agent-engine-sdk-openai-agents` (0.11.15 on PyPI, 2026-11-19), import
+  `from agent_engine_sdk_openai_agents import App`. No npm package exists.
+- `agent.yaml` declares `framework: openai-agents`. Scaffold with `agentengine create
+  --template hello-world-agent-openai` or `--template insurance-agent-openai`. The page adds
+  that "a platform build needs an environment that publishes the Python Lite runner base".
+- The entrypoint returns a native OpenAI Agents `Agent`; models come from
+  `app.llm("<model>", settings=ModelSettings(...))` (a model **name**, unlike LangGraph's
+  `BaseChatModel` instance) and tools from `app.tools()`.
+- The Orchestration Engine owns durable execution: the adapter keeps no session database and
+  never uses OpenAI Sessions, Conversations or `previous_response_id` as continuation state.
+  `app.memory` works (0.1.121 notes).
+- Not supported yet: the SDK's own `Agent.mcp_servers` (refused, because it would call MCP from
+  the agent process; use `mcp.servers`), `needs_approval` on MCP tools, tool guardrails, and
+  guardrails on an agent used as a tool. Input and output guardrails must be deterministic,
+  because a replayed turn runs them again.
+
+## Can the graph depend on who is calling?
+
+Yes, since CLI 0.1.122: `@app.entrypoint(load_strategy="per-execution")` (TypeScript
+`app.entrypoint(builder, { loadStrategy: "per-execution" })`) runs the builder on every
+invocation with that invocation's `(input, ctx)`, instead of once (`"global"`, the default).
+Register **every** `llm_id` the agent could use, and the same set on every build, before any
+context-dependent work: the tool sandbox resolves models from a registry built once per pod,
+and a different set raises an error. Vary which model the graph *binds*, not which are
+*registered*. Warm-up is a no-op for per-execution agents. Verified 2026-11-24 against the
+LangGraph SDK API reference (`runtime.md`) and the 0.1.122 release notes.
+
 ## Is `deep_agent` a platform feature or a LangGraph one?
 
 Both names exist, and they are different things.
@@ -75,7 +112,10 @@ Both names exist, and they are different things.
   skills, backend)`** is **LangGraph-only**. It returns a `CompiledStateGraph` to use inside
   `@app.entrypoint`, wraps the model itself, and defaults the backend to the tool-sandbox
   backend. It rejects string model specs in subagents to prevent bypassing the Orchestration
-  Engine. (So do not wrap the LLM in `app.llm()` before passing it in.)
+  Engine. Through 0.1.121, wrapping the LLM in `app.llm()` first double-registered
+  `__default__` and the agent failed to start; the 0.1.122 release notes (2026-10-28) say a
+  pre-registered orchestrator now works, while `/build/build-deep-agent.md` still warns
+  against it (2026-11-24, untested). On older SDKs, pass the bare model.
 - The ADK adapter has **no** client wiring to those built-in handlers. The handlers implement
   LangChain's `deepagents` protocols by name, so `deep_agent()` is the LangGraph adapter
   exposing a LangChain library, not a platform primitive ADK forgot. ADK's own delegation

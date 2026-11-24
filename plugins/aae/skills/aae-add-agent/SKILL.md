@@ -188,7 +188,8 @@ that is:
   `--workspace-scope`, a secret is project-wide and readable by every agent.
   `MONGODB_URI` is required for **every** deploy, even with memory off.
 - **Egress** for the model gateway host: `agentengine agent egress add <fqdn>:443`.
-- **Deploy**: `agentengine deploy --auto` from `agents/<slug>`. Only that form;
+- **Deploy**: `agentengine deploy --build` from `agents/<slug>` (CLI 0.1.123+; `--auto` is
+  its deprecated alias). Only that form;
   `agentengine deploy <unrecognized-word>` silently runs a real deploy.
 
 Leave committing to the user unless they asked for it.

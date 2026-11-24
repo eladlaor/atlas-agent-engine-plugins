@@ -27,18 +27,18 @@ evidence here (or in the user's overlay).
 
 | # | Topic | Status |
 |---|---|---|
-| 1 | SDK package names | Resolved 2026-10-05, re-confirmed 2026-10-10: `agent-engine-sdk-*` |
+| 1 | SDK package names | Resolved 2026-10-05, re-confirmed 2026-11-24: `agent-engine-sdk-*` (`ci-cd` still stale) |
 | 2 | TypeScript package name | Resolved 2026-10-10: `@mongodb-js/agent-engine-sdk-langgraph` |
 | 3 | `agent.yaml` minimum | Leaning resolved 2026-10-10: `sandboxes.agent` required |
-| 4 | `api-key create` | Resolved 2026-10-08, re-confirmed 2026-10-10: real, deprecated |
+| 4 | `api-key create` | Resolved 2026-10-15 in the docs: CI/CD page now uses a service account |
 | 5 | `secret set` value syntax | Resolved 2026-10-04: both forms deprecated |
-| 6 | Custom-headers import path | Open (still split 2026-10-10) |
-| 7 | `allowed_callers` enforcement | Open |
-| 8 | `dev up` working directory | Open |
-| 9 | Flat layout status | Open |
-| 10 | Files `init` generates | Open |
-| 11 | Memory type count | Open |
-| 12 | Deep-agent backend class name | Open (2026-10-10) |
+| 6 | Custom-headers import path | Open (still split 2026-11-24) |
+| 7 | `allowed_callers` enforcement | Open (both pages unchanged 2026-11-24) |
+| 8 | `dev up` working directory | Open (unchanged 2026-11-24) |
+| 9 | Flat layout status | Open (unchanged 2026-11-24) |
+| 10 | Files `init` generates | Open (unchanged 2026-11-24) |
+| 11 | Memory type count | Open (unchanged 2026-11-24) |
+| 12 | Deep-agent backend class name | Resolved 2026-10-13 in the SDK (alias); docs still split 2026-11-24 |
 
 ## 1. SDK package names
 
@@ -53,6 +53,10 @@ evidence here (or in the user's overlay).
   `agent-engine-sdk-langgraph`, `-sdk-adk`, `-sdk-memory`; all four Python packages, including
   `agent-engine-runner-shared`, are 0.11.8 on public PyPI. The `ci-cd` page's "Do Not Declare
   the SDK Packages" section, with the `agentengine-*` names, is still live and stale.
+- **Re-checked 2026-11-24:** unchanged on the `ci-cd` page. All Python packages, now including
+  `agent-engine-sdk-openai-agents` and the internal core `agent-engine-sdk`, are 0.11.15 on PyPI
+  (2026-11-19); npm `@mongodb-js/agent-engine-sdk-langgraph`, `-sdk-memory`, `-runner-shared` and
+  `-sdk` are 0.11.15 too.
 
 ## 2. TypeScript LangGraph SDK package name
 
@@ -81,6 +85,11 @@ evidence here (or in the user's overlay).
 - **Re-confirmed 2026-10-10:** `api-key --help` (CLI 0.1.118): "API keys are deprecated and
   will be removed in a future release." `/deploy/ci-cd.md` still shows
   `agentengine api-key create --project-id <project-id> … --expires-in 90`.
+- **Resolved in the docs 2026-10-15** (docs commit `d0f9e3a` in `mongodb/docs`, "remove
+  references to API keys"; re-checked 2026-11-24): `/deploy/ci-cd.md` now runs
+  `agentengine service-account create ci-pipeline --project-id <project-id> --role PROJECT_OWNER
+  … --secret-expires-in 720h`. `api-key` no longer appears in CLI 0.1.126 `--help`, though
+  `api-key --help` still answers: "API keys are deprecated and will be removed".
 
 ## 5. `secret set NAME VALUE` vs `--value`
 
@@ -96,6 +105,7 @@ evidence here (or in the user's overlay).
 - **Open, still split 2026-10-10:** `/deploy/invoke-agent.md` imports it from
   `agent_engine_runner_shared`; `/add-features/agent-to-agent.md` imports it from
   `agent_engine_runner_shared.context`. Check the installed package.
+- **Still split 2026-11-24**, same two pages.
 - Related, verified from the SDK 0.11.8 wheel: custom headers arrive lower-cased;
   `get_current_custom_headers()` strips `a2a-*` headers while `get_all_custom_headers()`
   keeps them (`a2a-caller-workspace` marks an A2A dispatch).
@@ -106,14 +116,14 @@ evidence here (or in the user's overlay).
   (403 otherwise).
 - The limitations page, Agent Isolation: "The Orchestration Engine does not enforce
   authentication or authorization against the calling agents."
-- Both live on 2026-10-08. **Open and untested.** Do not rely on `allowed_callers` as a
+- Both live on 2026-10-08, and unchanged 2026-11-24. **Open and untested.** Do not rely on `allowed_callers` as a
   security boundary; use separate projects.
 
 ## 8. Which directory to run `dev up` from
 
 - `get-started.md`: "Run all subsequent `agentengine` commands from your agent directory."
 - `add-features/memory.md`: "Run the following command from the project root: `agentengine dev up`."
-- **Open** (2026-10-08). Tell users it is ambiguous; in a monorepo see the `shared/` limitation
+- **Open** (2026-10-08; unchanged 2026-11-24). Tell users it is ambiguous; in a monorepo see the `shared/` limitation
   in [DRIFT_LOG.md](DRIFT_LOG.md).
 
 ## 9. Is the flat project layout deprecated?
@@ -122,20 +132,23 @@ evidence here (or in the user's overlay).
 - `add-features/memory.md`: "If your project uses a flat structure with `agent.yaml` at the
   project root, migrate to the two-level structure before enabling memory. The flat structure
   is deprecated."
-- **Open** (2026-10-08). Prefer the two-level layout.
+- **Open** (2026-10-08). On 2026-11-24 `create-project.md` still documents a one-directory
+  manual setup, without the word "flat". Prefer the two-level layout.
 
 ## 10. Which files does `init` generate?
 
 - `cli/agentengine_init.md`: `.agentengine/` and `.devcontainer/devcontainer.json`.
 - `create-project.md`: `docker-compose.yml`, `.agentengine/Dockerfile`,
   `.agentengine/entrypoint.py`, `.dockerignore`, `.gitignore`.
-- Neither page mentions the other's files. **Open** (2026-10-08).
+- Neither page mentions the other's files. **Open** (2026-10-08; unchanged 2026-11-24).
 
 ## 11. Four memory types or six?
 
 - `/add-features/memory-types.md` documents four; the scaffolded `project-config.yaml` and the
   sample in `/add-features/memory.md` list six (adding `entity` and `preferences`).
-- **Open and untested** (2026-10-08).
+- **Open and untested** (2026-10-08; unchanged 2026-11-24). The OpenAPI spec's
+  `ExtractionPipelineConfig.enabled` lists five: semantic, episodic, taxonomic, preferences,
+  procedural (no `entity`).
 
 ## 12. Deep-agent backend class name
 
@@ -143,5 +156,8 @@ evidence here (or in the user's overlay).
   imported from `agent_engine_sdk_langgraph.backends.tool_sandbox`.
 - The Python and TypeScript SDK API references (`deep_agent` `backend` argument) say it
   defaults to `AgentEngineToolPodBackend`.
-- **Open** (2026-10-10). `App.deep_agent()` injects the backend itself, so most agents never
-  name it; if you must import it, check the installed package first.
+- **Resolved in the SDK 2026-10-13:** `AgentEngineToolSandboxBackend` is a module-level alias of
+  `AgentEngineToolPodBackend` in `backends/tool_sandbox.py` (SDK 0.11.8 wheel), so both imports
+  work; see the 2026-10-13 custom-backend entry in [DRIFT_LOG.md](DRIFT_LOG.md). The docs are
+  still split on 2026-11-24. `App.deep_agent()` injects the backend itself, so most agents
+  never name it.

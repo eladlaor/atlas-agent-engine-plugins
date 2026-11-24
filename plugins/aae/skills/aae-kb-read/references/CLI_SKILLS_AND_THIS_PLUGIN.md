@@ -33,7 +33,7 @@ CLI 0.1.118:
 | Skill | Does | Observed |
 |---|---|---|
 | `atlas-agent-engine-docs` | Answers platform questions only from the public docs site, citing the page | 2026-10-04, 2026-10-10 |
-| `feature-validations` | Greps agent source for framework shapes the SDK doesn't support (LangGraph, ADK); complements `agentengine validate`, which checks only `agent.yaml` | 2026-10-04, 2026-10-10 |
+| `feature-validations` | Greps agent source for framework shapes the SDK doesn't support (LangGraph, ADK); complements `agentengine agent validate` (the top-level `validate` reports "command moved" on CLI 0.1.126), which checks only `agent.yaml` | 2026-10-04, 2026-10-10 |
 | `troubleshoot-deploy` | A CLI-only decision tree for stuck or failed deploys, with nine common causes | 2026-10-04, 2026-10-10 |
 | `atlas-agent-engine` | Template guide for the scaffolded project | 2026-10-04 in a fresh `init` directory; absent from a monorepo root on 2026-10-10 |
 

@@ -121,3 +121,58 @@ test_the_skill_is_documented() {
   grep -q 'aae-rename-atlas-cluster' "${REPO_ROOT}/CHANGELOG.md" \
     || { fail "CHANGELOG does not record the skill"; return 1; }
 }
+
+# ------------------------------------------------- credential detection
+#
+# Runs the preflight against a fake `atlas` on PATH (tests/fixtures/
+# rename_atlas_cluster/atlas). The developer's own Atlas variables are stripped
+# so their shell cannot decide the outcome. Extra VAR=value arguments are added
+# to the environment. Output lands in RN_OUT.
+
+RN_OUT=""
+rn_preflight() {
+  set +e
+  RN_OUT="$(cd "$SANDBOX" && env \
+    -u MONGODB_ATLAS_CLIENT_ID -u MONGODB_ATLAS_CLIENT_SECRET \
+    -u MONGODB_ATLAS_ACCESS_TOKEN -u MONGODB_ATLAS_REFRESH_TOKEN \
+    -u MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID -u MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_SECRET \
+    -u ATLAS_PROFILE \
+    PATH="${REPO_ROOT}/tests/fixtures/rename_atlas_cluster:${PATH}" \
+    FAKE_ATLAS_PROFILE_JSON="${SANDBOX}/profile.json" \
+    "$@" "${REPO_ROOT}/${PREFLIGHT}" --target some-new-name </dev/null 2>&1)"
+  set -e
+}
+
+# The names the atlas CLI reads. The preflight once demanded
+# MONGODB_ATLAS_SERVICE_ACCOUNT_CLIENT_ID, which the CLI ignores.
+test_preflight_accepts_a_service_account_from_the_environment() {
+  rn_preflight MONGODB_ATLAS_CLIENT_ID=id MONGODB_ATLAS_CLIENT_SECRET=secret
+  assert_contains "$RN_OUT" "service account supplied via environment" "env service account" || return 1
+  assert_not_contains "$RN_OUT" "USER account" "an env service account is not a user account"
+}
+
+# `atlas config set client_id|client_secret` writes no auth_type, so a
+# service-account profile has to be recognised by its fields.
+test_preflight_accepts_a_service_account_profile_without_auth_type() {
+  printf '{"client_id":"id","client_secret":"redacted","project_id":"p","service":"cloud"}' \
+    > "${SANDBOX}/profile.json"
+  rn_preflight
+  assert_contains "$RN_OUT" "authenticates with a service account" "config-set service-account profile" || return 1
+  assert_not_contains "$RN_OUT" "no usable Atlas credential" "must not report a missing credential"
+}
+
+test_preflight_blocks_a_user_account_profile() {
+  printf '{"auth_type":"user_account","access_token":"x","refresh_token":"y","service":"cloud"}' \
+    > "${SANDBOX}/profile.json"
+  rn_preflight
+  assert_contains "$RN_OUT" "is a USER account" "a user-account profile must block" || return 1
+  assert_contains "$RN_OUT" "MONGODB_ATLAS_CLIENT_ID" "the fix must name the variable the CLI reads"
+}
+
+# atlascli 1.60.0 converts existing user-account profiles to UserAccountLegacy.
+test_preflight_blocks_a_legacy_user_account_profile() {
+  printf '{"auth_type":"UserAccountLegacy","access_token":"x","refresh_token":"y"}' \
+    > "${SANDBOX}/profile.json"
+  rn_preflight
+  assert_contains "$RN_OUT" "UserAccountLegacy" "a legacy user-account profile must block by name"
+}

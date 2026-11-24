@@ -150,7 +150,9 @@ when the agent dir is listed verbatim in the root `agent.yaml` `agents[].path`.
 
 From `--help`, 2026-10-08:
 
-- `deploy --auto` is single-agent only.
+- `deploy --build` (called `--auto` before CLI 0.1.123, still accepted as a deprecated alias)
+  is single-agent only. From 0.1.123 a bare `deploy` never builds: it redeploys the last
+  successful image and fails if there is none (re-checked on 0.1.126 `--help`, 2026-11-24).
 - `agentengine build --all` builds every listed agent (one archive, N builds).
   `deploy --all` and `deploy --workspace <name>` deploy existing builds; they never build.
 - Non-interactive deploys never prompt and never run `init` or `atlas setup`; they print what

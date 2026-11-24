@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# Fake `atlas` for the cluster-rename preflight tests. Answers only what the
+# preflight's credential check asks: `--version`, and `config describe` from
+# the JSON file named by FAKE_ATLAS_PROFILE_JSON (a missing file is a missing
+# profile). Every other command fails, so no test can reach a real Atlas.
+
+case "$1 ${2:-}" in
+  "--version "*)
+    echo "atlascli version: 0.0.0-fake" ;;
+  "config describe")
+    if [ -n "${FAKE_ATLAS_PROFILE_JSON:-}" ] && [ -f "$FAKE_ATLAS_PROFILE_JSON" ]; then
+      cat "$FAKE_ATLAS_PROFILE_JSON"
+    else
+      echo "Error: you don't have a profile named '${3:-}'" >&2
+      exit 1
+    fi ;;
+  *)
+    echo "fake atlas: unsupported command: $*" >&2
+    exit 1 ;;
+esac

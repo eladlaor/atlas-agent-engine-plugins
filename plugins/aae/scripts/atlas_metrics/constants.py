@@ -164,6 +164,9 @@ CREDENTIAL_ENV_VARS = frozenset({
     "MONGODB_ATLAS_CLIENT_SECRET",
     "MONGODB_ATLAS_PUBLIC_API_KEY",
     "MONGODB_ATLAS_PRIVATE_API_KEY",
+    # User-account tokens; they too outrank a named profile's credentials.
+    "MONGODB_ATLAS_ACCESS_TOKEN",
+    "MONGODB_ATLAS_REFRESH_TOKEN",
     "MONGODB_ATLAS_ORG_ID",
     "MONGODB_ATLAS_PROJECT_ID",
     # Legacy names some atlascli versions still read.

@@ -6,6 +6,13 @@ description: Dated log of observed drift between the Atlas Agent Engine docs and
 # AAE drift log
 
 - [Summary](#summary)
+- [2026-11-24 — service-account roles now use Atlas names; `AGENT_DEVELOPER` is gone](#2026-11-24--service-account-roles-now-use-atlas-names-agent_developer-is-gone)
+- [2026-11-24 — the docs no longer say service-account invokes share one memory identity](#2026-11-24--the-docs-no-longer-say-service-account-invokes-share-one-memory-identity)
+- [2026-11-24 — CLI commands moved: `deploy --build`, `agent create-tool`, `agent validate`](#2026-11-24--cli-commands-moved-deploy---build-agent-create-tool-agent-validate)
+- [2026-11-24 — `app.llm()` before `app.deep_agent()` is allowed again, per the release notes](#2026-11-24--appllm-before-appdeep_agent-is-allowed-again-per-the-release-notes)
+- [2026-11-24 — trace export is now documented](#2026-11-24--trace-export-is-now-documented)
+- [2026-11-24 — pool-full: raise `replicas` first, and a shared session ID shares state](#2026-11-24--pool-full-raise-replicas-first-and-a-shared-session-id-shares-state)
+- [2026-11-24 — `sandboxes.agent.secrets: []` does not keep a secret out of the agent sandbox](#2026-11-24--sandboxesagentsecrets--does-not-keep-a-secret-out-of-the-agent-sandbox)
 - [2026-11-12 — the egress page now lists all four IPs as one list](#2026-11-12--the-egress-page-now-lists-all-four-ips-as-one-list)
 - [2026-11-12 — `secret set --sync` and `secret sync` time out although the secret is live (CLI 0.1.124)](#2026-11-12--secret-set---sync-and-secret-sync-time-out-although-the-secret-is-live-cli-01124)
 - [2026-10-13 — `deepagents` 0.7.16 has no planner, and there is no default system prompt](#2026-10-13--deepagents-0716-has-no-planner-and-there-is-no-default-system-prompt)
@@ -58,6 +65,125 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
   one list. External allowlists need the non-Atlas pair and should carry all four.
 - **A `validate` pass proves almost nothing.** It enforces an egress policy and little else —
   not `entrypoint`, not `sandboxes`, not unknown keys.
+
+## 2026-11-24 — service-account roles now use Atlas names; `AGENT_DEVELOPER` is gone
+
+- **Earlier knowledge** (2026-10-10 entry below, CLI 0.1.118): project roles `PROJECT_OWNER`,
+  `PROJECT_READ_ONLY`, `AGENT_DEVELOPER`; org roles `ORG_GROUP_CREATOR`, `ORG_READ_ONLY`.
+- **Docs say** (`/api-keys-service-accounts.md`, fetched 2026-11-24): "Service account roles
+  use Atlas role names": project `PROJECT_OWNER`, `PROJECT_READ_ONLY`; org `ORG_OWNER`,
+  `ORG_GROUP_CREATOR`, `ORG_READ_ONLY`. To invoke, a project account needs `PROJECT_OWNER`; an
+  org account needs `ORG_GROUP_CREATOR` or `ORG_OWNER`.
+- **Observed** (`service-account create --help`, CLI 0.1.126; the change first appears in the
+  0.1.120 release notes as "Offer Atlas role names for service accounts"): the same five roles,
+  no `AGENT_DEVELOPER`. `ORG_OWNER` "is accepted only where the organization has the owner role
+  enabled". New: creating an account "can also create a paired Atlas service account", which
+  needs Atlas service-account pairing turned on for the org or project. In a terminal the CLI
+  asks before turning it on; `--enable-atlas-pairing` turns it on without a prompt; declining,
+  or no terminal and no flag, creates nothing. A created pair's Atlas ID is printed.
+- **Resolution:** prescribe `--role PROJECT_OWNER` for a client that invokes, and say that it
+  also grants build and deploy: there is still no invoke-only role. Add `--enable-atlas-pairing`
+  in scripts. Re-check `--help` before naming a role; this list has changed twice.
+
+## 2026-11-24 — the docs no longer say service-account invokes share one memory identity
+
+- **Docs said** (until 2026-10-19, on six pages): a service-account invoke uses the service
+  account's own identity for memory and ignores `user_id`, so every end user behind it shares
+  one memory scope.
+- **Docs say now:** nothing. Docs commit `e531bd2` in `mongodb/docs` (2026-10-19) removed the
+  banner from the memory, memory-types, memory-extraction, service-accounts and invoke pages
+  and the section from the limitations page, calling it "no longer true". Left behind
+  (2026-11-24): the invoke page's `--user-id` flag row still says a service account "cannot use
+  this flag to act as another user", linking to the deleted note.
+- **Observed** (2026-11-24): CLI 0.1.126 `invoke --help`: "on a project that enforces
+  identity, only a service account may name a user other than itself; other callers are
+  rejected with 403". The OpenAPI spec's `user_id` description still says "Service accounts
+  cannot yet act as another user." The 0.1.119–0.1.121 release notes mention gating `user_id`
+  delegation behind a per-project opt-in; no doc says how to turn it on.
+- **Resolution: documented as changed, live behaviour unverified.** Test before relying on
+  per-user memory: on a memory-enabled agent, invoke through the service account as
+  `--user-id a` and state a fact; once extraction has run, ask for it as `--user-id b` in a
+  new session; check the trace's "Run as" (`user_id`) and "Invoked by" (`invoker_user_id`).
+  If B sees A's fact, the collapse still applies and the standalone-memory workaround stands
+  (see [VERIFIED_DETAILS.md](VERIFIED_DETAILS.md#what-does-the-memory-service-trust-keep-and-drop)).
+
+## 2026-11-24 — CLI commands moved: `deploy --build`, `agent create-tool`, `agent validate`
+
+- **Earlier knowledge** (CLI 0.1.118–0.1.121): `agentengine deploy --auto` built and deployed;
+  `agentengine create-tool` and `agentengine validate` were top-level.
+- **Observed** (release notes and CLI 0.1.126 `--help`, 2026-11-24):
+  - 0.1.123, breaking: a bare `deploy` "deploys the last successful image and fails if none
+    exists". `deploy --build` is the one-step build-and-deploy path, single-agent only (it
+    rejects `--build-id`, `--version`, `--no-wait`, `--workspace`, `--all`). `--auto` still
+    works but prints "Flag --auto has been deprecated, use --build instead".
+  - 0.1.122, breaking: `create-tool` moved to `agentengine agent create-tool`; the old path is
+    an unknown command. 0.1.123 changed its auth options and takes the connector name as a
+    positional argument; 0.1.124 makes `agent validate`, `build` and `deploy --build` reject
+    connectors missing their network, secret or tool grants (`agent validate --fix` adds them).
+  - A top-level `agentengine validate` fails with "command moved: use 'agentengine agent
+    validate' with the same arguments".
+- **Resolution:** use `deploy --build`, `agent create-tool` and `agent validate`. Where an
+  older entry in this knowledge base says `deploy --auto`, read `deploy --build`.
+
+## 2026-11-24 — `app.llm()` before `app.deep_agent()` is allowed again, per the release notes
+
+- **Docs say** (`/build/build-deep-agent.md`, fetched 2026-11-24): do not wrap the LLM with
+  `app.llm()` before passing it to `app.deep_agent()`; it registers the `__default__` LLM ID
+  twice and the agent fails to start.
+- **Observed:** the CLI 0.1.122 release notes (2026-10-28): "`app.deepAgent()` and
+  `App.deep_agent()` now work when you register the orchestrator model with `app.llm()` before
+  building the graph." Not tested here.
+- **Resolution:** from CLI 0.1.122 and the SDK released with it, pre-registering is supported
+  per the release notes; on older SDKs, or when unsure, pass the bare model as the page says.
+
+## 2026-11-24 — trace export is now documented
+
+- **Earlier knowledge** (2026-10-08 entry below): trace export existed only in the OpenAPI spec.
+- **Docs say** (`/manage/inspect-traces.md`, "Export Traces to Arize", added by docs commit
+  `3449371` on 2026-11-18): project-level export over OTLP/HTTP (`HTTP/protobuf`, the only
+  supported protocol), configured from the Traces page's *Trace Export* window, with an Arize
+  preset or "Custom (no preset)" for any other OTLP destination. "Currently, you must export
+  the full content of your traces … Metadata-only redaction is not yet available." Egress mode
+  shows as read-only "Agent Engine + customer mirror".
+- **Resolution:** point users at the guide; the API endpoints in
+  [VERIFIED_DETAILS.md](VERIFIED_DETAILS.md#otlp-trace-export-exists-in-the-api) remain the
+  scripted path. Full content means prompts, completions and tool payloads leave the
+  platform: get the data owner's sign-off. Delivery is best-effort (product team, 2026-11-10).
+
+## 2026-11-24 — pool-full: raise `replicas` first, and a shared session ID shares state
+
+- **Docs say** (`/deploy/invoke-agent.md#pool-full-errors` and `/reference/limitations.md`,
+  fetched 2026-11-24): each session reserves one agent and one tool sandbox; `scaling.replicas`
+  (1–512, default 4) is the number of concurrent sessions; a full pool fails new invokes. The
+  remedies table now leads with **increasing `scaling.replicas`**, then shorter idle TTLs,
+  reusing a session ID ("Requests that share a session ID also share the same session state.
+  Do not reuse a session ID if your workload requires isolation"), and `app.finish_session()`.
+- **Observed:** CLI 0.1.126 `workspace sessions --help`: "Testing sessions created from the
+  Playground or 'agentengine invoke' may be reclaimed automatically when the workspace is at
+  capacity. Other sessions are user-managed and stay reserved until they go idle or you stop
+  them." Field observation (CLI 0.1.120, 2026-10-24): the error is HTTP 503 "All agent
+  instances are currently busy" (`POOL_EXHAUSTED` with `Retry-After` in the spec); idle
+  sessions held their slots for the 10-minute default idle TTL; and **A2A calls reserve
+  sessions in the callee workspace**, so a busy orchestrator can fill its callees' pools.
+- **Resolution:** size `replicas` for every workspace, A2A callees included, and rebuild after
+  changing it. Reuse a session ID only within one user's conversation. Call
+  `app.finish_session()` in one-shot callees. Inspect and free slots with
+  `agentengine workspace sessions list` / `stop <session-id>`.
+
+## 2026-11-24 — `sandboxes.agent.secrets: []` does not keep a secret out of the agent sandbox
+
+*Field observation, 2026-10-24, CLI 0.1.120, SDK 0.11.10; one project, not re-tested on
+0.1.126.*
+
+- **Docs say** (`/reference/agent-contract.md`): `sandboxes.<s>.secrets` lists the secret names
+  "available to" that sandbox. No page says undeclared secrets are withheld, and
+  `/reference/limitations.md` says "Agents have access to all secrets in their project".
+- **Observed:** with `sandboxes.agent.secrets: []` and a workspace secret listed only under
+  `sandboxes.tool.secrets`, the secret was present in the agent sandbox's environment on every
+  session, before any tool call. The SDK's tool server hard-codes its restriction off, and
+  `required_secrets.disable_restriction` is "ignored at enforcement".
+- **Resolution:** do not use per-sandbox secret lists as an isolation boundary. Keep a secret
+  that one agent must not see in a different project, or outside Agent Engine.
 
 ## 2026-11-12 — the egress page now lists all four IPs as one list
 
@@ -288,6 +414,8 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
   `PROJECT_OWNER`, `PROJECT_READ_ONLY`, `AGENT_DEVELOPER` for projects and
   `ORG_GROUP_CREATOR`, `ORG_READ_ONLY` for orgs, with the same stored-name mapping. The doc
   lag above is unchanged.
+- **Superseded 2026-11-24:** `AGENT_DEVELOPER` is gone; roles now use Atlas names. See
+  [the 2026-11-24 entry](#2026-11-24--service-account-roles-now-use-atlas-names-agent_developer-is-gone).
 
 ## 2026-10-09 — the local-mode memory package is now `agent-engine-sdk-memory`
 
@@ -340,7 +468,8 @@ observations are from `agentengine` **0.1.118** unless stated. Rules that fall o
 
 From `--help`:
 
-- `deploy --auto` is single-agent only; it rejects `--workspace` and `--all`.
+- `deploy --auto` is single-agent only; it rejects `--workspace` and `--all`. (Renamed
+  `deploy --build` in 0.1.123; see the 2026-11-24 entry on moved commands.)
 - `deploy --all` and `deploy --workspace` never start a build. Run `agentengine build --all`
   first (one archive, N builds).
 - `--all` and any non-interactive deploy never prompt and never run `init` or `atlas setup`;
@@ -404,6 +533,8 @@ From `--help`:
   platform.
 - **Resolution:** **check the OpenAPI JSON before declaring any capability absent.** Fetch it
   with `curl -sL --compressed`. Detail: [VERIFIED_DETAILS.md](VERIFIED_DETAILS.md#otlp-trace-export-exists-in-the-api).
+- **Superseded 2026-11-24:** the guides now document trace export; see
+  [the 2026-11-24 entry](#2026-11-24--trace-export-is-now-documented).
 
 ## 2026-10-08 — `--context ctx_…` reports "not found"
 
