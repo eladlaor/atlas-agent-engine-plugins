@@ -10,6 +10,7 @@ from atlas_metrics.constants import (
     SHAPE_SUMMARY_LIMIT,
     ClusterView,
     Command,
+    Severity,
     Source,
 )
 from atlas_metrics.commands_cluster import (
@@ -220,6 +221,13 @@ def cmd_search(ctx: RunContext) -> Report:
         raise NoDataError(f"no Atlas Search {mode} metrics for {cluster} in {window.describe()}. "
                           "Search metrics exist only where an Atlas Search or Vector Search index "
                           "is defined.", {"warnings": report.atlas_warnings})
+    if ctx.args.index and all(s.severity is Severity.NO_DATA for _, s in rows):
+        # Live 2026-11-24: Atlas answers an index name that doesn't exist with empty series,
+        # not an error, so a typo looks exactly like an idle index.
+        raise NoDataError(f"index {ctx.args.index!r} on {ctx.args.namespace[0]} returned only empty "
+                          "series. Atlas does this both for an index with no activity in the window "
+                          f"and for a name that doesn't exist: check the name. {INDEX_NAMES_HINT}",
+                          {"warnings": report.atlas_warnings})
     add_series_section(report, profile.description, rows, SERIES_COLUMNS)
     return report
 
@@ -242,6 +250,15 @@ def _single_index_label(payload: Any, namespace: str) -> str:
     if len(ids) == 1:
         return f"index {ids[0]}"
     if not ids:
-        return "(no index)"
+        raise NoDataError(f"{namespace} has no Atlas Search or Vector Search index, so it has no "
+                          "per-index metrics. Leave out --namespace to see the Search process itself.")
     raise UsageError(f"{namespace} has {len(ids)} Search indexes, and Atlas's per-collection "
-                     "response doesn't say which series belongs to which. Name one with --index <name>.")
+                     "response doesn't say which series belongs to which. Name one with "
+                     f"--index <name>. {INDEX_NAMES_HINT}")
+
+
+# The read-only identity can't list Search indexes (the listing needs data access), and the
+# metrics responses carry index IDs only, so the user has to bring the name.
+INDEX_NAMES_HINT = ("Index names are on the cluster's Search tab in the Atlas UI, or come from "
+                    "db.<collection>.getSearchIndexes() in mongosh; the read-only metrics account "
+                    "can't list them.")

@@ -41,6 +41,10 @@ $AM search --cluster <name> --namespace app.products --index default --last 7d
 - **JVM current memory close to JVM max** means the Search process is short of heap.
 - **Several indexes on one collection:** the engine stops and asks for `--index <name>`,
   because Atlas's per-collection response doesn't say which series belongs to which index.
+  The read-only account can't list index names: ask the user for it (the Search tab of the
+  cluster in the Atlas UI, or `db.<collection>.getSearchIndexes()` in mongosh). Never guess.
+- **A named index with only empty series** is either idle in the window or misspelled:
+  Atlas answers both the same way. Say which two it could be; don't report "healthy".
 - **No data:** Search metrics exist only where an Atlas Search or Vector Search index
   is defined. The engine says so, and you should repeat it rather than report "healthy".
 

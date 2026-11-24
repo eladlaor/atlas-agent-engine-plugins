@@ -515,19 +515,22 @@ read-only allowlist, fail-fast errors, thresholds, profile inheritance, window a
 granularity rules, and the parsing of each response shape. It also runs on Python 3.9.
 
 Every command was last run live on 2026-11-24 with CLI 1.60.1, as the read-only
-service account, against an M10 replica set (MongoDB 8.0, with an Atlas Search index)
-that was paused, over a past window. Rerun the live suite with
+service account, against two replica sets with Atlas Search indexes: a running M20 with
+light traffic, and a paused M10 over a past window. The running cluster returned real
+query shapes and per-collection latency percentiles, and crossed a threshold (query
+targeting on the secondaries). Rerun the live suite with
 `tests/live/atlas_metrics_live.sh --cluster <name>` (add `--end <time>` for a paused
 cluster). It prints a summary with hostnames and IDs masked.
 
 Not verified live yet:
 
-- **A cluster under load.** The test cluster had little traffic, so query shapes,
-  suggested indexes and schema advice came back empty. Their calls and response
-  formats are verified; their contents are not.
-- **A crossed threshold on live data.** The threshold logic is covered offline only.
+- **Suggested indexes and schema advice with content.** Neither cluster had enough
+  traffic for the Performance Advisor to suggest anything. The calls and response
+  formats are verified.
+- **Per-index Search metrics on a collection with several indexes.** That needs the
+  index name, which the read-only account can't list. The single-index case is verified.
 - **Sharded clusters** (mongos and config servers).
-- **10-second granularity.** The test cluster has no premium monitoring.
+- **10-second granularity.** Neither cluster has premium monitoring.
 
 ## Reference
 

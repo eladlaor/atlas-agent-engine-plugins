@@ -516,7 +516,27 @@ test_search_refuses_to_merge_several_indexes() {
     'd["indexIds"] = ["fake-index-id-1", "fake-index-id-2"]'
   am search "${AM_WINDOW[@]}" --namespace app.orders
   assert_eq 2 "$AM_RC" "several indexes without --index" || return 1
-  assert_contains "$AM_ERR" "Name one with --index" "message"
+  assert_contains "$AM_ERR" "Name one with --index" "message" || return 1
+  assert_contains "$AM_ERR" "getSearchIndexes()" "says where the names are"
+}
+
+test_search_on_a_collection_without_an_index_says_so() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/api_monitoringAndLogs_listIndexMeasurements.json" \
+    'd["indexIds"] = []; d["indexStatsMeasurements"] = [dict(m, dataPoints=[]) for m in d["indexStatsMeasurements"]]'
+  am search "${AM_WINDOW[@]}" --namespace app.orders
+  assert_eq 4 "$AM_RC" "no index is no data" || return 1
+  assert_contains "$AM_ERR" "app.orders has no Atlas Search or Vector Search index" "message"
+}
+
+# Live 2026-11-24: Atlas answers a misspelled index name with empty series, not an error.
+test_an_index_name_with_only_empty_series_is_questioned() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/api_monitoringAndLogs_getIndexMeasurements.json" \
+    'd["indexStatsMeasurements"] = [dict(m, dataPoints=[{"timestamp": p["timestamp"]} for p in m["dataPoints"]]) for m in d["indexStatsMeasurements"]]'
+  am search "${AM_WINDOW[@]}" --namespace app.orders --index defualt
+  assert_eq 4 "$AM_RC" "empty series" || return 1
+  assert_contains "$AM_ERR" "for a name that doesn't exist: check the name" "message"
 }
 
 # Atlas answers PT10S it doesn't have (a cluster without premium monitoring) with a bare HTTP 500.
