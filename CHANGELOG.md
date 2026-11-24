@@ -79,6 +79,12 @@ is why their headers carry a separate "Plugin version:" line.
   credentials, about a second; an unchanged upstream answers `304` to the stored ETag. It
   waits at least 15 minutes between requests (`AAE_WATCH_PROBE_MIN_MINUTES`) and records a
   failure in `probe-error`. Covered by twelve tests against a fixture GitHub server.
+- `aae-kb-read`: `CHECKPOINTER.md`, a reference for LangGraph graph-state persistence —
+  what `app.checkpointer()` returns and the two cases where it silently returns `None`, the
+  database resolution order, the `session_id:workspace_id` thread key and what overriding it
+  costs, the rejection of application-authored `Send` writes, the absence of any checkpoint
+  retention or purge, the checkpointer-versus-memory distinction, and why ADK has no
+  equivalent. Most of it is verifiable only from the SDK package page or the wheel.
 - `aae-kb-update`: a third mode, `direct`, which takes a finding stated in the invocation
   itself, verifies it against the docs, the CLI or the OpenAPI spec, works out which
   reference file owns it, and files it there after approval. Until now the only route for a
