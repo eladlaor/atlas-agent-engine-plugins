@@ -14,6 +14,17 @@ is why their headers carry a separate "Plugin version:" line.
 
 ### Added
 
+- Release watch: `aae-kb-read/kb-versions.json` stamps the CLI and SDK versions the knowledge
+  base was verified against, and `scripts/aae-release-check.sh` compares it with the latest
+  `agentengine` release on GitHub and the SDK packages on PyPI and npm. It writes
+  `release-report.json`, the notes of every newer CLI release (`release-notes.md`) and a
+  section of `changes-summary.md`. On a new CLI release it downloads and verifies (SHA-256,
+  macOS code signature) that release's binary and runs the CLI reference guard against it,
+  through the guard's new `--binary` option, without installing anything. The scheduled job
+  now runs `aae-daily-check.sh`: the docs watcher, then the release check, then with
+  `--update-kb` one knowledge-base update fed by both, which bumps the stamp only for what it
+  applied. The session notice shows new releases once and names a failed release check.
+  Re-run `install-schedule.sh install` to pick this up.
 - `atlas-metrics-*`: nine read-only skills for an Atlas cluster's monitoring data, through
   the `atlas` CLI. They cover snapshot, history with comparison against an earlier window,
   storage (disks and databases), per-collection latency, query-shape statistics, Atlas Search

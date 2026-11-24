@@ -3,7 +3,13 @@
 # kb-update.sh — the opt-in knowledge-base update (--update-kb), shared by both
 # docs detectors.
 #
-# Sourced, never executed. It expects the sourcing script to have already
+# The runner gets up to two inputs, each applied once: the docs watcher's changes
+# report (report.json, keyed by its checked_at) and the release check's drift report
+# (release-report.json plus release-notes.md, keyed by release:<drift_key>). Both are
+# already in the state directory, so the runner's reach does not grow.
+#
+# Sourced, never executed (by both docs detectors and by aae-daily-check.sh). It
+# expects the sourcing script to have already
 # defined STATE_DIR, SCRIPT_DIR, REPORT_FILE and the helpers now(), log() and
 # die(), and to declare the UPDATE_KB / KB_UPDATE_ONLY flags itself.
 #
@@ -55,13 +61,24 @@ kb_fail() {
   return 1
 }
 
-# Print the report's checked_at, or nothing.
+# The release check's output (aae-release-check.sh), the runner's second input.
+readonly KB_RELEASE_REPORT="${STATE_DIR}/release-report.json"
+readonly KB_RELEASE_NOTES="${STATE_DIR}/release-notes.md"
+# A release report is recorded in kb-update-processed under this prefix, so its
+# checked_at can never be mistaken for a docs report's.
+readonly KB_RELEASE_KEY_PREFIX="release:"
+readonly KB_STAMP_SUBPATH="plugins/aae/skills/aae-kb-read/kb-versions.json"
+
+# Print a one-line JSON file's checked_at, or nothing. Defaults to report.json.
 report_checked_at() {
-  sed -n 's/.*"checked_at":"\([^"]*\)".*/\1/p' "$REPORT_FILE" 2>/dev/null | head -1
+  sed -n 's/.*"checked_at":"\([^"]*\)".*/\1/p' "${1:-$REPORT_FILE}" 2>/dev/null | head -1
 }
 
+# Exact match on the first field, so a release key never matches a docs key.
+# Whitespace-separated rather than tab-only: the runner writes this line with an
+# editing tool, and a tab that became spaces must not re-apply a report.
 kb_already_processed() {
-  [ -f "$KB_PROCESSED_FILE" ] && grep -qF -- "$1" "$KB_PROCESSED_FILE"
+  [ -f "$KB_PROCESSED_FILE" ] && awk -v k="$1" '$1 == k { found = 1 } END { exit !found }' "$KB_PROCESSED_FILE"
 }
 
 # Resolve the aae-kb-update SKILL.md: env, then the scheduled copy next to this
@@ -131,7 +148,7 @@ append_notes_pending() {
   local checked_at="$1"
   [ -s "$KB_NOTES_PENDING" ] || { rm -f "$KB_NOTES_PENDING"; return 0; }
   mkdir -p "$(dirname "$KB_NOTES")" \
-    && printf '\n<!-- %s: added by aae-docs-watch --update-kb from the docs report of %s -->\n' \
+    && printf '\n<!-- %s: added by aae-docs-watch --update-kb from report %s -->\n' \
          "$(date '+%Y-%m-%d')" "$checked_at" >> "$KB_NOTES" \
     && cat "$KB_NOTES_PENDING" >> "$KB_NOTES" \
     || { kb_fail "could not append ${KB_NOTES_PENDING} to the notes (${KB_NOTES}); it is kept for a manual append"; return 1; }
@@ -140,16 +157,45 @@ append_notes_pending() {
 }
 
 run_kb_update() {
-  local checked_at skill runner plugin_dir prompt rc repo_line kb_line
-  [ -f "$REPORT_FILE" ] || { kb_fail "no report.json in ${STATE_DIR}; run a check first"; return 1; }
-  grep -q '"status":"changes"' "$REPORT_FILE" \
-    || { kb_fail "report.json does not hold a changes report; nothing to apply"; return 1; }
-  checked_at="$(report_checked_at)"
-  [ -n "$checked_at" ] || { kb_fail "cannot read checked_at from ${REPORT_FILE}"; return 1; }
-  if kb_already_processed "$checked_at"; then
-    log "kb-update: report ${checked_at} was already processed; nothing to do"
-    rm -f "$KB_ERROR_FILE"
-    return 0
+  local checked_at="" release_checked_at="" release_key="" skill runner plugin_dir prompt rc repo_line kb_line
+  local docs_line release_line stamp_line newest_input="" already="" release_drift_key=""
+
+  # Two inputs, each applied once: the docs watcher's changes report, and the
+  # release check's drift report. Either alone is enough to start the runner.
+  if [ -f "$REPORT_FILE" ] && grep -q '"status":"changes"' "$REPORT_FILE"; then
+    checked_at="$(report_checked_at "$REPORT_FILE")"
+    [ -n "$checked_at" ] || { kb_fail "cannot read checked_at from ${REPORT_FILE}"; return 1; }
+    if kb_already_processed "$checked_at"; then
+      already="docs report ${checked_at}"
+      checked_at=""
+    else
+      newest_input="$REPORT_FILE"
+    fi
+  fi
+  if [ -f "$KB_RELEASE_REPORT" ] && grep -q '"status":"drift"' "$KB_RELEASE_REPORT"; then
+    release_checked_at="$(report_checked_at "$KB_RELEASE_REPORT")"
+    [ -n "$release_checked_at" ] || { kb_fail "cannot read checked_at from ${KB_RELEASE_REPORT}"; return 1; }
+    # Keyed by WHAT drifted (the released versions), not by when it was checked: the
+    # check runs daily and the drift persists until the stamp is bumped, and a drift
+    # already applied must not start a paid runner again every day.
+    release_drift_key="$(sed -n 's/.*"drift_key":"\([^"]*\)".*/\1/p' "$KB_RELEASE_REPORT" | head -1)"
+    [ -n "$release_drift_key" ] || { kb_fail "cannot read drift_key from ${KB_RELEASE_REPORT}"; return 1; }
+    release_key="${KB_RELEASE_KEY_PREFIX}${release_drift_key}"
+    if kb_already_processed "$release_key"; then
+      already="${already:+${already} and }release drift ${release_drift_key}"
+      release_key=""
+    elif [ -z "$newest_input" ] || [ "$KB_RELEASE_REPORT" -nt "$newest_input" ]; then
+      newest_input="$KB_RELEASE_REPORT"
+    fi
+  fi
+  if [ -z "$checked_at" ] && [ -z "$release_key" ]; then
+    if [ -n "$already" ]; then
+      log "kb-update: ${already} already processed; nothing to do"
+      rm -f "$KB_ERROR_FILE"
+      return 0
+    fi
+    kb_fail "neither report.json holds a changes report nor release-report.json a drift report in ${STATE_DIR}; nothing to apply"
+    return 1
   fi
 
   skill="$(resolve_kb_skill)" || return 1
@@ -191,16 +237,39 @@ run_kb_update() {
       kb_line="Shipped knowledge base to compare against: not available to this run. Compare against the notes only, and say in the summary that the shipped knowledge base was not checked."
     fi
   fi
+  if [ -n "$checked_at" ]; then
+    docs_line="Docs changes report: ${REPORT_FILE} (checked_at=${checked_at}). Apply it as docs mode describes, and record it in ${KB_PROCESSED_FILE} under its checked_at."
+  else
+    docs_line="Docs changes report: not part of this run (none unprocessed). Skip the docs-page steps."
+  fi
+  if [ -n "$release_key" ]; then
+    release_line="Release drift report: ${KB_RELEASE_REPORT} (checked_at=${release_checked_at}): the CLI and SDK versions released since the knowledge base's version stamp."
+    if [ -f "$KB_RELEASE_NOTES" ]; then
+      release_line="${release_line} CLI release notes newer than the stamp, newest first: ${KB_RELEASE_NOTES}."
+    fi
+    release_line="${release_line} Apply it as docs mode's release-input section describes, and record it in ${KB_PROCESSED_FILE} under the key \`${release_key}\`."
+    if [ -n "${AAE_KB_REPO:-}" ]; then
+      stamp_line="Version stamp: ${AAE_KB_REPO}/${KB_STAMP_SUBPATH}. Bump a field (cli, sdk_python, sdk_npm) only to a version whose release notes or package changes you actually read and applied; leave every other field as it is, and set verified_at to today only if you bumped something. Never bump a version you did not apply."
+    else
+      stamp_line="Version stamp: no clone, so the shipped kb-versions.json stays as it is. Record each version you applied as a baseline candidate in the notes-pending file instead."
+    fi
+  else
+    release_line="Release drift report: not part of this run (none unprocessed). Skip the release steps and leave kb-versions.json as it is."
+    stamp_line=""
+  fi
   prompt="Run the aae-kb-update skill in docs mode with --auto. Nobody is present to answer questions. Today is $(date '+%Y-%m-%d').
 Read the skill's instructions at ${KB_SKILL_STAGED} and follow its docs mode, --auto variant, exactly.
-Watcher state directory: ${STATE_DIR} (report.json checked_at=${checked_at}).
+Watcher state directory: ${STATE_DIR}.
+${docs_line}
+${release_line}${stamp_line:+
+${stamp_line}}
 ${notes_line}
 Notes updates go to ${KB_NOTES_PENDING}, never to the notes file itself.
 ${repo_line}
 ${kb_line}
-Do not run git or any shell command. Finish by writing ${KB_SUMMARY_FILE} and appending to ${KB_PROCESSED_FILE}, as the skill describes."
+Do not run git or any shell command. Finish by writing ${KB_SUMMARY_FILE} and appending one line per applied report to ${KB_PROCESSED_FILE}, as the skill describes."
 
-  log "kb-update: starting ${runner} for report ${checked_at} (time box ${KB_TIMEOUT_SECONDS}s)"
+  log "kb-update: starting ${runner} for ${checked_at:+docs report ${checked_at} }${release_key:+release report ${release_checked_at} }(time box ${KB_TIMEOUT_SECONDS}s)"
   # The runner is itself a Claude Code or Codex session, so this plugin's SessionStart
   # hook would fire inside it and mark the user's pending notice as shown. Keep it quiet.
   export AAE_WATCH_NO_SESSION_NOTICE=1
@@ -231,11 +300,14 @@ Do not run git or any shell command. Finish by writing ${KB_SUMMARY_FILE} and ap
     [ "$runner" = "claude" ] && reason="$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(" ("+d.get("subtype","")+", cost USD "+str(d.get("total_cost_usd"))+")")' "$KB_RUNNER_LOG" 2>/dev/null || true)"
     kb_fail "${runner} exited ${rc}${reason}; see ${KB_RUNNER_LOG}"; return 1
   fi
-  kb_already_processed "$checked_at" \
-    || { kb_fail "${runner} finished but did not record report ${checked_at} in kb-update-processed; see ${KB_RUNNER_LOG}"; return 1; }
-  [ -s "$KB_SUMMARY_FILE" ] && [ "$KB_SUMMARY_FILE" -nt "$REPORT_FILE" ] \
+  local key
+  for key in $checked_at $release_key; do
+    kb_already_processed "$key" \
+      || { kb_fail "${runner} finished but did not record report ${key} in kb-update-processed; see ${KB_RUNNER_LOG}"; return 1; }
+  done
+  [ -s "$KB_SUMMARY_FILE" ] && [ "$KB_SUMMARY_FILE" -nt "$newest_input" ] \
     || { kb_fail "${runner} finished but wrote no fresh kb-update.md; see ${KB_RUNNER_LOG}"; return 1; }
-  append_notes_pending "$checked_at" || return 1
+  append_notes_pending "${checked_at:-$release_key}" || return 1
   rm -f "$KB_ERROR_FILE"
   if [ "$runner" = "claude" ]; then
     log "kb-update: claude cost USD $(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("total_cost_usd","unknown"))' "$KB_RUNNER_LOG" 2>/dev/null || echo unknown)"

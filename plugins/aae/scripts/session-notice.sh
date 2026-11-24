@@ -24,6 +24,10 @@
 # Otherwise a dead watcher would look exactly like "no changes". That notice is
 # shown at most once per day.
 #
+# It also shows, once per drift, a CLI or SDK release newer than the knowledge base's
+# version stamp (release-report.json, from the daily aae-release-check.sh), and names a
+# failed release check (release-check-error) in the once-a-day health notice.
+#
 # Always exits 0. A watcher problem must never block a session.
 
 set -uo pipefail
@@ -48,6 +52,11 @@ readonly SCHEDULE_PLIST="${HOME}/Library/LaunchAgents/com.eladlaor.aae-docs-watc
 readonly PROBE_PENDING_FILE="${STATE_DIR}/probe-pending.json"
 readonly PROBE_ERROR_FILE="${STATE_DIR}/probe-error"
 readonly SESSION_MODE="${AAE_WATCH_ON_SESSION:-probe}"
+# Written by aae-release-check.sh in the daily job. The notice for one drift (one set
+# of released versions) is shown once; release-acknowledged holds its drift_key.
+readonly RELEASE_REPORT_FILE="${STATE_DIR}/release-report.json"
+readonly RELEASE_ERROR_FILE="${STATE_DIR}/release-check-error"
+readonly RELEASE_ACK_FILE="${STATE_DIR}/release-acknowledged"
 
 # python3 builds the hook's JSON payload and reads report.json. Without it this hook
 # cannot say anything at all, so say *that* once, on stderr, rather than exiting 0 and
@@ -124,6 +133,83 @@ if [ "$(cat "$HEALTH_ACK_FILE" 2>/dev/null)" != "$today" ]; then
     HEALTH_SYS="${HEALTH_SYS:+${HEALTH_SYS} }AAE docs probe failed: ${probe_problem}. New docs commits since then are unknown."
     HEALTH_CTX="${HEALTH_CTX:+${HEALTH_CTX}
 }The session-start docs probe failed: ${probe_problem}. Whether the AAE docs changed since the last successful probe is unknown; verify AAE API details against the live docs."
+  fi
+  if [ -f "$RELEASE_ERROR_FILE" ]; then
+    release_problem="$(cut -f2- "$RELEASE_ERROR_FILE" 2>/dev/null) (at $(cut -f1 "$RELEASE_ERROR_FILE" 2>/dev/null))"
+    HEALTH_SYS="${HEALTH_SYS:+${HEALTH_SYS} }AAE release check failed: ${release_problem}. New CLI or SDK releases since then are unknown."
+    HEALTH_CTX="${HEALTH_CTX:+${HEALTH_CTX}
+}The daily CLI and SDK release check failed: ${release_problem}. Whether an agentengine CLI or SDK release has outdated the knowledge base is unknown; check the installed CLI's --help and the release notes before asserting version-specific details."
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Part 1c: CLI or SDK releases newer than the knowledge base, once per drift.
+# ---------------------------------------------------------------------------
+RELEASE_SYS=""
+RELEASE_CTX=""
+RELEASE_KEY=""
+if [ -f "$RELEASE_REPORT_FILE" ]; then
+  release_notice="$(python3 - "$RELEASE_REPORT_FILE" "$RELEASE_ACK_FILE" "$KB_SUMMARY_FILE" <<'PY' 2>/dev/null
+import json, os, sys
+
+report_path, ack_path, kb_path = sys.argv[1:4]
+with open(report_path) as fh:
+    rep = json.load(fh)
+if rep.get("status") != "drift" or not rep.get("drift_key"):
+    sys.exit(1)
+key = rep["drift_key"]
+if os.path.isfile(ack_path) and open(ack_path).read().strip() == key:
+    sys.exit(1)
+
+stamp, latest, drift = rep["stamp"], rep["latest"], rep["drift"]
+cdc = rep.get("cli_docs_check") or {}
+parts = []
+if drift.get("cli"):
+    parts.append(f"CLI {latest['cli']} (knowledge base: {stamp['cli']})")
+sdk = [f"{n} {latest['pypi'][n]}" for n in drift.get("sdk_python", [])]
+sdk += [f"{n} {latest['npm'][n]}" for n in drift.get("sdk_npm", [])]
+if sdk:
+    parts.append(f"{len(sdk)} SDK package(s) past {stamp['sdk_python']}/{stamp['sdk_npm']}")
+
+kb_text = ""
+if os.path.isfile(kb_path) and os.path.getmtime(kb_path) > os.path.getmtime(report_path):
+    with open(kb_path) as fh:
+        kb_text = fh.read().strip()
+kb_first = kb_text.splitlines()[0].strip() if kb_text else ""
+
+system_message = "AAE releases newer than the knowledge base: " + "; ".join(parts) + "."
+if drift.get("cli") and cdc.get("status") == "diverged":
+    system_message += " The published CLI reference disagrees with the new binary."
+system_message += f" Knowledge base updated: {kb_first}" if kb_first else " Ask aae-guide before relying on version-specific details."
+
+lines = [
+    "Atlas Agent Engine has releases newer than the versions the bundled knowledge base was "
+    f"verified against (stamp: CLI {stamp['cli']}, Python SDK {stamp['sdk_python']}, "
+    f"npm SDK {stamp['sdk_npm']}, verified {stamp['verified_at']}; checked {rep.get('checked_at')}).",
+]
+if drift.get("cli"):
+    tags = ", ".join(f"{r['tag']} ({r['published_at'][:10]})" for r in rep.get("cli_releases_newer", []))
+    lines.append(f"CLI releases since the stamp: {tags}. Their release notes: {rep.get('release_notes')}")
+    if cdc.get("status") in ("agree", "diverged"):
+        lines.append(f"CLI reference check against agentengine {latest['cli']}: {cdc['status']}. {cdc.get('summary') or ''}".rstrip())
+    elif cdc.get("status"):
+        lines.append(f"CLI reference check against agentengine {latest['cli']}: {cdc['status']}. {cdc.get('message') or ''}".rstrip())
+for item in sdk:
+    lines.append(f"SDK release: {item}")
+lines.append(
+    "Knowledge-base entries pinned to the older versions may be stale. Before asserting "
+    "version-specific CLI or SDK behaviour, read the release notes and re-check the "
+    "installed CLI's --help."
+)
+if kb_text:
+    lines += ["", "The knowledge base was already updated from this release report. Its summary:", "", kb_text[:6000]]
+json.dump({"system": system_message, "context": "\n".join(lines), "key": key}, sys.stdout)
+PY
+)"
+  if [ -n "$release_notice" ]; then
+    RELEASE_SYS="$(printf '%s' "$release_notice" | python3 -c 'import json,sys;print(json.load(sys.stdin)["system"])' 2>/dev/null)"
+    RELEASE_CTX="$(printf '%s' "$release_notice" | python3 -c 'import json,sys;print(json.load(sys.stdin)["context"])' 2>/dev/null)"
+    RELEASE_KEY="$(printf '%s' "$release_notice" | python3 -c 'import json,sys;print(json.load(sys.stdin)["key"])' 2>/dev/null)"
   fi
 fi
 
@@ -259,11 +345,12 @@ PY
   fi
 fi
 
-[ -n "${HEALTH_SYS}${PROBE_SYS}${CHANGES_SYS}" ] || exit 0
+[ -n "${HEALTH_SYS}${PROBE_SYS}${CHANGES_SYS}${RELEASE_SYS}" ] || exit 0
 
 SYS="${HEALTH_SYS}"
 [ -n "$PROBE_SYS" ] && SYS="${SYS:+${SYS} }${PROBE_SYS}"
 [ -n "$CHANGES_SYS" ] && SYS="${SYS:+${SYS} }${CHANGES_SYS}"
+[ -n "$RELEASE_SYS" ] && SYS="${SYS:+${SYS} }${RELEASE_SYS}"
 CTX="${HEALTH_CTX}"
 [ -n "$PROBE_CTX" ] && CTX="${CTX:+${CTX}
 
@@ -271,6 +358,9 @@ CTX="${HEALTH_CTX}"
 [ -n "$CHANGES_CTX" ] && CTX="${CTX:+${CTX}
 
 }${CHANGES_CTX}"
+[ -n "$RELEASE_CTX" ] && CTX="${CTX:+${CTX}
+
+}${RELEASE_CTX}"
 
 emit "$SYS" "$CTX" || exit 0
 
@@ -278,4 +368,5 @@ emit "$SYS" "$CTX" || exit 0
 [ -n "$HEALTH_SYS" ] && printf '%s\n' "$today" > "$HEALTH_ACK_FILE"
 [ -n "$PROBE_SYS" ] && rm -f "$PROBE_PENDING_FILE"
 [ -n "$CHANGES_SYS" ] && touch "$ACK_FILE"
+[ -n "$RELEASE_SYS" ] && [ -n "$RELEASE_KEY" ] && printf '%s\n' "$RELEASE_KEY" > "$RELEASE_ACK_FILE"
 exit 0

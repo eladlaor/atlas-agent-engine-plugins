@@ -41,6 +41,17 @@ asserting anything version-specific.
 | [CLI_SKILLS_AND_THIS_PLUGIN.md](references/CLI_SKILLS_AND_THIS_PLUGIN.md) | The skills `agentengine init` installs into each project, what this plugin adds on top of them, and which one answers which question | Working inside a project that has `.claude/skills/` or `.agents/skills/` from the CLI; "why use this plugin?" |
 | [FIRST_DEPLOY_EXPLAINED.md](references/FIRST_DEPLOY_EXPLAINED.md) | Q&A teaching write-up of the first-deploy setup | Teaching or recapping how login, context, workspace, Atlas setup and secrets fit together |
 
+## Version stamp
+
+[kb-versions.json](kb-versions.json) records the releases this knowledge base was last
+verified against: `cli` (the `agentengine` CLI), `sdk_python` (the `agent-engine-sdk-*` and
+`agent-engine-runner-shared` PyPI packages), `sdk_npm` (the `@mongodb-js/agent-engine-*` npm
+packages) and `verified_at`. The daily release check (`aae-release-check.sh`) compares it with
+what has been released and reports any release newer than the stamp. When a CLI or SDK
+release newer than the stamp is in play, treat entries pinned to older versions as possibly
+stale. **Whoever updates this knowledge base to a newer release bumps the matching field and
+`verified_at`, and only for releases actually applied** (see `aae-kb-update`).
+
 ## Recording new findings
 
 This skill ships read-only with the plugin. Write new dated findings to the user's own

@@ -27,9 +27,9 @@ What must be true when v1.0 ships:
 | 5 | Nothing runs in the background unless the user explicitly enabled it | `AC-9` |
 | 6 | The README's Claude Code vs Codex matrix matches what each host actually loads | `AC-11` |
 
-Tier 1 (docs) is **built and verified**. Tier 2 (CLI releases) is **the only new code
-v1.0 requires**. Everything else is test coverage, install verification, and honesty
-in the docs.
+Tier 1 (docs) is **built and verified**. Tier 2 (CLI and SDK releases) is **built**
+(2026-11-24) as `aae-release-check.sh`, run daily after the docs watcher. Everything else is
+test coverage, install verification, and honesty in the docs.
 
 ## Scope decisions
 
@@ -101,7 +101,8 @@ which is what lets either one run without a downstream consumer noticing.
   same day cannot replace the morning's list of changes with "clean". Without the flag a
   `--full` run always crawls.
 - **FR-21.** The daily schedule MUST default to 10:00 local time, and MUST retry hourly
-  until a run succeeds that day. The watcher MUST retry its first network request before
+  until a run succeeds that day. Its entry point is `aae-daily-check.sh --watcher <copy>`,
+  which runs the docs watcher and then the release check (FR-11). The watcher MUST retry its first network request before
   failing, so a run started during a brief wake does not lose the day.
 - **FR-26.** A failed run MUST record its error in `last-error`, and the SessionStart hook
   MUST announce, at most once a day, a failed last run or no successful full crawl for
@@ -110,7 +111,8 @@ which is what lets either one run without a downstream consumer noticing.
 - **FR-22.** The scheduled job MUST run a copy of the watcher at a fixed path
   (`${XDG_DATA_HOME:-~/.local/share}/aae-docs-watch/bin/`), never the script inside the
   versioned plugin folder, which a plugin update can delete. `install` MUST also copy the
-  `aae-kb-update` `SKILL.md` there as `aae-kb-update.SKILL.md`. `status` MUST report
+  `aae-kb-update` `SKILL.md` there as `aae-kb-update.SKILL.md`, and the daily entry
+  point, the release check, the CLI reference guard and `kb-versions.json`. `status` MUST report
   whether each copy matches the plugin's version.
 
 ### Session-start probe
@@ -189,21 +191,64 @@ detector does that. Exit codes: `0` nothing new (or baseline recorded), `10` new
   job's `PATH` MUST include `~/.local/bin`. `print-plist` MUST print the job definition
   without changing anything.
 
-### Tier 2 — CLI release watch (to build)
+### Tier 2 — CLI and SDK release watch (built 2026-11-24)
 
-- **FR-7.** The watcher MUST compare the latest release of
-  `mongodb/agent-engine-client-libraries` (GitHub releases API, unauthenticated)
-  against the locally installed version from `agentengine version --json`.
-- **FR-8.** When a newer release exists, it MUST report the release **`body`**, not
-  merely the version number. The body is the only published CLI changelog.
-- **FR-9.** It MUST NOT upgrade the CLI, ever. MongoDB's own limitations page instructs
-  users to pin the CLI and read release notes before upgrading; a tool that
-  auto-upgrades contradicts the vendor's guidance for their own preview product.
-  Revisit at GA.
-- **FR-10.** If the `agentengine` CLI is **not installed**, tier 2 MUST be skipped
-  silently and tier 1 MUST still complete. A missing CLI is not an error condition.
-- **FR-11.** If the GitHub API is unreachable or rate-limited, tier 2 MUST degrade to a
-  warning and tier 1 MUST still complete and still write its report.
+`aae-release-check.sh`. Revised 2026-11-24: the comparison is against the **knowledge
+base's version stamp**, not the installed CLI. The failure this prevents is the knowledge
+base falling behind the releases (it fell six weeks behind while the docs job ran daily),
+and the installed CLI says nothing about that. Exit codes: `0` no drift, `10` drift, `20`
+skipped (`--skip-if-ran-today`), `1` error.
+
+- **FR-7.** The knowledge base MUST carry a machine-readable version stamp,
+  `aae-kb-read/kb-versions.json`: `cli`, `sdk_python`, `sdk_npm` (semantic versions) and
+  `verified_at`. The release check MUST compare against it the latest non-draft,
+  non-pre-release `vX.Y.Z` release of `mongodb/agent-engine-client-libraries` (GitHub
+  releases API, unauthenticated; `GITHUB_TOKEN` is sent to that API only, when set) and the
+  latest version of `agent-engine-sdk-langgraph`, `-sdk-adk`, `-sdk-memory`,
+  `-runner-shared` and `-sdk-openai-agents` on PyPI and of
+  `@mongodb-js/agent-engine-sdk-langgraph`, `-sdk-memory` and `-runner-shared` on npm, by
+  semantic-version precedence (never textually). Drift MUST mean released > stamped. Every
+  URL MUST be overridable by an environment variable. The stamp is resolved as
+  `AAE_RELEASE_KB_VERSIONS`, else the clone's (`AAE_KB_REPO`), else the plugin's, else the
+  scheduled copy.
+- **FR-8.** It MUST write the release **`body`** of every CLI release newer than the stamp,
+  newest first with tag and date, to `release-notes.md` (removed when the CLI has not
+  drifted), a one-line `release-report.json`, and a "CLI and SDK releases" section at the end
+  of `changes-summary.md`, replacing its own previous section and keeping the docs
+  watcher's part. The body is the only published CLI changelog.
+- **FR-9.** It MUST NOT install or upgrade the CLI, ever. MongoDB's own limitations page
+  instructs users to pin the CLI and read release notes before upgrading. On CLI drift it
+  MUST instead download the latest release's binary for this host into
+  `cli-bin/<version>/` in the state directory (cached by version), verify it, and run
+  `aae-cli-docs-check.sh --binary` against **that** binary, recording the result
+  (`agree`, `diverged`, `error`, `skipped`) in the report. Verification: the SHA-256 MUST
+  match the release API's `digest`; on macOS `codesign --verify --strict` MUST pass with
+  Team ID `AAE_RELEASE_CODESIGN_TEAM` (MongoDB publishes no `.sig` for macOS); on Linux a
+  published `.sig` is checked with `gpg` when available, and an unverifiable one is
+  recorded as such. A failed verification MUST refuse the binary: it is deleted, never
+  executed, and the guard result is `error`. A guard failure MUST NOT change the drift
+  exit code.
+- **FR-10.** Any failure to read a release source (network, non-200, unparseable body, a
+  stamp that is not semantic versions) MUST write `release-check-error`, exit `1`, and leave
+  the previous `release-report.json` in place. A success MUST remove `release-check-error`.
+  The first request MUST be retried while the network is not up
+  (`AAE_RELEASE_NET_RETRIES`, `AAE_RELEASE_NET_RETRY_DELAY`).
+- **FR-11.** The scheduled job MUST run the release check after the docs watcher, through
+  `aae-daily-check.sh`, each step with its own `--skip-if-ran-today` marker. A failed
+  release check MUST NOT stop or alter the docs watcher's run or report; it is reported
+  like the probe's failures (FR-41): the hook names `release-check-error` in its
+  once-a-day health notice and still exits `0`.
+- **FR-42.** The hook MUST show a drift once per `drift_key` (the set of released versions),
+  in both channels, then record it in `release-acknowledged`; a newer release is a new
+  drift and is shown again.
+- **FR-43.** With `--update-kb`, after a day on which either step found something, ONE
+  runner MUST receive both the docs changes report and the release drift report
+  (`release-report.json`, `release-notes.md`), under the FR-28 safety model unchanged:
+  both inputs are already in the state directory, the tool allowlist is the same, no shell,
+  no web. A release report is recorded in `kb-update-processed` as `release:<drift_key>`,
+  so a drift already applied never starts the runner again while the check keeps reporting
+  it. The prompt MUST tell the runner to bump `kb-versions.json` only for the releases it
+  actually applied, and, without a clone, to leave it and record a baseline candidate.
 
 ### Agent, skill and shortcut
 
@@ -303,6 +348,13 @@ probe-etag        ETag of the probe's last 200 response, sent back as If-None-Ma
 probe-checked     marker: its mtime is the time of the last successful probe (throttle)
 probe-pending.json  commits the probe found that the hook has not shown yet
 probe-error       time <TAB> message of the last failed probe; removed by the next success
+release-report.json  the last release check, one line (FR-7, FR-8)
+release-notes.md  release bodies of every CLI release newer than the stamp; only while the CLI has drifted
+release-check-error  time <TAB> message of the last failed release check; removed by the next success
+release-last-run  local date and time of the last completed release check (--skip-if-ran-today)
+release-acknowledged  drift_key of the release drift the hook last showed
+release-cli-docs-check.log  stderr of the guard run against a newly released binary
+cli-bin/<version>/agentengine  a newly released binary, downloaded and verified, never installed
 ```
 
 The URL baseline is tracked **separately** from the content manifest so a `--quick`
@@ -317,7 +369,11 @@ run advances added/removed state without re-reporting the whole site next time.
  "added":[],"removed":[],"changed":[],"fetch_errors":[]}
 ```
 
-Tier 2 adds a `cli` object. It MUST be additive — existing keys keep their meaning.
+Tier 2 does not touch `report.json` (decided 2026-11-24, closing open item 1): it writes
+its own one-line `release-report.json` with `checked_at`, `status` (`clean` or `drift`),
+`stamp`, `latest` (`cli`, `cli_published_at`, `pypi`, `npm`), `drift` (`cli`, `sdk_python`,
+`sdk_npm`), `drift_key`, `cli_releases_newer`, `release_notes`, and `cli_docs_check`
+(`status`, `binary`, `binary_version`, `verification`, `exit_code`, `summary`, `message`).
 
 ### SessionStart hook
 
@@ -350,8 +406,8 @@ Fail-fast with a descriptive message, except where failing would block the user'
 | Some pages 404 | Record in `fetch_errors`, continue, still write the report |
 | Every page fetch fails | Exit 1, refuse to record an empty baseline |
 | <50% of known pages fetched | Exit 1, refuse to overwrite the baseline |
-| `agentengine` not installed | Skip tier 2 silently, tier 1 proceeds (FR-10) |
-| GitHub API unreachable/rate-limited | Warn, tier 1 proceeds (FR-11) |
+| Release check: GitHub, PyPI or npm unreachable, non-200 or unparseable; a bad stamp | Write `release-check-error`, exit 1, keep the previous `release-report.json`; the docs watcher's run is unaffected and the hook names the error (FR-10, FR-11) |
+| Release check: the new binary is missing for this host, fails to download, or fails verification | Never executed; `cli_docs_check.status` is `error` with the reason; the drift exit code `10` stands (FR-9) |
 | Any hook-side failure | Exit 0, emit nothing (hook must never block) |
 | Session-start probe: API unreachable, timed out, rate-limited, non-200/304, or unparseable | Write `probe-error`, exit 1, keep `probe-seen` and `probe-etag`; the hook still exits 0 and names the error in the once-a-day health notice (FR-41) |
 | `--update-kb`: no runner, skill not found, invalid clone, runner error, cap reached, timeout, or no `kb-update.md` / processed record afterwards | Write `kb-update-error`, log it, keep the crawl's exit code (FR-27) |
@@ -366,8 +422,13 @@ Each is a test to write. "Verified" means already demonstrated on 2026-10-06.
 | **AC-2** | First run on empty state yields `status=baseline`, `added=[]`, `rc=0` | **Verified** |
 | **AC-3** | Second run with no upstream change yields `status=clean`, `rc=0` | **Verified** |
 | **AC-4** | `--quick` completes in <5s; `--full` completes in <90s and fetches ≥95% of pages | **Verified** (1.9s / 38.3s / 195 of 195) |
-| **AC-5** | With a stubbed GitHub response newer than the local CLI, the report contains the new version **and its release body** | To write |
-| **AC-6** | With `agentengine` absent from PATH, the run still completes and tier 1 output is unaffected | To write |
+| **AC-5** | With a fixture GitHub response newer than the stamp, the release check exits `10`, `release-notes.md` holds exactly the newer releases' bodies newest first (drafts and pre-releases excluded), and the guard ran against the downloaded fixture binary | **Verified** (2026-11-24, fixture `tests/cases/release_check.sh`; live: a 0.1.124 stamp downloaded 0.1.126, codesign valid, guard `diverged`) |
+| **AC-6** | A failed release check (unreachable API) in the daily entry point leaves the docs report written and `last-error` absent, writes `release-check-error`, and the next hourly run re-runs only the release check | **Verified** (2026-11-24, fixture) |
+| **AC-35** | No drift exits `0` with a one-line clean report and no notes; SDK-only drift exits `10`, names exactly the drifted packages and downloads nothing; `0.1.10` is newer than `0.1.9` | **Verified** (2026-11-24, fixture) |
+| **AC-36** | A digest mismatch, or an unsigned macOS binary, is refused: never executed, not kept, guard status `error` | **Verified** (2026-11-24, fixture) |
+| **AC-37** | The hook shows a drift once, names a `release-check-error`, and shows a newer release again | **Verified** (2026-11-24, fixture) |
+| **AC-38** | With `--update-kb`, the runner's prompt names `release-report.json`, `release-notes.md` and the stamp-bump rule; the drift is recorded as `release:<drift_key>`; the same drift the next day starts no runner; a new release does | **Verified** (2026-11-24, fake runner) |
+| **AC-39** | `print-plist` runs `aae-daily-check.sh --watcher <watcher copy>`, and carries `--update-kb` when asked | **Verified** (2026-11-24) |
 | **AC-7** | Hook emits valid JSON with both `systemMessage` and `additionalContext` when the report says `changes`; the **second** invocation emits nothing | **Verified** |
 | **AC-8** | Hook exits 0 when state is missing, malformed, or unreadable | To write |
 | **AC-9** | A fresh install registers **no** launchd job; `install-schedule.sh status` reports "not installed" | **Verified** (status path) |
@@ -428,8 +489,10 @@ Stated so they are not mistaken for omissions:
 
 ## Open items
 
-1. Where tier 2's state lives inside `report.json` — additive `cli` object, shape TBD.
-2. Whether `--quick` should also run tier 2 (it is one cheap API call; probably yes).
+1. ~~Where tier 2's state lives inside `report.json`.~~ Resolved 2026-11-24: its own
+   `release-report.json`; `report.json` is unchanged.
+2. Whether the session-start probe should also ask for CLI releases (one more request
+   against the same 60-an-hour limit). Not done: the daily job covers it.
 3. No `tests/` directory exists. AC-5 through AC-12 need somewhere to live and a runner.
 
 ## CLI reference regression guard

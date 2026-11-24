@@ -24,6 +24,14 @@
 # install time, are stored in the job's environment. install also copies the
 # aae-kb-update SKILL.md next to the watcher copy, for the same reason as the watcher.
 #
+# The job's entry point is aae-daily-check.sh: the docs watcher, then
+# aae-release-check.sh (CLI and SDK releases against the knowledge base's version
+# stamp, and the CLI reference guard against a newly released binary), then, with
+# --update-kb, one knowledge-base update fed by both. Each step skips itself once it
+# has succeeded that day, and a failed release check never stops the docs watcher.
+# The entry point, the release check, the guard and kb-versions.json are copied
+# beside the watcher copy, for the same reason as the watcher.
+#
 # print-plist writes the plist to stdout and changes nothing, for review and tests.
 #
 # Usage: install-schedule.sh {install|uninstall|status|run|print-plist}
@@ -63,6 +71,18 @@ readonly SCHEDULED_KB_SKILL="${BIN_DIR}/aae-kb-update.SKILL.md"
 # directory, so the scheduled copy needs it beside the copied script.
 readonly KB_LIB="${SCRIPT_DIR}/lib/kb-update.sh"
 readonly SCHEDULED_KB_LIB="${BIN_DIR}/lib/kb-update.sh"
+# The job's entry point runs the docs watcher, then the release check, then (with
+# --update-kb) one knowledge-base update fed by both. The release check runs the CLI
+# reference guard against a newly released binary, and compares against the
+# knowledge base's version stamp, so all three travel with it.
+readonly DAILY="${SCRIPT_DIR}/aae-daily-check.sh"
+readonly SCHEDULED_DAILY="${BIN_DIR}/aae-daily-check.sh"
+readonly RELEASE_CHECK="${SCRIPT_DIR}/aae-release-check.sh"
+readonly SCHEDULED_RELEASE_CHECK="${BIN_DIR}/aae-release-check.sh"
+readonly CLI_DOCS_CHECK="${SCRIPT_DIR}/aae-cli-docs-check.sh"
+readonly SCHEDULED_CLI_DOCS_CHECK="${BIN_DIR}/aae-cli-docs-check.sh"
+readonly KB_STAMP="${SCRIPT_DIR}/../skills/aae-kb-read/kb-versions.json"
+readonly SCHEDULED_KB_STAMP="${BIN_DIR}/kb-versions.json"
 # launchd starts jobs with a minimal PATH. ~/.local/bin is where the claude CLI installs.
 readonly JOB_PATH="${HOME}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin"
 # Knowledge-base settings carried into the job's environment when set at install time.
@@ -84,10 +104,11 @@ install-schedule.sh — install, inspect or remove the daily docs-change crawl.
 usage: install-schedule.sh {install|uninstall|status|run|print-plist} [options]
 
 Actions:
-  install       Install the scheduled job (launchd on macOS) and the watcher it runs.
+  install       Install the scheduled job (launchd on macOS): the docs watcher, then the
+                CLI and SDK release check, daily.
   uninstall     Remove the scheduled job. Leaves the watcher state directory in place.
   status        Report whether the job is installed, which detector it runs, and its last result.
-  run           Run a full crawl now, through the installed watcher.
+  run           Run the docs crawl and the release check now, even if they ran today.
   print-plist   Print the launchd plist that `install` would write, without writing it.
 
 Options:
@@ -125,6 +146,10 @@ case "$MINUTE" in ''|*[!0-9]*) die "--minute must be 0-59" ;; esac
 [ "$HOUR" -le 23 ] || die "--hour must be 0-23"
 [ "$MINUTE" -le 59 ] || die "--minute must be 0-59"
 [ -f "$KB_SKILL" ] || die "aae-kb-update skill not found next to the watcher: ${KB_SKILL}"
+for required in "$DAILY" "$RELEASE_CHECK" "$CLI_DOCS_CHECK"; do
+  [ -x "$required" ] || die "not found or not executable next to the watcher: ${required}"
+done
+[ -f "$KB_STAMP" ] || die "knowledge-base version stamp not found: ${KB_STAMP}"
 
 # Escape a value for an XML text node.
 xml_escape() {
@@ -171,9 +196,9 @@ render_plist() {
     <string>${LABEL}</string>
     <key>ProgramArguments</key>
     <array>
+        <string>$(xml_escape "$SCHEDULED_DAILY")</string>
+        <string>--watcher</string>
         <string>$(xml_escape "$SCHEDULED_WATCHER")</string>
-        <string>--full</string>
-        <string>--skip-if-ran-today</string>
 PLISTEOF
   [ -n "$UPDATE_KB" ] && printf '        <string>--update-kb</string>\n'
   cat <<PLISTEOF
@@ -218,14 +243,23 @@ do_install() {
   mkdir -p "$(dirname "$SCHEDULED_KB_LIB")"
   install -m 0644 "$KB_LIB" "$SCHEDULED_KB_LIB" \
     || die "cannot copy the kb-update library to ${SCHEDULED_KB_LIB}"
+  install -m 0755 "$DAILY" "$SCHEDULED_DAILY" \
+    || die "cannot copy the daily entry point to ${SCHEDULED_DAILY}"
+  install -m 0755 "$RELEASE_CHECK" "$SCHEDULED_RELEASE_CHECK" \
+    || die "cannot copy the release check to ${SCHEDULED_RELEASE_CHECK}"
+  install -m 0755 "$CLI_DOCS_CHECK" "$SCHEDULED_CLI_DOCS_CHECK" \
+    || die "cannot copy the CLI reference guard to ${SCHEDULED_CLI_DOCS_CHECK}"
+  install -m 0644 "$KB_STAMP" "$SCHEDULED_KB_STAMP" \
+    || die "cannot copy the version stamp to ${SCHEDULED_KB_STAMP}"
 
   render_plist > "$PLIST" || die "cannot write ${PLIST}"
 
   launchctl bootout "gui/$(id -u)/${LABEL}" >/dev/null 2>&1 || true
   launchctl bootstrap "gui/$(id -u)" "$PLIST" \
     || die "launchctl bootstrap failed; check ${PLIST}"
-  printf 'Installed %s — runs daily at %02d:%02d, retrying hourly until it succeeds that day\n' "$LABEL" "$HOUR" "$MINUTE"
-  printf 'Watcher copy: %s\nSkill copy:   %s\nState: %s\nLogs:  %s\n' "$SCHEDULED_WATCHER" "$SCHEDULED_KB_SKILL" "$STATE_DIR" "$LOG_DIR"
+  printf 'Installed %s — runs daily at %02d:%02d (docs, then CLI and SDK releases), retrying hourly until each succeeds that day\n' "$LABEL" "$HOUR" "$MINUTE"
+  printf 'Entry point:  %s\nWatcher copy: %s\nRelease check copy: %s\nSkill copy:   %s\nState: %s\nLogs:  %s\n' \
+    "$SCHEDULED_DAILY" "$SCHEDULED_WATCHER" "$SCHEDULED_RELEASE_CHECK" "$SCHEDULED_KB_SKILL" "$STATE_DIR" "$LOG_DIR"
   if [ -n "$UPDATE_KB" ]; then
     printf 'Knowledge-base update: ON (runner: %s; repo clone: %s)\n' \
       "${AAE_KB_RUNNER:-claude if on PATH, else codex}" "${AAE_KB_REPO:-none, updates go to your notes}"
@@ -243,7 +277,8 @@ do_uninstall() {
     printf 'Not installed (no %s)\n' "$PLIST"
   fi
   local copy
-  for copy in "$SCHEDULED_WATCHER" "$SCHEDULED_KB_SKILL" "$SCHEDULED_KB_LIB"; do
+  for copy in "$SCHEDULED_WATCHER" "$SCHEDULED_KB_SKILL" "$SCHEDULED_KB_LIB" "$SCHEDULED_DAILY" \
+              "$SCHEDULED_RELEASE_CHECK" "$SCHEDULED_CLI_DOCS_CHECK" "$SCHEDULED_KB_STAMP"; do
     if [ -f "$copy" ]; then
       rm -f "$copy"
       printf 'Removed %s\n' "$copy"
@@ -290,6 +325,25 @@ do_status() {
   elif [ -f "$PLIST" ]; then
     printf 'kb-update skill copy: MISSING (%s); re-run install\n' "$SCHEDULED_KB_SKILL"
   fi
+  local pair name source copy_path
+  for pair in "entry point:${DAILY}:${SCHEDULED_DAILY}" \
+              "release check:${RELEASE_CHECK}:${SCHEDULED_RELEASE_CHECK}" \
+              "CLI reference guard:${CLI_DOCS_CHECK}:${SCHEDULED_CLI_DOCS_CHECK}" \
+              "version stamp:${KB_STAMP}:${SCHEDULED_KB_STAMP}"; do
+    name="${pair%%:*}"; source="${pair#*:}"; copy_path="${source#*:}"; source="${source%%:*}"
+    if [ -f "$copy_path" ]; then
+      if cmp -s "$source" "$copy_path"; then
+        printf '%s copy: current (%s)\n' "$name" "$copy_path"
+      else
+        printf '%s copy: OUT OF DATE (%s); re-run install\n' "$name" "$copy_path"
+      fi
+    elif [ -f "$PLIST" ]; then
+      printf '%s copy: MISSING (%s); re-run install\n' "$name" "$copy_path"
+    fi
+  done
+  if [ -f "$PLIST" ] && ! grep -q -- "$(xml_escape "$SCHEDULED_DAILY")" "$PLIST"; then
+    printf 'plist: OUT OF DATE, it runs the watcher alone, not the daily check with the release check; re-run install\n'
+  fi
   if [ -f "$PLIST" ]; then
     if grep -q -- '<string>--update-kb</string>' "$PLIST"; then
       printf 'knowledge-base update: ON\n'
@@ -316,13 +370,22 @@ do_status() {
   else
     printf 'last report: none (watcher has not run yet)\n'
   fi
+  if [ -f "${STATE_DIR}/release-check-error" ]; then
+    printf 'RELEASE CHECK ERROR: %s\n' "$(tr '\t' ' ' < "${STATE_DIR}/release-check-error")"
+  fi
+  if [ -f "${STATE_DIR}/release-report.json" ]; then
+    python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));l,s=d["latest"],d["stamp"];print("release check:",d["checked_at"],d["status"],"| CLI",l["cli"],"(stamp",s["cli"]+")","| CLI reference check:",d["cli_docs_check"]["status"])' \
+      "${STATE_DIR}/release-report.json" 2>/dev/null || true
+  else
+    printf 'release check: none yet\n'
+  fi
 }
 
 case "$ACTION" in
   install)   do_install ;;
   uninstall) do_uninstall ;;
   status)    do_status ;;
-  run)       AAE_WATCH_STATE_DIR="$STATE_DIR" "$WATCHER" --full ${UPDATE_KB:+--update-kb} ;;
+  run)       AAE_WATCH_STATE_DIR="$STATE_DIR" "$DAILY" --force --watcher "$WATCHER" ${UPDATE_KB:+--update-kb} ;;
   print-plist) check_kb_settings; render_plist ;;
   help|-h|--help) usage ;;
   *) usage >&2; die "unknown action: ${ACTION:-<none>}" ;;

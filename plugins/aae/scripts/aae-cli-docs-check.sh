@@ -83,18 +83,23 @@ PRINT_SUMMARY=""
 
 usage() {
   cat <<'USAGE'
-Usage: aae-cli-docs-check.sh [--summary] [--quiet] [-h]
+Usage: aae-cli-docs-check.sh [--binary PATH] [--summary] [--quiet] [-h]
 
 Compare the agentengine CLI binary's own command tree against the published CLI
 reference pages, and report any command or flag the two disagree about.
 
-  --summary   Also print the summary line when the two agree (by default a clean
-              run prints nothing on stdout).
-  --quiet     Suppress progress logging on stderr.
+  --binary PATH  Check this agentengine binary instead of the one on PATH, for
+                 example a newer release downloaded by aae-release-check.sh.
+                 Overrides AGENTENGINE_BIN.
+  --summary      Also print the summary line when the two agree (by default a
+                 clean run prints nothing on stdout).
+  --quiet        Suppress progress logging on stderr.
 
 Exit: 0 docs and binary agree, 30 divergence found, 1 error.
 
 Environment (all optional):
+  AGENTENGINE_BIN               The agentengine binary to check (default: the one
+                                on PATH). --binary wins over it.
   AAE_CLI_DOCS_GENERATED_DIR    Use this directory of generated pages instead of
                                 running `agentengine docs generate`. Offline mode.
   AAE_CLI_DOCS_PUBLISHED_DIR    Read the published pages from this local directory
@@ -115,6 +120,9 @@ USAGE
 while [ $# -gt 0 ]; do
   case "$1" in
     --summary) PRINT_SUMMARY="1" ;;
+    --binary)
+      [ $# -ge 2 ] && [ -n "$2" ] || die "--binary needs a path"
+      AGENTENGINE_BIN="$2"; shift ;;
     --quiet)   AAE_CLI_DOCS_QUIET="1"; export AAE_CLI_DOCS_QUIET ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown argument: $1 (try --help)" ;;
@@ -124,6 +132,16 @@ done
 
 command -v curl >/dev/null 2>&1 || die "curl not found on PATH (${PATH})"
 command -v awk  >/dev/null 2>&1 || die "awk not found on PATH (${PATH})"
+
+# The binary under test. An explicit one (flag or env) must exist; it is never
+# silently swapped for whatever happens to be on PATH, because the caller asked
+# about that specific version.
+AGENTENGINE="${AGENTENGINE_BIN:-agentengine}"
+if [ -n "${AGENTENGINE_BIN:-}" ]; then
+  [ -f "$AGENTENGINE_BIN" ] && [ -x "$AGENTENGINE_BIN" ] \
+    || die "the binary to check is not an executable file: ${AGENTENGINE_BIN}"
+fi
+readonly AGENTENGINE
 
 WORK_DIR="$(mktemp -d)" || die "cannot create temp dir"
 # shellcheck disable=SC2329  # invoked by the EXIT trap below
@@ -182,23 +200,23 @@ if [ -n "${AAE_CLI_DOCS_GENERATED_DIR:-}" ]; then
   [ -d "$GENERATED_DIR" ] \
     || die "AAE_CLI_DOCS_GENERATED_DIR is not a directory: ${GENERATED_DIR}"
   BINARY_VERSION="${AAE_CLI_DOCS_BINARY_VERSION:-}"
-  if [ -z "$BINARY_VERSION" ] && command -v agentengine >/dev/null 2>&1; then
-    BINARY_VERSION="$(agentengine --version 2>/dev/null | tr -d ' \n')"
+  if [ -z "$BINARY_VERSION" ] && command -v "$AGENTENGINE" >/dev/null 2>&1; then
+    BINARY_VERSION="$("$AGENTENGINE" --version 2>/dev/null | tr -d ' \n')"
   fi
   [ -n "$BINARY_VERSION" ] || BINARY_VERSION="unknown"
   log "generated pages: using ${GENERATED_DIR} (binary version ${BINARY_VERSION})"
 else
-  command -v agentengine >/dev/null 2>&1 \
-    || die "agentengine not found on PATH (${PATH}); install the CLI or set AAE_CLI_DOCS_GENERATED_DIR"
-  BINARY_VERSION="$(agentengine --version 2>/dev/null | tr -d ' \n')" \
-    || die "'agentengine --version' failed"
-  [ -n "$BINARY_VERSION" ] || die "'agentengine --version' printed nothing"
+  command -v "$AGENTENGINE" >/dev/null 2>&1 \
+    || die "agentengine not found on PATH (${PATH}); install the CLI, pass --binary, or set AAE_CLI_DOCS_GENERATED_DIR"
+  BINARY_VERSION="$("$AGENTENGINE" --version 2>/dev/null | tr -d ' \n')" \
+    || die "'${AGENTENGINE} --version' failed"
+  [ -n "$BINARY_VERSION" ] || die "'${AGENTENGINE} --version' printed nothing"
   GENERATED_DIR="${WORK_DIR}/generated"
   mkdir -p "$GENERATED_DIR" || die "cannot create ${GENERATED_DIR}"
   # NOTE: `docs generate` takes a positional directory, not --dir.
-  agentengine docs generate "$GENERATED_DIR" > "${WORK_DIR}/generate.log" 2>&1 \
-    || die "'agentengine docs generate ${GENERATED_DIR}' failed: $(tr '\n' ' ' < "${WORK_DIR}/generate.log")"
-  log "generated pages from agentengine ${BINARY_VERSION}"
+  "$AGENTENGINE" docs generate "$GENERATED_DIR" > "${WORK_DIR}/generate.log" 2>&1 \
+    || die "'${AGENTENGINE} docs generate ${GENERATED_DIR}' failed: $(tr '\n' ' ' < "${WORK_DIR}/generate.log")"
+  log "generated pages from ${AGENTENGINE} ${BINARY_VERSION}"
 fi
 
 GENERATED_SET="${WORK_DIR}/generated.set"

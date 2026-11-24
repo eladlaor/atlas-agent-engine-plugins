@@ -22,6 +22,7 @@
 - [How do I schedule the check?](#how-do-i-schedule-the-check)
   - [Why does the schedule run a copy of the watcher?](#why-does-the-schedule-run-a-copy-of-the-watcher)
   - [Why didn't my check run again today?](#why-didnt-my-check-run-again-today)
+  - [How does the daily job know a new CLI or SDK release is out?](#how-does-the-daily-job-know-a-new-cli-or-sdk-release-is-out)
 - [Where does state live?](#where-does-state-live)
 - [Why am I not getting notified?](#why-am-i-not-getting-notified)
 
@@ -34,7 +35,9 @@ skills, an `ae` shortcut, and the docs watcher that tells you when AAE documenta
 pages change. Install `aae` and optionally schedule the watcher with launchd; the first
 check records a baseline, and your host tells you at session start whenever the docs have
 moved. Opt in to `--update-kb` and a changed page also updates the knowledge base, with a
-summary in the same notice.
+summary in the same notice. The daily job also compares the released CLI and SDK versions
+with the knowledge base's version stamp and reports any release newer than it, with its
+release notes ([details](#how-does-the-daily-job-know-a-new-cli-or-sdk-release-is-out)).
 
 Change detection is deterministic and costs no AI tokens. Two detectors ship: the
 scheduled default, `aae-docs-watch-git.sh`, reads the git history of the public
@@ -442,10 +445,12 @@ that run while your host is closed, the plugin ships a launchd wrapper:
 <aae-plugin-dir>/scripts/install-schedule.sh uninstall
 ```
 
-`install` copies the watcher, and the `aae-kb-update` skill beside it, to
-`~/.local/share/aae-docs-watch/bin/`, writes
-`~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist` pointing at that copy, and
-loads it. **Re-run `install` after updating the plugin**, with `--update-kb` again if you
+The job runs `aae-daily-check.sh`: the docs watcher first, then the CLI and SDK release
+check (`aae-release-check.sh`), then, with `--update-kb`, one knowledge-base update fed by
+both. `install` copies these, the watcher, the CLI reference guard, the knowledge base's
+version stamp and the `aae-kb-update` skill to `~/.local/share/aae-docs-watch/bin/`, writes
+`~/Library/LaunchAgents/com.eladlaor.aae-docs-watch.plist` pointing at those copies, and
+loads it. `run` does the same work now, even if it already ran today. **Re-run `install` after updating the plugin**, with `--update-kb` again if you
 use it: `status` says when either copy is out of date. Logs go to `~/Library/Logs/aae-docs-watch/`. The time is the Mac's local time.
 If that run fails, the job tries again every hour until one succeeds that day; after a
 success the later attempts exit at once without touching the network. If the Mac is
@@ -467,6 +472,41 @@ completed today, another one does nothing (exit `20`) and keeps the morning's re
 Without that, a second run would replace the morning's list of changes with "clean",
 because the baseline already moved. To crawl again anyway, run the watcher with `--full`
 alone.
+
+The release check keeps its own marker, so a day whose docs crawl succeeded but whose
+release check failed (no network yet) retries only the release check an hour later.
+
+### How does the daily job know a new CLI or SDK release is out?
+
+It compares what has been released with what the knowledge base was verified against. The
+knowledge base carries a version stamp, `aae-kb-read/kb-versions.json` (CLI, Python SDK, npm
+SDK, and the date). Every day, after the docs watcher, `aae-release-check.sh` reads the CLI
+releases from GitHub and the SDK packages from PyPI and npm, and reports every release newer
+than the stamp:
+
+- `release-report.json` and a "CLI and SDK releases" section in `changes-summary.md`;
+- `release-notes.md`: the release notes of each newer CLI release, newest first;
+- the session notice, once per new set of releases; a failed check appears in the
+  once-a-day health notice instead.
+
+On a new CLI release it also downloads that release's binary for your Mac into the state
+directory, checks it against the release's SHA-256 digest and its code signature, and runs
+`aae-cli-docs-check.sh --binary` against it, so the published CLI reference is checked
+against the newest CLI rather than the one you happen to have installed. It never installs
+or upgrades your CLI. With `--update-kb`, the runner receives the release notes and the
+version drift too, and bumps the stamp only for what it applied.
+
+The misunderstanding to avoid: "the docs watcher ran clean, so the knowledge base is
+current". The docs repository can stay quiet through several CLI releases; the release check
+is what notices them. Run it alone with:
+
+```bash
+<aae-plugin-dir>/scripts/aae-release-check.sh            # exit 0 no drift, 10 drift, 1 error
+<aae-plugin-dir>/scripts/aae-release-check.sh --no-cli-docs-check   # report only, no download
+```
+
+GitHub allows 60 unauthenticated requests an hour per IP address; set `GITHUB_TOKEN` to raise
+that. The token is sent to the GitHub API only, and is never written to the launchd job.
 
 Without launchd, the session hook's probe still tells you when new commits land, but not
 which pages they changed. `AAE_WATCH_ON_SESSION=quick` replaces the probe with the older ~1s
@@ -506,6 +546,12 @@ plugin updates and is shared by Claude Code, Codex and the launchd job.
 | `probe-checked` | Its modification time is the last successful probe, for the 15-minute throttle |
 | `probe-pending.json` | Commits the probe found that the hook has not shown yet |
 | `probe-error` | Time and message of the last failed probe; removed by the next successful one |
+| `release-report.json` | The last release check: the version stamp, the latest CLI and SDK versions, what drifted, and the CLI reference check against a new binary. One line |
+| `release-notes.md` | Release notes of every CLI release newer than the stamp, newest first; present only while the CLI has drifted |
+| `release-check-error` / `release-last-run` | Time and message of the last failed release check, removed by the next success; date of the last completed one |
+| `cli-bin/<version>/agentengine` | A newly released CLI binary, downloaded and verified for the reference check; never installed |
+| `release-cli-docs-check.log` | Output of the reference check against that binary |
+| `release-acknowledged` | The release drift the session notice last showed, so it is shown once |
 
 Override the location with `AAE_WATCH_STATE_DIR` — useful for testing against a
 throwaway directory.

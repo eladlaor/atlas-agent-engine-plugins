@@ -21,6 +21,7 @@ description: "Update the aae-guide's MongoDB Atlas Agent Engine (AAE) knowledge 
   - [Docs mode: inputs](#docs-mode-inputs)
   - [Docs mode: hard rules](#docs-mode-hard-rules)
   - [Docs mode: procedure](#docs-mode-procedure)
+  - [Docs mode: release input](#docs-mode-release-input)
   - [Docs mode: the --auto summary](#docs-mode-the---auto-summary)
 - [What counts as generic](#what-counts-as-generic)
 - [Leak scan](#leak-scan)
@@ -34,7 +35,7 @@ this skill. It has three sources, kept apart on purpose:
 |---|---|---|---|
 | **direct** | A finding typed into the invocation | The reference file the skill judges owns it, in a git clone of the plugin repository | Always: names the target and shows the entry, edits after approval |
 | **notes** | The user's personal `aae-guide` notes | Reference files in a git clone of the plugin repository | Always: proposes, edits only what the user approves |
-| **docs** | The docs watcher's latest changes report: `report.json`, `diffs/`, `pages/` | Reference files and the guide card in the clone (or the notes, without a clone); user-specific consequences in the notes | Interactive by default; `--auto` applies without asking, for the opt-in watcher flow only |
+| **docs** | The docs watcher's latest changes report (`report.json`, `diffs/`, `pages/`) and the release check's drift report (`release-report.json`, `release-notes.md`) | Reference files and the guide card in the clone (or the notes, without a clone); user-specific consequences in the notes | Interactive by default; `--auto` applies without asking, for the opt-in watcher flow only |
 
 It never commits, publishes, or edits an installed plugin.
 
@@ -70,6 +71,12 @@ It never commits, publishes, or edits an installed plugin.
 - **Every change to the clone gets one terse line** under `[Unreleased]` in its
   `CHANGELOG.md`, in Keep a Changelog form. If a new reference file was needed, add it to
   the `aae-kb-read` index too.
+- **The version stamp moves only with applied releases.** `aae-kb-read/kb-versions.json`
+  records the CLI and SDK versions the knowledge base was verified against. When an edit
+  brings the knowledge base up to a newer CLI or SDK release, bump the matching field
+  (`cli`, `sdk_python`, `sdk_npm`) and set `verified_at` to today. Bump only what was
+  actually read and applied; a version you did not check stays where it is, because the
+  daily release check trusts this file to say what is current.
 
 ## The processed-report record
 
@@ -80,6 +87,11 @@ line per report, tab-separated:
 ```
 <report checked_at>	<date processed, YYYY-MM-DD>	<docs-auto | docs-interactive>
 ```
+
+A release drift report (see [Docs mode: release input](#docs-mode-release-input)) is
+recorded the same way, with `release:<drift_key>` in the first column instead of a
+`checked_at`. The key names the released versions, not the check time, because the daily
+check re-reports the same drift until the stamp moves. The caller passes the exact key.
 
 Append the line after applying, also when nothing needed editing or the user approved
 nothing: the report has been dealt with. Before starting, if the report's `checked_at` is
@@ -268,10 +280,12 @@ needs no leak scan.
 
 ### Docs mode: procedure
 
-1. **Check the report.** Read `report.json`. If `status` isn't `changes`, stop: there is
-   nothing to apply. If its `checked_at` is already in `kb-update-processed`, stop, write
-   nothing (not even `kb-update.md`), and say when it was processed (see
-   [The processed-report record](#the-processed-report-record)).
+1. **Check the report.** Read `report.json`. If `status` isn't `changes`, there are no
+   page changes to apply: go to the [release input](#docs-mode-release-input) if the caller
+   gave one, else stop. If its `checked_at` is already in `kb-update-processed`, treat it
+   the same way, and say when it was processed (see
+   [The processed-report record](#the-processed-report-record)). If nothing at all is left
+   to apply, write nothing (not even `kb-update.md`).
 2. **Read what changed**, page by page:
    - changed: its diff;
    - added: its saved page, if there is one (a `--quick` run saves no pages; then record
@@ -318,9 +332,40 @@ needs no leak scan.
 7. **Finish:**
    - add the CHANGELOG line in the clone for each changed file there;
    - check each changed file's TOC anchors still resolve;
-   - append the [processed-report line](#the-processed-report-record);
+   - append the [processed-report line](#the-processed-report-record), one per report
+     applied;
    - in `--auto`, write the [summary](#docs-mode-the---auto-summary); interactively,
      report the files changed.
+
+### Docs mode: release input
+
+The daily job also runs `aae-release-check.sh`, which compares the released CLI and SDK
+versions with the knowledge base's version stamp (`aae-kb-read/kb-versions.json`). When
+the caller names its report, apply it alongside, or instead of, the docs report:
+
+- **Inputs, in the watcher state directory:** `release-report.json` (`stamp`, `latest`,
+  `drift`, `drift_key`, `cli_releases_newer`, and `cli_docs_check`, the result of checking
+  the published CLI reference against the newly released binary), and `release-notes.md`,
+  the GitHub release body of every CLI release newer than the stamp, newest first. It
+  exists only when the CLI drifted.
+- **Procedure:**
+  1. Read each release's notes. For every item that changes behaviour a user relies on (a
+     new or removed command, flag, role, config key, limit, package name), search the
+     reference files, the guide card and the notes for the entries it affects, exactly as
+     steps 3 to 5 do for a docs page, and decide confirmed, stale or new. Cite the release
+     tag and its URL instead of a docs page. Internal or chore items need no entry.
+  2. If `cli_docs_check.status` is `diverged`, the published CLI reference disagrees with
+     the new binary: record that as a drift entry (the binary is the authority), naming
+     the commands and flags from the summary. `error` means the check did not run; say so
+     in the summary and do not infer agreement.
+  3. For SDK drift, check the entries that pin SDK package versions (`SDK_ADAPTERS.md`,
+     `VERIFIED_DETAILS.md`) and update the versions you can confirm from the report.
+  4. **The stamp:** in the clone, bump `kb-versions.json` only for the components whose
+     releases you actually read and applied, and set `verified_at` to today if you bumped
+     anything. Without a clone, leave it, and add a `baseline candidate` notes entry naming
+     the versions applied.
+  5. Record the report under the key the caller gives (`release:<drift_key>`).
+- The summary's first line covers both inputs when both were applied.
 
 ### Docs mode: the --auto summary
 

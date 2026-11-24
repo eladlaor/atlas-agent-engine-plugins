@@ -179,7 +179,7 @@ Codex alike:
 | `pages/<slug>` | Current markdown snapshot of each page |
 | `manifest.tsv` | `url <TAB> sha256` baseline (hashing watcher) |
 | `last-commit` | The commit the git detector last reported on — its whole baseline |
-| `changes-summary.md` | Human-readable digest from the git detector: commit list, include and `snooty.toml` fan-out, and a CLI regeneration collapsed to one line |
+| `changes-summary.md` | Human-readable digest from the git detector: commit list, include and `snooty.toml` fan-out, and a CLI regeneration collapsed to one line. The release check adds a "CLI and SDK releases" section at the end |
 | `docs-repo/` | The git detector's blobless sparse clone of the publishing repository (~165 MB) |
 | `last-full-run` | Local date and time of the last completed full crawl |
 | `kb-update.md` | With `--update-kb`: what the last automatic knowledge-base update changed. Its first line is a one-sentence summary |
@@ -192,6 +192,11 @@ Codex alike:
 | `probe-seen`, `probe-etag`, `probe-checked` | The probe's baseline commit, the ETag sent back as `If-None-Match`, and the time of its last success (throttle) |
 | `probe-pending.json` | Commits the probe found that the hook has not shown yet: `truncated` (more may exist) and `commits` (`sha`, `date`, `subject`, `url`), newest first |
 | `probe-error` | Time and message of the last failed probe; removed by the next success |
+| `release-report.json` | The daily release check: the knowledge base's version stamp, the latest CLI and SDK versions, what drifted, and the CLI reference check against a newly released binary. One line |
+| `release-notes.md` | The GitHub release notes of every CLI release newer than the stamp, newest first. Present only while the CLI has drifted |
+| `release-check-error`, `release-last-run` | Time and message of the last failed release check, removed by the next success; date of the last completed one |
+| `cli-bin/<version>/agentengine`, `release-cli-docs-check.log` | A newly released CLI binary, downloaded and verified for the reference check (never installed), and that check's output |
+| `release-acknowledged` | The drift the session notice last showed, so the same drift is shown once |
 
 After a git-sourced run, read `changes-summary.md` first: it names the commits
 behind the change and collapses a CLI-reference regeneration into one line.

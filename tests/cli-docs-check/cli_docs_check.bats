@@ -203,3 +203,24 @@ run_guard() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"parsed 0 flags from both sides"* ]]
 }
+
+# --- --binary: check a specific agentengine, not the one on PATH -------------
+# aae-release-check.sh uses this to check a newly released binary it downloaded.
+
+@test "--binary runs that binary's docs generate and reports its version" {
+  tmp="$(mktemp -d)"
+  printf '#!/bin/sh\ncase "$1" in\n  --version) echo "9.9.9" ;;\n  docs) cp "%s"/*.md "$3/" ;;\n  *) exit 2 ;;\nesac\n' \
+    "${FIXTURES}/guides-only/generated" > "${tmp}/agentengine"
+  chmod +x "${tmp}/agentengine"
+  AAE_CLI_DOCS_PUBLISHED_DIR="${FIXTURES}/guides-only/published" \
+  run bash "$SCRIPT" --binary "${tmp}/agentengine" --summary
+  rm -rf "$tmp"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"binary_version=9.9.9"* ]]
+}
+
+@test "--binary pointing at a missing file fails fast" {
+  run bash "$SCRIPT" --binary /nonexistent/agentengine
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not an executable file"* ]]
+}
