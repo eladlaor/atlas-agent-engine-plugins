@@ -515,20 +515,22 @@ read-only allowlist, fail-fast errors, thresholds, profile inheritance, window a
 granularity rules, and the parsing of each response shape. It also runs on Python 3.9.
 
 Every command was last run live on 2026-11-24 with CLI 1.60.1, as the read-only
-service account, against two replica sets with Atlas Search indexes: a running M20 with
-light traffic, and a paused M10 over a past window. The running cluster returned real
-query shapes and per-collection latency percentiles, and crossed a threshold (query
+service account, against two replica sets with Atlas Search indexes: a paused M10 over a
+past window, and a running M20 under real load from an Atlas Agent Engine agent fleet
+(about 15 minutes of agent sessions). Under that load the reports showed what the agents
+did: query, insert and update rates up 85–180% against the hour before, the platform's
+own collections as the busiest namespaces, real query shapes and slow queries, index
+drop candidates, per-index Search metrics by index name, and a crossed threshold (query
 targeting on the secondaries). Rerun the live suite with
 `tests/live/atlas_metrics_live.sh --cluster <name>` (add `--end <time>` for a paused
 cluster). It prints a summary with hostnames and IDs masked.
 
 Not verified live yet:
 
-- **Suggested indexes and schema advice with content.** Neither cluster had enough
-  traffic for the Performance Advisor to suggest anything. The calls and response
-  formats are verified.
-- **Per-index Search metrics on a collection with several indexes.** That needs the
-  index name, which the read-only account can't list. The single-index case is verified.
+- **Suggested indexes and schema advice with content.** The Performance Advisor had
+  nothing to suggest for that load. The calls and response formats are verified.
+- **Search query counts above zero.** The load's Search queries didn't run, so the
+  per-index query series were verified at zero only.
 - **Sharded clusters** (mongos and config servers).
 - **10-second granularity.** Neither cluster has premium monitoring.
 
