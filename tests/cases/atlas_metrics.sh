@@ -21,6 +21,9 @@ am_setup() {
   export FAKE_ATLAS_LOG="${SANDBOX}/atlas.log"
   export HOME="${SANDBOX}/home"
   unset ATLAS_METRICS_CONFIG FAKE_ATLAS_MISSING FAKE_ATLAS_VERSION
+  # The fixture windows are fixed dates on 2026-11-20. Pin "now" just after them so the
+  # engine's retention rules see them as recent, whatever the real date is.
+  export ATLAS_METRICS_NOW="2026-11-20T15:00:00Z"
 }
 
 # am <args...> : run the engine; sets AM_OUT (stdout), AM_ERR (stderr), AM_RC.
@@ -330,10 +333,58 @@ test_a_unit_mismatch_stops_instead_of_comparing() {
 
 test_compare_fetches_a_second_window_and_reports_deltas() {
   am_setup
-  am history "${AM_WINDOW[@]}" --nodes primary --compare 7d --format json
+  am history --cluster demo-cluster --start 2026-11-20T08:00:00Z --end 2026-11-20T14:00:00Z \
+    --nodes primary --compare 7d --format json
   assert_contains "$AM_OUT" "avg_change_pct" "baseline deltas present" || return 1
-  grep -q '"2026-11-13T14:00:00Z"' "${FAKE_ATLAS_LOG}" \
+  grep -q '"2026-11-13T08:00:00Z"' "${FAKE_ATLAS_LOG}" \
     || { fail "the baseline window 7 days earlier was not requested"; return 1; }
+  # Atlas keeps 5-minute data for 48 hours, so a baseline a week back moves both windows to
+  # PT1H: the comparison stays like for like.
+  grep -q '"PT5M"' "${FAKE_ATLAS_LOG}" && { fail "PT5M requested for a week-old baseline"; return 1; }
+  grep -q '"PT1H"' "${FAKE_ATLAS_LOG}" || { fail "both windows must use PT1H"; return 1; }
+}
+
+# Atlas keeps 1- and 5-minute data for 48 hours, hourly for 63 days. Asking for an expired
+# granularity returns empty series (or HTTP 500 for PT10S), which used to read as "no data".
+test_an_old_window_gets_a_granularity_atlas_still_keeps() {
+  am_setup
+  export ATLAS_METRICS_NOW="2026-11-24T00:00:00Z"
+  am history --cluster demo-cluster --start 2026-11-20T12:00:00Z --end 2026-11-20T14:00:00Z --nodes primary
+  case "$AM_RC" in 0|1) : ;; *) fail "history exited $AM_RC: $AM_ERR"; return 1 ;; esac
+  grep -q '"PT1H"' "${FAKE_ATLAS_LOG}" || { fail "a 3-day-old window must use PT1H"; return 1; }
+  grep -q '"PT1M"' "${FAKE_ATLAS_LOG}" && { fail "PT1M requested past its retention"; return 1; }
+  return 0
+}
+
+test_an_expired_granularity_the_user_chose_is_refused_before_calling_atlas() {
+  am_setup
+  export ATLAS_METRICS_NOW="2026-11-24T00:00:00Z"
+  am history --cluster demo-cluster --start 2026-11-20T12:00:00Z --end 2026-11-20T14:00:00Z \
+    --granularity PT1M --nodes primary
+  assert_eq 2 "$AM_RC" "usage exit" || return 1
+  assert_contains "$AM_ERR" "Atlas keeps PT1M data for 2 days only" "message" || return 1
+  assert_contains "$AM_ERR" "--granularity PT1H" "suggests the granularity Atlas still has" || return 1
+  if grep -q '"metrics"' "${FAKE_ATLAS_LOG}" 2>/dev/null; then fail "Atlas was called"; return 1; fi
+}
+
+test_an_old_window_shorter_than_the_only_granularity_left_is_refused() {
+  am_setup
+  export ATLAS_METRICS_NOW="2026-11-24T00:00:00Z"
+  am snapshot "${AM_WINDOW[@]}" --nodes primary
+  assert_eq 2 "$AM_RC" "usage exit" || return 1
+  assert_contains "$AM_ERR" "Widen the window to at least 1 hour" "message" || return 1
+  export ATLAS_METRICS_NOW="2026-11-20T15:00:00Z"
+  am history "${AM_WINDOW[@]}" --nodes primary --compare 7d
+  assert_eq 2 "$AM_RC" "a 20-minute window against a week-old baseline" || return 1
+  assert_contains "$AM_ERR" "keeps only PT1H data" "message"
+}
+
+test_an_unreadable_clock_override_fails_loudly() {
+  am_setup
+  export ATLAS_METRICS_NOW="yesterday"
+  am snapshot "${AM_WINDOW[@]}" --nodes primary
+  assert_eq 2 "$AM_RC" "usage exit" || return 1
+  assert_contains "$AM_ERR" "cannot read time 'yesterday'" "message"
 }
 
 test_granularity_follows_the_window_length() {
@@ -468,14 +519,14 @@ test_search_refuses_to_merge_several_indexes() {
   assert_contains "$AM_ERR" "Name one with --index" "message"
 }
 
-# Live 2026-11-22: PT10S on an old window is a bare HTTP 500 from Atlas.
+# Atlas answers PT10S it doesn't have (a cluster without premium monitoring) with a bare HTTP 500.
 test_a_fine_granularity_server_error_explains_retention() {
   am_setup
   printf 'Error: GET: HTTP 500 Internal Server Error (Error code: "UNEXPECTED_ERROR")\n' \
     > "${SANDBOX}/fx/metrics_processes.error"
   am history "${AM_WINDOW[@]}" --granularity PT10S --nodes secondaries
   assert_eq 3 "$AM_RC" "server error exit" || return 1
-  assert_contains "$AM_ERR" "10-second points only for a short time" "retention hint"
+  assert_contains "$AM_ERR" "10-second points only with premium monitoring" "retention hint"
 }
 
 test_advisor_unwraps_the_content_envelope_and_passes_bool_flags_correctly() {
@@ -602,6 +653,7 @@ test_a_missing_response_field_is_an_error_not_an_empty_result() {
 
 test_incident_never_asks_for_the_future_and_keeps_granularity() {
   am_setup
+  unset ATLAS_METRICS_NOW  # this test is about the real clock
   local start
   start="$(python3 -c 'import datetime as d; print((d.datetime.now(d.timezone.utc)-d.timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
   am incident --cluster demo-cluster --start "$start" --granularity PT10S --nodes primary --format json

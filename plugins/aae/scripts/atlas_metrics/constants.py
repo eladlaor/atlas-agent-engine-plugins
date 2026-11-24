@@ -16,7 +16,7 @@ from __future__ import annotations
 from enum import Enum
 
 ENGINE_NAME = "atlas-metrics"
-VERIFIED_CLI_VERSION = "1.59.1"
+VERIFIED_CLI_VERSION = "1.60.1"
 ATLAS_BINARY_ENV = "ATLAS_METRICS_ATLAS_BIN"
 DEFAULT_ATLAS_BINARY = "atlas"
 CONFIG_PATH_ENV = "ATLAS_METRICS_CONFIG"
@@ -186,6 +186,22 @@ GRANULARITY_RULES = (
 )
 GRANULARITY_FALLBACK = Granularity.ONE_DAY
 
+# How long Atlas keeps each granularity before compacting it into the next coarser one
+# (Atlas docs, "Review Metrics" > "Metrics Data Retention"; None = kept forever). A window
+# that starts further back than this has no data at that granularity: Atlas answers with
+# empty series, or HTTP 500 for PT10S.
+GRANULARITY_RETENTION_SECONDS = {
+    Granularity.TEN_SECONDS: 8 * 60 * 60,
+    Granularity.ONE_MINUTE: 48 * 60 * 60,
+    Granularity.FIVE_MINUTES: 48 * 60 * 60,
+    Granularity.ONE_HOUR: 63 * 24 * 60 * 60,
+    Granularity.ONE_DAY: None,
+}
+
+# Pins "now" to an ISO instant. For the offline tests only: their fixture windows are
+# fixed dates, which would otherwise age past the retention limits above.
+NOW_OVERRIDE_ENV = "ATLAS_METRICS_NOW"
+
 # The identity these skills are meant to run as. Printed whenever Atlas refuses
 # the credentials, because the fix is almost always this setup.
 SERVICE_ACCOUNT_NAME = "atlas-metrics-readonly"
@@ -217,7 +233,7 @@ ACCESS_LIST_HINT = (
     "network; a VPN with a fixed exit IP needs one entry."
 )
 
-# Every `atlas api` call pins the version its `--help` lists on CLI 1.59.1, so a
+# Every `atlas api` call pins the version its `--help` lists on CLI 1.60.1, so a
 # CLI upgrade cannot silently change a response shape under the engine.
 API_VERSIONS = {
     "collectionLevelMetrics": "2023-11-15",

@@ -144,8 +144,8 @@ def add_series_section(report: Report, title: str, rows: List[Tuple[str, SeriesS
         raise NoDataError(f"{title}: no series at all.", {"warnings": report.atlas_warnings})
     if all(s.severity is Severity.NO_DATA for _, s in rows):
         raise NoDataError(f"{title}: Atlas returned only empty series ({len(rows)}). "
-                          "The window may be older than Atlas keeps at this granularity, or "
-                          "the nodes were not reporting.", {"warnings": report.atlas_warnings})
+                          "The nodes were not reporting, or this measurement has no points at "
+                          "this granularity in so short a window: widen it.", {"warnings": report.atlas_warnings})
     missing = sum(1 for _, s in rows if s.severity is Severity.NO_DATA)
     stale = sum(1 for _, s in rows if s.stale)
     if missing:
@@ -181,7 +181,10 @@ def cmd_process(ctx: RunContext, mode: str) -> Report:
     window = window_for(ctx, DEFAULT_SNAPSHOT_WINDOW if mode == "snapshot" else DEFAULT_HISTORY_WINDOW)
     cluster, nodes = nodes_for(ctx)
     compare = getattr(ctx.args, "compare", "") or ""
-    baseline_window: Optional[Window] = window.shifted(parse_duration(compare)) if compare else None
+    baseline_window: Optional[Window] = None
+    if compare:
+        window, baseline_window = window.with_baseline(parse_duration(compare),
+                                                       explicit=bool(ctx.args.granularity))
     title = f"{'Snapshot' if mode == 'snapshot' else 'History'} of {cluster} — profile {profile.name}"
     report = Report(mode, title, {"cluster": cluster, "profile": profile.name,
                                   "nodes": len(nodes), **window_context(window)})

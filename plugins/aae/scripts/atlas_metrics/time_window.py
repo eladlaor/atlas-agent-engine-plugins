@@ -8,12 +8,19 @@ ISO dates (events). Resolving once keeps those three views consistent.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
-from atlas_metrics.constants import GRANULARITY_FALLBACK, GRANULARITY_RULES, Granularity
+from atlas_metrics.constants import (
+    GRANULARITY_FALLBACK,
+    GRANULARITY_RETENTION_SECONDS,
+    GRANULARITY_RULES,
+    NOW_OVERRIDE_ENV,
+    Granularity,
+)
 from atlas_metrics.errors import UsageError
 
 _ISO_DURATION = re.compile(
@@ -28,6 +35,7 @@ _SECONDS_PER_GRANULARITY = {
     Granularity.ONE_HOUR: 3600,
     Granularity.ONE_DAY: 86400,
 }
+_FINEST_FIRST = sorted(Granularity, key=_SECONDS_PER_GRANULARITY.__getitem__)
 
 
 def parse_duration(text: str) -> timedelta:
@@ -68,6 +76,13 @@ def parse_instant(text: str) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
+def utc_now() -> datetime:
+    """The current time, or the instant in NOW_OVERRIDE_ENV (used by the offline tests, whose
+    fixture windows are fixed dates that must not age past Atlas's retention limits)."""
+    override = os.environ.get(NOW_OVERRIDE_ENV, "")
+    return parse_instant(override) if override else datetime.now(timezone.utc)
+
+
 def iso(value: datetime) -> str:
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -76,12 +91,64 @@ def epoch_ms(value: datetime) -> int:
     return int(value.timestamp() * 1000)
 
 
-def choose_granularity(span: timedelta) -> Granularity:
+def _human(seconds: float) -> str:
+    for size, unit in ((86400, "day"), (3600, "hour"), (60, "minute")):
+        if seconds >= size or unit == "minute":
+            amount = f"{max(seconds, 0) / size:.1f}".rstrip("0").rstrip(".")
+            return f"{amount} {unit}" + ("" if amount == "1" else "s")
+    raise AssertionError("unreachable")
+
+
+def retained(granularity: Granularity, start: datetime, now: datetime) -> bool:
+    """True if Atlas still keeps `granularity` data for a window starting at `start`."""
+    limit = GRANULARITY_RETENTION_SECONDS[granularity]
+    return limit is None or (now - start).total_seconds() <= limit
+
+
+def _coarsen_until_retained(granularity: Granularity, start: datetime, now: datetime) -> Granularity:
+    for candidate in _FINEST_FIRST[_FINEST_FIRST.index(granularity):]:
+        if retained(candidate, start, now):
+            return candidate
+    raise AssertionError("P1D is kept forever, so some granularity must be retained")
+
+
+def choose_granularity(span: timedelta, start: Optional[datetime] = None,
+                       now: Optional[datetime] = None) -> Granularity:
+    """The finest granularity that suits the span and that Atlas still keeps for `start`."""
     seconds = span.total_seconds()
-    for upper_bound, granularity in GRANULARITY_RULES:
-        if seconds <= upper_bound:
-            return granularity
-    return GRANULARITY_FALLBACK
+    chosen = next((g for upper, g in GRANULARITY_RULES if seconds <= upper), GRANULARITY_FALLBACK)
+    if start is None:
+        return chosen
+    return _coarsen_until_retained(chosen, start, now or utc_now())
+
+
+def _require_retained(granularity: Granularity, start: datetime, now: datetime) -> None:
+    """For a granularity the user chose: refuse it if Atlas no longer has it for this window."""
+    if retained(granularity, start, now):
+        return
+    limit = GRANULARITY_RETENTION_SECONDS[granularity]
+    coarser = _coarsen_until_retained(granularity, start, now)
+    raise UsageError(
+        f"Atlas keeps {granularity} data for {_human(limit)} only, and this window starts "
+        f"{_human((now - start).total_seconds())} ago, so there is none to return. Use "
+        f"--granularity {coarser}, or leave --granularity out and the engine picks one Atlas still has."
+    )
+
+
+def _require_points(granularity: Granularity, span: timedelta, start: datetime, now: datetime,
+                    explicit: bool) -> None:
+    if span.total_seconds() >= _SECONDS_PER_GRANULARITY[granularity]:
+        return
+    if explicit:
+        raise UsageError(
+            f"granularity {granularity} is coarser than the whole window ({span}); "
+            "pick a finer one or a longer window"
+        )
+    raise UsageError(
+        f"this window starts {_human((now - start).total_seconds())} ago, where Atlas keeps only "
+        f"{granularity} data, which is coarser than the whole window ({span}). Widen the window to "
+        f"at least {_human(_SECONDS_PER_GRANULARITY[granularity])}."
+    )
 
 
 @dataclass(frozen=True)
@@ -94,16 +161,34 @@ class Window:
     def span(self) -> timedelta:
         return self.end - self.start
 
-    def shifted(self, back: timedelta) -> "Window":
-        """The same-length window `back` earlier, at the same granularity."""
-        return Window(self.start - back, self.end - back, self.granularity)
+    def with_baseline(self, back: timedelta, explicit: bool = False,
+                      now: Optional[datetime] = None) -> Tuple["Window", "Window"]:
+        """This window and the same-length one `back` earlier, at one shared granularity.
+
+        The baseline starts further back, so it may be past what Atlas keeps at this
+        granularity: then both windows move to a coarser one (or, if the user chose the
+        granularity, the request is refused), so the comparison stays like for like.
+        """
+        now = now or utc_now()
+        start = self.start - back
+        if explicit:
+            _require_retained(self.granularity, start, now)
+            granularity = self.granularity
+        else:
+            granularity = _coarsen_until_retained(self.granularity, start, now)
+            _require_points(granularity, self.span, start, now, explicit=False)
+        return (Window(self.start, self.end, granularity),
+                Window(start, self.end - back, granularity))
 
     def padded(self, pad: timedelta, keep_granularity: bool = False,
                now: Optional[datetime] = None) -> "Window":
         """Widen by `pad` on each side, never past now. Keeps a user-chosen granularity."""
-        now = now or datetime.now(timezone.utc)
+        now = now or utc_now()
         start, end = self.start - pad, min(self.end + pad, now)
-        return Window(start, end, self.granularity if keep_granularity else choose_granularity(end - start))
+        if keep_granularity:
+            _require_retained(self.granularity, start, now)
+            return Window(start, end, self.granularity)
+        return Window(start, end, choose_granularity(end - start, start, now))
 
     def describe(self) -> str:
         return f"{iso(self.start)} → {iso(self.end)} @ {self.granularity}"
@@ -121,7 +206,7 @@ def resolve_window(
 
     Exactly one shape is allowed: --last, or --start (with optional --end).
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or utc_now()
     if last and (start or end):
         raise UsageError("use either --last or --start/--end, not both")
     if end and not start:
@@ -136,22 +221,21 @@ def resolve_window(
         raise UsageError(f"window ends before it starts: {iso(begin)} → {iso(finish)}")
     if finish > now + timedelta(minutes=1):
         raise UsageError(f"window ends in the future: {iso(finish)}")
-    chosen = _pick_granularity(granularity, finish - begin)
+    chosen = _pick_granularity(granularity, begin, finish, now)
     return Window(begin, finish, chosen)
 
 
-def _pick_granularity(requested: str, span: timedelta) -> Granularity:
+def _pick_granularity(requested: str, start: datetime, end: datetime, now: datetime) -> Granularity:
+    span = end - start
     if not requested:
-        return choose_granularity(span)
+        chosen = choose_granularity(span, start, now)
+        _require_points(chosen, span, start, now, explicit=False)
+        return chosen
     try:
         chosen = Granularity(requested.upper())
     except ValueError as exc:
         allowed = ", ".join(g.value for g in Granularity)
         raise UsageError(f"granularity {requested!r} is not one of {allowed}") from exc
-    points = span.total_seconds() / _SECONDS_PER_GRANULARITY[chosen]
-    if points < 1:
-        raise UsageError(
-            f"granularity {chosen} is coarser than the whole window ({span}); "
-            "pick a finer one or a longer window"
-        )
+    _require_points(chosen, span, start, now, explicit=True)
+    _require_retained(chosen, start, now)
     return chosen

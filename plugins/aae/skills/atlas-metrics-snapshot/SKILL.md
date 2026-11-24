@@ -16,7 +16,7 @@ of this `SKILL.md`. Call it `$AM` below.
 ```bash
 $AM snapshot --cluster <name>                               # overview profile, all nodes
 $AM snapshot --cluster <name> --profile replication --nodes secondaries
-$AM snapshot --cluster <name> --profile cpu --last 5m --granularity PT10S
+$AM snapshot --cluster <name> --profile cpu --last 5m --granularity PT10S   # premium monitoring (M40+) only
 $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_NORMALIZED_CPU_USER:warn=50,crit=80
 ```
 

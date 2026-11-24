@@ -53,14 +53,14 @@ built and tested offline. Live verification against a real cluster is the remain
 |---|---|
 | Every command runs only allowlisted reads (proved against a recording fake CLI) | Done |
 | Failures exit non-zero and quote the command and the CLI's error. Never an empty report. | Done |
-| Thresholds, inheritance, unit checks, window and granularity rules are covered by tests | Done (66 offline tests) |
+| Thresholds, inheritance, unit checks, window, granularity and retention rules are covered by tests | Done (76 offline tests) |
 | Every documented example command parses against the real argument parser | Done |
 | No real hostnames or IDs in the added files | Done (tested) |
 | Runs on Python 3.9 | Done (tested) |
-| Independent code review; every finding fixed or answered | Done: 9 bugs fixed, each with a regression test |
+| Independent code review; every finding fixed or answered | Done |
 | Setup (service account, roles, CLI profile, access list) works live and is documented for every user | Done |
-| Cluster-level commands (collections, query shapes, advisor index and schema parts) verified live | Done: see `knowledge/atlas_metrics/LIVE_VERIFICATION.md` |
-| Per-node commands (snapshot, history, storage, Search, slow queries, incident) verified live | Done, against the paused cluster's recorded window: see `LIVE_VERIFICATION.md` |
+| Cluster-level commands (collections, query shapes, advisor index and schema parts) verified live | Done, on CLI 1.60.1 (2026-11-24) |
+| Per-node commands (snapshot, history, storage, Search, slow queries, incident) verified live | Done, on CLI 1.60.1 (2026-11-24), over a paused cluster's past window |
 
 ## Open items
 

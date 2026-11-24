@@ -26,7 +26,10 @@ $AM history --cluster <name> --last 7d --profile connections --nodes primary --f
 - **Time resolution** is chosen from the window length (up to 1h → 1 minute, up to
   1 day → 5 minutes, up to 7 days → 1 hour, longer → 1 day). Override it with
   `--granularity` only when the user asks for finer or coarser points. Atlas keeps
-  fine-grained data for a limited time, so very old windows come back coarse or empty.
+  1- and 5-minute points for 48 hours and hourly ones for 63 days, so the engine moves
+  an older window to the finest resolution Atlas still has. A window shorter than that
+  (15 minutes last week) is refused with the width to widen it to: widen it, don't
+  report "no data".
 - **A paused cluster** answers only for an explicit `--start`/`--end` ending before it
   paused (`$AM hosts` shows when it last reported). That's how to do a post-mortem on
   a cluster someone paused afterwards.

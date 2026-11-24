@@ -248,10 +248,12 @@ class AtlasCli:
                                              "stderr": detail[:2000]})
             fix = failure_hint(detail)
             if not fix and FINE_GRANULARITY in shown and SERVER_ERROR_CODE in detail:
-                # Live 2026-11-22: a PT10S request for a window two days old returns a
-                # bare 500 instead of an empty series.
-                fix = ("Atlas keeps 10-second points only for a short time. For an older "
-                       "window, use --granularity PT1M or leave it out.")
+                # Atlas answers PT10S it doesn't have with a bare 500, not an empty series.
+                # Windows older than its 8-hour retention are refused before the call, so
+                # this is a cluster without premium monitoring.
+                fix = ("Atlas collects 10-second points only with premium monitoring (a project "
+                       "with an M40 or larger cluster), and keeps them for 8 hours. Use "
+                       "--granularity PT1M or leave it out.")
             hint = f"\n  {fix}" if fix else ""
             raise AtlasCliError(f"{shown}\n  failed (exit {proc.returncode}): {detail}{hint}",
                                 {"command": shown, "rc": proc.returncode})

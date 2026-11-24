@@ -79,7 +79,7 @@ and can't see your documents.
 
 | Need | Detail |
 |---|---|
-| `atlas` CLI | Verified on **1.59.1**. Another version works if `doctor` finds every command. |
+| `atlas` CLI | Verified on **1.60.1**. Another version works if `doctor` finds every command. |
 | `python3` 3.9+ | The engine uses the standard library only. macOS's built-in `python3` is enough. |
 | Authentication | `atlas auth login`, or a service account through `MONGODB_ATLAS_CLIENT_ID` / `MONGODB_ATLAS_CLIENT_SECRET`. A service account doesn't expire mid-session the way a user login can. |
 | Atlas role | **Project Read Only** plus **Project Observability Viewer**. Read Only covers the metrics. Observability Viewer adds query shape statistics and un-redacted query values in the Performance Advisor, without the right to read documents that a data-access role would grant. |
@@ -183,7 +183,7 @@ Defaults: `snapshot` uses the last 15 minutes; `history`, `collections`,
 
 Granularity is the time between two data points: 10 seconds, 1 minute, 5 minutes,
 1 hour or 1 day. Atlas rejects a request whose granularity doesn't suit its window,
-so the engine picks it from the window length:
+so the engine picks it from the window length, then from the window's age:
 
 | Window up to | Granularity |
 |---|---|
@@ -192,10 +192,24 @@ so the engine picks it from the window length:
 | 7 days | 1 hour (`PT1H`) |
 | longer | 1 day (`P1D`) |
 
-Override it with `--granularity PT10S` when you need finer points over a short
-window. Atlas keeps fine-grained points only for a limited time. A 10-second
-request for a window a couple of days old fails with an HTTP 500 from Atlas, and
-the engine's error says to use `PT1M` instead.
+Atlas keeps each granularity only for a while, then compacts it into the next
+coarser one:
+
+| Granularity | Kept for |
+|---|---|
+| 10 seconds | 8 hours, and only with premium monitoring (a project with an M40 or larger cluster) |
+| 1 minute, 5 minutes | 48 hours |
+| 1 hour | 63 days |
+| 1 day | Forever |
+
+So a window that starts more than 48 hours ago gets hourly points, even when it is
+short. A window shorter than the only granularity Atlas still has for it (say, 15
+minutes from last week) is refused with the width to widen it to. `--compare`
+moves both windows to whatever the older one needs, so they stay comparable.
+
+Override it with `--granularity PT10S` when you need finer points over a short,
+recent window. A granularity you name that Atlas no longer has for the window is
+refused before any call, with the one to use instead.
 
 ## How do I choose which nodes to look at?
 
@@ -488,7 +502,7 @@ silently returns nothing.
 | Not included | Why |
 |---|---|
 | Anything that writes: pinning, creating or dropping indexes, acknowledging alerts, changing the slow-query threshold | These skills are read-only by design. Each report tells you the change to make yourself. |
-| Per-shard aggregate measurements | The Admin API has them, but CLI 1.59.1 doesn't expose the operation. Use `--shard` with per-process metrics instead. |
+| Per-shard aggregate measurements | The Admin API has them, but CLI 1.60.1 doesn't expose the operation. Use `--shard` with per-process metrics instead. |
 | Downloading raw server logs | Logs aren't metrics, and they can be large. Use `atlas logs download`. |
 | Per-collection size | Atlas exposes no per-collection size measurement. Database level is the finest available. |
 | Alert configuration | Configuring alerts is a write. Use the Atlas UI or the `atlas-cli` specialist. |
@@ -500,9 +514,20 @@ against a fake `atlas` that records every command it receives. It proves the
 read-only allowlist, fail-fast errors, thresholds, profile inheritance, window and
 granularity rules, and the parsing of each response shape. It also runs on Python 3.9.
 
-Live runs against a real cluster, with the CLI version, tier and per-command result,
-are recorded in [`LIVE_VERIFICATION.md`](LIVE_VERIFICATION.md). Rerun them with
-`tests/live/atlas_metrics_live.sh --cluster <name>`.
+Every command was last run live on 2026-11-24 with CLI 1.60.1, as the read-only
+service account, against an M10 replica set (MongoDB 8.0, with an Atlas Search index)
+that was paused, over a past window. Rerun the live suite with
+`tests/live/atlas_metrics_live.sh --cluster <name>` (add `--end <time>` for a paused
+cluster). It prints a summary with hostnames and IDs masked.
+
+Not verified live yet:
+
+- **A cluster under load.** The test cluster had little traffic, so query shapes,
+  suggested indexes and schema advice came back empty. Their calls and response
+  formats are verified; their contents are not.
+- **A crossed threshold on live data.** The threshold logic is covered offline only.
+- **Sharded clusters** (mongos and config servers).
+- **10-second granularity.** The test cluster has no premium monitoring.
 
 ## Reference
 
@@ -551,3 +576,4 @@ Every command takes `--cluster`, `--project-id`, `--atlas-profile`, `--format`,
 | `ATLAS_METRICS_CONFIG` | Use another config file |
 | `ATLAS_METRICS_ATLAS_BIN` | Use another `atlas` binary |
 | `ATLAS_METRICS_LOG_LEVEL` | `debug` / `info` / `warning` (default) / `error`. JSON logs go to stderr; `info` shows every `atlas` command run. |
+| `ATLAS_METRICS_NOW` | Tests only: pins "now" to an ISO time, so fixed-date fixtures don't age past the retention rules. |

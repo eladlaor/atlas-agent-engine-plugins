@@ -4,7 +4,7 @@
 #
 # Opt-in and read-only: it runs every engine command (which can only issue
 # allowlisted GETs) and prints a summary with no hostnames, project IDs or
-# query text, so the result can be pasted into the public verification record.
+# query text, so the result can be shared.
 #
 # Usage:
 #   tests/live/atlas_metrics_live.sh --cluster <name> [--project-id <id>] [--atlas-profile <p>]
@@ -13,9 +13,11 @@
 #
 #   --end measures every window back from that time instead of from now. Use it for
 #   a paused cluster, with a time just before it last reported (atlas-metrics hosts).
+#   Atlas keeps minute-level data for 48 hours, so when --end is older than that every
+#   window is widened to at least an hour (the finest granularity Atlas still has).
 #
-# Exit codes: 0 = every command ran (0/1/4 are all "ran"), 1 = at least one
-# command failed with a usage or CLI error (2/3).
+# Exit codes: 0 = every command ran (0/1/4 are all "ran"; the PT10S case must be
+# refused with 2 or 3), 1 = at least one command failed with a usage or CLI error.
 
 set -uo pipefail
 
@@ -53,6 +55,8 @@ import datetime as d, re, sys
 end = d.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00"))
 n, unit = re.match(r"(\d+)([mhd])$", sys.argv[2]).groups()
 span = d.timedelta(**{{"m": "minutes", "h": "hours", "d": "days"}[unit]: int(n)})
+if d.datetime.now(d.timezone.utc) - (end - span) > d.timedelta(hours=48):
+    span = max(span, d.timedelta(hours=1))
 fmt = "%Y-%m-%dT%H:%M:%SZ"
 print(f"--start {(end - span).strftime(fmt)} --end {end.strftime(fmt)}")
 PY
@@ -83,7 +87,11 @@ run() {  # run <label> <engine args...>
   local out="${OUT_DIR}/$(echo "$label" | tr ' /' '__').json" err="${OUT_DIR}/$(echo "$label" | tr ' /' '__').err"
   "$AM" "$@" --format json >"$out" 2>"$err"
   local rc=$?
-  case "$rc" in 0|1|4) : ;; *) FAILED=$((FAILED + 1)) ;; esac
+  if [ -n "${EXPECT_REFUSAL:-}" ]; then
+    case "$rc" in 2|3) : ;; *) FAILED=$((FAILED + 1)) ;; esac
+  else
+    case "$rc" in 0|1|4) : ;; *) FAILED=$((FAILED + 1)) ;; esac
+  fi
   summarize "$label" "$rc" "$out" "$err"
 }
 
@@ -99,7 +107,9 @@ for p in cpu memory-cache operations latency query-efficiency connections replic
 done
 run "history 24h compare 1d"     history "${TARGET[@]}" $(win 24h) --compare 1d --nodes primary
 run "history 7d"                 history "${TARGET[@]}" $(win 7d) --nodes primary
-run "history 10s granularity"    history "${TARGET[@]}" $(win 30m) --granularity PT10S --nodes primary
+# Expected refusal: by the engine when the window is past PT10S's 8-hour retention, by
+# Atlas (HTTP 500, explained) on a cluster without premium monitoring.
+EXPECT_REFUSAL=1 run "history 10s granularity"    history "${TARGET[@]}" $(win 30m) --granularity PT10S --nodes primary
 run "storage"                    storage "${TARGET[@]}" $(win 6h)
 run "collections"                collections "${TARGET[@]}" $(win 24h)
 [ -n "$NAMESPACE" ] && run "collections percentiles" collections "${TARGET[@]}" $(win 24h) \
