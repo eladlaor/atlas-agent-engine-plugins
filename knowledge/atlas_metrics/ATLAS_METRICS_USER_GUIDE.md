@@ -207,8 +207,8 @@ an empty section. Then `verdict`, the worst threshold result (`ok`, `warn`, `cri
 |---|---|
 | `last`, `avg`, `max`, `p95`, `min` | Statistics over the window |
 | `peak at` | When the maximum happened |
-| `gaps` | Intervals with no sample. Never counted as zero, so a silent node doesn't look idle. |
-| `status` | `ok`, `warn`, `crit` or `no-data`. `stale (N latest points missing)` means the node stopped reporting. |
+| `gaps` | Points the window should hold but doesn't. Never counted as zero, so a silent node doesn't look idle. |
+| `status` | `ok`, `warn` or `crit` against the row's threshold; `no threshold` when the profile sets none; `no-data`. `stale (silent since <time>)` means the node stopped reporting then. |
 
 `--format table` (default) is for the terminal, `markdown` for tickets and post-mortems,
 `json` for scripts: it holds every raw statistic and full log lines.

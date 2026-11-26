@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
 from atlas_metrics.atlas_cli import AtlasCli
-from atlas_metrics.constants import OutputFormat
+from atlas_metrics.constants import OutputFormat, Severity
 from atlas_metrics.errors import AtlasCliError
 from atlas_metrics.profiles import Config
 from atlas_metrics.report import Report
@@ -65,8 +65,10 @@ COMPARE_COLUMNS = ["node", "measurement", "avg", "max", "baseline avg", "Δ avg 
 
 def series_row(scope: str, s: SeriesSummary, columns: List[str]) -> List[Any]:
     status = str(s.severity)
+    if s.threshold is None and s.severity is Severity.OK:
+        status = "no threshold"
     if s.stale:
-        status = f"{status}, stale ({s.trailing_gaps} latest points missing)"
+        status = f"{status}, stale (silent since {s.last_at})"
     by_column: Dict[str, Any] = {
         "node": scope, "scope": scope, "namespace": scope, "measurement": s.name,
         "last": human(s.last, s.units), "avg": human(s.avg, s.units),

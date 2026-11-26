@@ -36,7 +36,8 @@ $AM query-shapes --cluster <name> --shape <queryShapeHash> --format json
 - **`docs examined/returned` far above 1 means the query scans to find a few
   documents.** That is the classic missing-index signature. Hand off to
   `atlas-metrics-advisor`.
-- **The shape hash identifies the shape.** Open it with `--shape <hash>` to see the
+- **The shape hash identifies the shape.** Open it with `--shape <hash>` (the shortened
+  hash in the table works, with the same window) to see the
   full shape and the `firstSeen`/`lastSeen` application and driver, which answers
   "who sends this".
 - **No shapes returned** has two possible causes. Either no matching queries ran in the

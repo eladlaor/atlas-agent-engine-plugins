@@ -153,7 +153,7 @@ def _slow(ctx: RunContext, window: Window, namespaces: List[str], report: Report
 def cmd_incident(ctx: RunContext) -> Report:
     if not ctx.args.start:
         raise UsageError("incident needs --start (and usually --end): the time the problem began")
-    core = window_for(ctx, DEFAULT_HISTORY_WINDOW)
+    core = window_for(ctx, DEFAULT_HISTORY_WINDOW, check_points=False)  # checked once padded
     if ctx.args.pad_minutes is not None and ctx.args.pad_minutes < 0:
         raise UsageError("--pad-minutes must be zero or more")
     pad = timedelta(seconds=ctx.args.pad_minutes * 60 if ctx.args.pad_minutes is not None
@@ -169,7 +169,7 @@ def cmd_incident(ctx: RunContext) -> Report:
         rows += [(proc.label(), s) for s in fetch_process(ctx, proc, profile, window, report)]
     rows.sort(key=lambda r: {"crit": 0, "warn": 1}.get(str(r[1].severity), 2))
     add_series_section(report, "Measurements across the padded window (worst first)", rows,
-                       SNAPSHOT_COLUMNS + ["peak at"], per_node=True)
+                       SNAPSHOT_COLUMNS + ["peak at"], node_window=window)
     _alerts(ctx, cluster, window, report)
     _events(ctx, cluster, window, report)
     return report

@@ -27,8 +27,15 @@ from atlas_metrics.errors import AtlasCliError, InvalidMeasurementError, NoDataE
 from atlas_metrics.logging_setup import get_logger
 from atlas_metrics.profiles import Profile, adjust_profile
 from atlas_metrics.report import Report, Section
-from atlas_metrics.summarize import SeriesSummary, attach_baseline, evaluate, human, summarize_series
-from atlas_metrics.time_window import Window, iso, parse_duration, resolve_window
+from atlas_metrics.summarize import (
+    SeriesSummary,
+    attach_baseline,
+    check_reporting,
+    evaluate,
+    human,
+    summarize_series,
+)
+from atlas_metrics.time_window import Window, iso, parse_duration, parse_instant, resolve_window
 from atlas_metrics.topology import (
     Process,
     cluster_processes,
@@ -71,11 +78,12 @@ def require_answerable(ctx: RunContext, cluster: str) -> None:
     nodes_for(ctx, allow_paused=None, cluster=cluster)
 
 
-def window_for(ctx: RunContext, default_last: str) -> Window:
+def window_for(ctx: RunContext, default_last: str, check_points: bool = True) -> Window:
     return resolve_window(
         last=ctx.args.last or ("" if ctx.args.start else ctx.config.default("last")),
         start=ctx.args.start or "", end=ctx.args.end or "",
         granularity=ctx.args.granularity or "", default_last=default_last,
+        check_points=check_points,
     )
 
 
@@ -145,10 +153,16 @@ def fetch_process(ctx: RunContext, proc: Process, profile: Profile, window: Wind
 
 
 def add_series_section(report: Report, title: str, rows: List[Tuple[str, SeriesSummary]],
-                       columns: List[str], per_node: bool = False) -> Section:
-    """Add one table of series. With per_node, each row's scope is one node (or one of its
-    partitions), and a node whose every series is empty or has stopped makes the verdict warn:
-    a health check must not pass while a node is silent."""
+                       columns: List[str], node_window: Optional[Window] = None) -> Section:
+    """Add one table of series. With node_window, each row's scope is one node (or one of
+    its partitions) over that window: gaps are counted against the points the window should
+    hold, a series whose last point is too old is stale, and a node whose every series is
+    empty or stale makes the verdict warn, because a health check must not pass while a node
+    is silent."""
+    if node_window is not None:
+        for _, summary in rows:
+            check_reporting(summary, node_window.end, node_window.step_seconds,
+                            node_window.expected_points, parse_instant)
     if not rows:
         raise NoDataError(f"{title}: no series at all.", {"warnings": report.atlas_warnings})
     if all(s.severity is Severity.NO_DATA for _, s in rows):
@@ -161,7 +175,7 @@ def add_series_section(report: Report, title: str, rows: List[Tuple[str, SeriesS
         report.context["series without data"] = missing
     if stale:
         report.context["stale series"] = stale
-    if per_node:
+    if node_window is not None:
         by_scope: Dict[str, List[SeriesSummary]] = {}
         for scope, summary in rows:
             by_scope.setdefault(scope, []).append(summary)
@@ -215,6 +229,11 @@ def cmd_process(ctx: RunContext, mode: str) -> Report:
             before = {s.name: s for s in fetch_process(ctx, proc, profile, baseline_window, report)}
             current = [attach_baseline(s, before[s.name]) if s.name in before else s for s in current]
         rows += [(proc.label(), s) for s in current]
+    if baseline_window and rows and all(
+            s.baseline is None or (s.baseline.get("avg") is None and s.baseline.get("max") is None)
+            for _, s in rows):
+        report.add_warning(f"the earlier window ({iso(baseline_window.start)} → "
+                           f"{iso(baseline_window.end)}) has no data, so nothing is compared.")
     if not rows:
         raise NoDataError(f"Atlas returned no {profile.name} measurements for {cluster} in "
                           f"{window.describe()}", {"warnings": report.atlas_warnings})
@@ -222,7 +241,7 @@ def cmd_process(ctx: RunContext, mode: str) -> Report:
         columns = COMPARE_COLUMNS
     else:
         columns = SNAPSHOT_COLUMNS if mode == "snapshot" else SERIES_COLUMNS
-    add_series_section(report, f"{profile.description}", rows, columns, per_node=True)
+    add_series_section(report, f"{profile.description}", rows, columns, node_window=window)
     return report
 
 
@@ -266,7 +285,7 @@ def _storage_disks(ctx: RunContext, nodes: List[Process], window: Window, report
                 window, report, f"{proc.alias} {partition}", f"disk {partition}",
                 process_id=f"{proc.process_id}/disk")]
     add_series_section(report, "Disks — " + profile.description, rows, SNAPSHOT_COLUMNS,
-                       per_node=True)
+                       node_window=window)
 
 
 def _storage_databases(ctx: RunContext, nodes: List[Process], window: Window, report: Report) -> None:

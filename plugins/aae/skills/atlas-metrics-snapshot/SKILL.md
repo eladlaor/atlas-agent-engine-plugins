@@ -47,8 +47,12 @@ $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_
 - **`ATLAS WARNING` lines are Atlas explaining itself,** for example a tier too small
   for that metric. Repeat them to the user and don't drop them.
 - **Gaps are missing samples, not zeros.** A node with many gaps is a finding in itself.
-  A status ending in `stale (N latest points missing)` means the node reported earlier
-  in the window and then stopped. Report that before any threshold result.
+  Replication lag is sampled every 85 seconds, so a few gaps on it at 1-minute
+  resolution are normal. A status ending in `stale (silent since <time>)` means the node
+  stopped reporting then; it is also listed under `not reporting`. Report that before any
+  threshold result.
+- **`no threshold`** means the profile sets none for that row: nothing was judged, so
+  don't call it healthy.
 - Thresholds are starting points, not universal truths. If the user says a value is
   normal for them, offer to save it in a profile (`atlas-metrics-profiles`).
 

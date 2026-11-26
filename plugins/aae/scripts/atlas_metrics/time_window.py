@@ -161,6 +161,14 @@ class Window:
     def span(self) -> timedelta:
         return self.end - self.start
 
+    @property
+    def step_seconds(self) -> int:
+        return _SECONDS_PER_GRANULARITY[self.granularity]
+
+    @property
+    def expected_points(self) -> int:
+        return max(1, int(self.span.total_seconds() // self.step_seconds))
+
     def with_baseline(self, back: timedelta, explicit: bool = False,
                       now: Optional[datetime] = None) -> Tuple["Window", "Window"]:
         """This window and the same-length one `back` earlier, at one shared granularity.
@@ -187,8 +195,11 @@ class Window:
         start, end = self.start - pad, min(self.end + pad, now)
         if keep_granularity:
             _require_retained(self.granularity, start, now)
+            _require_points(self.granularity, end - start, start, now, explicit=True)
             return Window(start, end, self.granularity)
-        return Window(start, end, choose_granularity(end - start, start, now))
+        granularity = choose_granularity(end - start, start, now)
+        _require_points(granularity, end - start, start, now, explicit=False)
+        return Window(start, end, granularity)
 
     def describe(self) -> str:
         return f"{iso(self.start)} → {iso(self.end)} @ {self.granularity}"
@@ -201,10 +212,13 @@ def resolve_window(
     granularity: str = "",
     default_last: str = "",
     now: Optional[datetime] = None,
+    check_points: bool = True,
 ) -> Window:
     """Turn the user's window flags into one absolute Window.
 
-    Exactly one shape is allowed: --last, or --start (with optional --end).
+    Exactly one shape is allowed: --last, or --start (with optional --end). With
+    check_points=False the window may be shorter than its granularity, for a caller that
+    widens it first (incident pads it) and checks the widened window.
     """
     now = now or utc_now()
     if last and (start or end):
@@ -217,25 +231,30 @@ def resolve_window(
     else:
         span = parse_duration(last or default_last)
         finish, begin = now, now - span
+    if begin > now:
+        raise UsageError(f"window starts in the future: {iso(begin)}")
     if finish <= begin:
         raise UsageError(f"window ends before it starts: {iso(begin)} → {iso(finish)}")
     if finish > now + timedelta(minutes=1):
         raise UsageError(f"window ends in the future: {iso(finish)}")
-    chosen = _pick_granularity(granularity, begin, finish, now)
+    chosen = _pick_granularity(granularity, begin, finish, now, check_points)
     return Window(begin, finish, chosen)
 
 
-def _pick_granularity(requested: str, start: datetime, end: datetime, now: datetime) -> Granularity:
+def _pick_granularity(requested: str, start: datetime, end: datetime, now: datetime,
+                      check_points: bool = True) -> Granularity:
     span = end - start
     if not requested:
         chosen = choose_granularity(span, start, now)
-        _require_points(chosen, span, start, now, explicit=False)
+        if check_points:
+            _require_points(chosen, span, start, now, explicit=False)
         return chosen
     try:
         chosen = Granularity(requested.upper())
     except ValueError as exc:
         allowed = ", ".join(g.value for g in Granularity)
         raise UsageError(f"granularity {requested!r} is not one of {allowed}") from exc
-    _require_points(chosen, span, start, now, explicit=True)
+    if check_points:
+        _require_points(chosen, span, start, now, explicit=True)
     _require_retained(chosen, start, now)
     return chosen

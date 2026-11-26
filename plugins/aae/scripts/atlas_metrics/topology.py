@@ -143,11 +143,12 @@ def select_nodes(
     if shard:
         selected = [p for p in selected if shard in (p.replica_set, p.shard)]
         if not selected:
-            raise TopologyError(f"no process belongs to shard/replica set {shard!r}")
+            raise UsageError(f"no process belongs to shard/replica set {shard!r}; "
+                             "`hosts` lists them")
     if host:
         selected = [p for p in selected if host in p.alias or host in p.process_id]
         if not selected:
-            raise TopologyError(f"no process matches host {host!r}")
+            raise UsageError(f"no process matches host {host!r}; `hosts` lists them")
     selector = NodeSelector(nodes) if nodes else NodeSelector.ALL
     if selector is NodeSelector.PRIMARY:
         selected = [p for p in selected if p.is_primary]

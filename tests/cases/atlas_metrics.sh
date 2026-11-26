@@ -618,14 +618,65 @@ test_all_empty_series_are_no_data_not_healthy() {
   assert_contains "$AM_ERR" "only empty series" "message"
 }
 
+# Live 2026-11-26: when a node goes quiet, Atlas doesn't send empty points; its series just
+# ends. Staleness is the last real point's age at the window's end.
 test_a_node_that_stopped_reporting_is_marked_stale() {
   am_setup
   am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
-    'for m in d["measurements"]:
-    m["dataPoints"][-1]["value"] = None; m["dataPoints"][-2]["value"] = None'
+    'd["measurements"] = [dict(m, dataPoints=m["dataPoints"][:1]) for m in d["measurements"]]'
   am snapshot "${AM_WINDOW[@]}" --nodes primary
-  assert_contains "$AM_OUT" "stale (2 latest points missing)" "stale status" || return 1
-  assert_contains "$AM_OUT" "stale series:" "header counts stale series"
+  assert_eq 1 "$AM_RC" "a stopped node is a finding" || return 1
+  assert_contains "$AM_OUT" "stale (silent since 2026-11-20T14:00:00Z)" "stale status" || return 1
+  assert_contains "$AM_OUT" "stale series:" "header counts stale series" || return 1
+  assert_contains "$AM_OUT" "not reporting:" "the node is named"
+}
+
+# Live 2026-11-26: at PT1M Atlas puts empty placeholder points between the real ones.
+test_placeholder_points_between_real_ones_are_not_gaps() {
+  am_setup
+  am snapshot "${AM_WINDOW[@]}" --nodes primary --format json
+  local before
+  before="$(am_json 'sorted((r["name"], r["gaps"]) for r in d["sections"][0]["rows"])')"
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'd["measurements"] = [dict(m, dataPoints=[q for p in m["dataPoints"] for q in (p, {"timestamp": p["timestamp"][:17] + "10Z"})]) for m in d["measurements"]]'
+  am snapshot "${AM_WINDOW[@]}" --nodes primary --format json
+  assert_eq "$before" "$(am_json 'sorted((r["name"], r["gaps"]) for r in d["sections"][0]["rows"])')" \
+    "gaps unchanged by placeholders"
+}
+
+test_rows_without_a_threshold_say_so() {
+  am_setup
+  am collections "${AM_WINDOW[@]}"
+  assert_contains "$AM_OUT" "no threshold" "collection-latency has no thresholds"
+}
+
+test_a_shortened_shape_hash_is_resolved() {
+  am_setup
+  am query-shapes "${AM_WINDOW[@]}" --shape 2222222222222222
+  case "$AM_RC" in 0|1) : ;; *) fail "query-shapes --shape exited $AM_RC: $AM_ERR"; return 1 ;; esac
+  grep -q '2222222222222222222222222222222222222222222222222222222222222222' "${FAKE_ATLAS_LOG}" \
+    || { fail "the full hash was not sent"; return 1; }
+  am query-shapes "${AM_WINDOW[@]}" --shape 9999999999999999
+  assert_eq 2 "$AM_RC" "an unknown short hash" || return 1
+  assert_contains "$AM_ERR" "no query shape in this window has a hash starting" "message"
+}
+
+test_incident_checks_the_padded_window() {
+  am_setup
+  export ATLAS_METRICS_NOW="2026-11-24T00:00:00Z"
+  am incident --cluster demo-cluster --start 2026-11-20T14:00:00Z --end 2026-11-20T14:40:00Z --nodes primary
+  case "$AM_RC" in 0|1) : ;; *) fail "40 minutes padded to 70 must be answerable: $AM_RC $AM_ERR"; return 1 ;; esac
+  am incident --cluster demo-cluster --start 2026-11-20T14:00:00Z --end 2026-11-20T14:40:00Z --nodes primary --pad-minutes 0
+  assert_eq 2 "$AM_RC" "unpadded, 40 minutes is shorter than the hourly data left"
+}
+
+test_unknown_host_and_future_start_are_usage_errors() {
+  am_setup
+  am snapshot "${AM_WINDOW[@]}" --host no-such-host
+  assert_eq 2 "$AM_RC" "unknown --host" || return 1
+  am snapshot --cluster demo-cluster --start 2026-11-21T00:00:00Z --nodes primary
+  assert_eq 2 "$AM_RC" "future start" || return 1
+  assert_contains "$AM_ERR" "window starts in the future" "message"
 }
 
 test_an_invalid_config_default_is_a_config_error_not_a_crash() {

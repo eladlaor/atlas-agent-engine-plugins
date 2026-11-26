@@ -7,9 +7,15 @@ never as zero: averaging a gap as 0 makes a down host look idle.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
-from atlas_metrics.constants import STALE_TRAILING_GAPS, Direction, Severity
+from atlas_metrics.constants import (
+    REPORTING_DELAY_SECONDS,
+    STALE_GRANULARITY_STEPS,
+    Direction,
+    Severity,
+)
 from atlas_metrics.errors import ConfigError
 from atlas_metrics.profiles import Threshold
 
@@ -28,24 +34,20 @@ class SeriesSummary:
     last: Optional[float]
     p95: Optional[float]
     peak_at: str
-    trailing_gaps: int = 0
+    values: int = 0
+    last_at: str = ""
+    stale: bool = False
     severity: Severity = Severity.OK
     threshold: Optional[Dict[str, Any]] = None
     baseline: Optional[Dict[str, Any]] = None
-
-    @property
-    def stale(self) -> bool:
-        """Reported earlier in the window, then stopped. An all-empty series is no-data."""
-        return self.severity is not Severity.NO_DATA and self.trailing_gaps >= STALE_TRAILING_GAPS
 
     def stat(self, key: str) -> Optional[float]:
         return getattr(self, key)
 
     def to_dict(self) -> Dict[str, Any]:
         out = {k: getattr(self, k) for k in
-               ("name", "units", "points", "gaps", "trailing_gaps", "min", "avg", "max", "last",
-                "p95", "peak_at")}
-        out["stale"] = self.stale
+               ("name", "units", "points", "gaps", "min", "avg", "max", "last", "p95", "peak_at",
+                "last_at", "stale")}
         out["severity"] = str(self.severity)
         if self.threshold:
             out["threshold"] = self.threshold
@@ -68,13 +70,8 @@ def summarize_series(raw: Dict[str, Any]) -> SeriesSummary:
     if not values:
         return SeriesSummary(name=name, units=raw.get("units", ""), points=len(points),
                              gaps=len(points), min=None, avg=None, max=None, last=None, p95=None,
-                             peak_at="", trailing_gaps=len(points), severity=Severity.NO_DATA)
+                             peak_at="", severity=Severity.NO_DATA)
     peak_ts, _ = max(present, key=lambda item: item[1])
-    trailing = 0
-    for point in reversed(points):
-        if point.get("value") is not None:
-            break
-        trailing += 1
     return SeriesSummary(
         name=name,
         units=raw.get("units", ""),
@@ -86,8 +83,24 @@ def summarize_series(raw: Dict[str, Any]) -> SeriesSummary:
         last=values[-1],
         p95=_p95(values),
         peak_at=peak_ts,
-        trailing_gaps=trailing,
+        values=len(values),
+        last_at=present[-1][0],
     )
+
+
+def check_reporting(summary: SeriesSummary, end: datetime, step_seconds: int,
+                    expected_points: int, parse) -> None:
+    """For one node's series over a known window: count gaps against the points the window
+    should hold (Atlas also returns empty placeholder points between real ones, which are not
+    missing data), and mark the series stale if its last real point is too old."""
+    if summary.severity is Severity.NO_DATA:
+        summary.gaps = expected_points
+        return
+    summary.gaps = max(0, expected_points - summary.values)
+    if not summary.last_at:
+        raise ConfigError(f"{summary.name}: a data point has a value but no timestamp")
+    silent = (end - parse(summary.last_at)).total_seconds()
+    summary.stale = silent > STALE_GRANULARITY_STEPS * step_seconds + REPORTING_DELAY_SECONDS
 
 
 def evaluate(summary: SeriesSummary, threshold: Optional[Threshold]) -> SeriesSummary:

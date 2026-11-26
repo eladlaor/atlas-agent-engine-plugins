@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Tuple
 from atlas_metrics.constants import (
     DEFAULT_HISTORY_WINDOW,
     DEFAULT_TOP_N,
+    SHAPE_HASH_LENGTH,
     SHAPE_SUMMARY_LIMIT,
     ClusterView,
     Command,
@@ -141,8 +142,9 @@ def cmd_query_shapes(ctx: RunContext) -> Report:
     summaries = [s for s in returned if ctx.args.include_system or not s.get("systemQuery")]
     summaries.sort(key=lambda s: s.get(sort_key) or 0, reverse=True)
     report.context["sorted by"] = ctx.args.sort or "total-time"
-    section = Section(f"Top {top} query shapes", ["#", "namespace", "command", "count", "avg",
-                                                   "p99", "total", "docs examined/returned",
+    section = Section(f"Top {top} query shapes", ["#", "namespace", "command", "count",
+                                                   "avg working time", "p99 exec time",
+                                                   "total working time", "docs examined/returned",
                                                    "keys examined/returned", "shape hash"])
     for i, s in enumerate(summaries[:top], 1):
         section.rows.append([
@@ -160,14 +162,35 @@ def cmd_query_shapes(ctx: RunContext) -> Report:
         section.notes.append(f"Ranked among the {len(returned)} summaries Atlas returned, not "
                              "every shape in the window. Narrow with --namespace or --command "
                              "for an exact top list.")
-    section.notes.append("Show one shape in full with --shape <hash>.")
+    section.notes.append("Show one shape in full with --shape <hash>; the shortened hash "
+                         "shown here works for the same window.")
     report.sections.append(section)
     return report
 
 
+def _full_shape_hash(ctx: RunContext, cluster: str, span: Dict[str, Any]) -> str:
+    """Atlas wants the full 64-character hash; the table shows the first 16."""
+    given = ctx.args.shape.strip().upper()
+    if len(given) == SHAPE_HASH_LENGTH:
+        return given
+    payload = ctx.cli.api(Command.SHAPE_SUMMARIES, {
+        "clusterName": cluster, "namespaces": [], "commands": [],
+        "nSummaries": SHAPE_SUMMARY_LIMIT, **span})
+    hashes = {(s.get("queryShapeHash") or "").upper()
+              for s in require_list(payload, "summaries", "query shape summaries")}
+    matches = sorted(h for h in hashes if h.startswith(given))
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise UsageError(f"no query shape in this window has a hash starting {given}. Use the "
+                         "same window as the list it came from, or the full hash from --format json.")
+    raise UsageError(f"{len(matches)} shapes start with {given}; give more of the hash.")
+
+
 def _shape_details(ctx: RunContext, cluster: str, span: Dict[str, Any], report: Report) -> Report:
     payload = ctx.cli.api(Command.SHAPE_DETAILS, {"clusterName": cluster,
-                                                  "queryShapeHash": ctx.args.shape, **span})
+                                                  "queryShapeHash": _full_shape_hash(ctx, cluster, span),
+                                                  **span})
     collect_atlas_notes(report, payload)
     stats = (payload or {}).get("queryStats") or {}
     section = Section(f"Query shape {ctx.args.shape}", ["field", "value"])
@@ -234,7 +257,7 @@ def cmd_search(ctx: RunContext) -> Report:
                           f"and for a name that doesn't exist: check the name. {INDEX_NAMES_HINT}",
                           {"warnings": report.atlas_warnings})
     add_series_section(report, profile.description, rows, SERIES_COLUMNS,
-                       per_node=(mode == "hardware"))
+                       node_window=window if mode == "hardware" else None)
     return report
 
 

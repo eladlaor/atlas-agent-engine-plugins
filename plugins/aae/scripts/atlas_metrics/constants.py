@@ -256,12 +256,18 @@ INVALID_MEASUREMENT_CODE = "INVALID_METRIC_NAME"
 PAGE_SIZE = 500
 MAX_PAGES = 20
 
-# A series whose last N points are all missing is reported as stale: the node
-# stopped reporting. One trailing gap is normal (the current bucket is open).
-STALE_TRAILING_GAPS = 2
+# A node's series is stale (the node stopped reporting) when its last real point is older
+# than this many granularity steps plus REPORTING_DELAY_SECONDS before the window's end.
+# Atlas doesn't send empty points after a node goes quiet; the series just ends (checked
+# live 2026-11-26), so the last point's time is the only signal. The delay covers the
+# minute or two Atlas takes to publish the newest points.
+STALE_GRANULARITY_STEPS = 2
+REPORTING_DELAY_SECONDS = 5 * 60
 
 # Query shape summaries requested per call (Atlas returns them in its own order).
 SHAPE_SUMMARY_LIMIT = 100
+# Query shape hashes are SHA-256, upper-case hex.
+SHAPE_HASH_LENGTH = 64
 # Databases are ranked by this measurement when the profile has it.
 DATABASE_SIZE_MEASUREMENT = "DATABASE_STORAGE_SIZE"
 
