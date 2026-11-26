@@ -31,7 +31,8 @@ $AM incident --cluster <name> --start 2026-11-20T14:00:00Z --end 2026-11-20T14:3
 Build the timeline in this order, and quote times:
 
 1. **Events** are what changed: elections, restarts, scaling, config changes, maintenance.
-2. **Alerts** are what Atlas noticed, and when.
+2. **Alerts** are what Atlas noticed, and when: every alert open at any time in the
+   window, including ones that opened before it.
 3. **Metrics, worst first,** show what the nodes went through, with `peak at` times.
 
 Then say what came first. A primary election 2 minutes before the CPU peak reads

@@ -73,8 +73,9 @@ $AM snapshot --cluster prod                     # how it's doing right now
 
 Fix anything `doctor` marks `crit` first; it names the cause of nearly every later
 failure. You can ask Claude, which picks the skill and explains the result, or run the
-engine yourself in scripts and CI: it exits 1 when a threshold is crossed, so
-`atlas-metrics.sh snapshot --cluster prod || notify` is a working health check.
+engine yourself in scripts and CI: it exits 1 when a threshold is crossed or a node
+stops reporting, so `atlas-metrics.sh snapshot --cluster prod || notify` is a working
+health check.
 
 ## Which skill answers which question?
 
@@ -166,7 +167,7 @@ $AM profiles validate    # run after every edit
 
 ```json
 {
-  "defaults": {"cluster": "prod", "atlas_profile": "metrics", "last": "6h"},
+  "defaults": {"cluster": "prod", "atlas_profile": "metrics"},
   "profiles": {
     "my-cpu": {"extends": "cpu", "add": ["SYSTEM_NORMALIZED_CPU_IRQ"],
                "thresholds": {"PROCESS_NORMALIZED_CPU_USER": {"warn": 50, "crit": 80}}},
@@ -179,8 +180,10 @@ $AM profiles validate    # run after every edit
 
 A profile either extends another (`extends`, then `add` / `remove` / `thresholds`),
 tunes a built-in by reusing its name, or is built from scratch with `source` and
-`measurements`. Other `defaults` keys: `project_id`, `nodes`, `format`. A flag beats the
-config, which beats the built-in default. Validation is strict: a typo stops every
+`measurements`. Other `defaults` keys: `project_id`, `nodes`, `format`, `last`. A flag
+beats the config, which beats the built-in default, with two exceptions: `search` and
+slow queries keep reading the primary unless `--nodes` says otherwise, and `last`
+replaces every command's default window, including `snapshot`'s 15 minutes. Validation is strict: a typo stops every
 command with a message, rather than silently watching nothing.
 
 ## How do thresholds work?
@@ -348,8 +351,8 @@ Every command takes `--cluster`, `--project-id`, `--atlas-profile`, `--format`,
 
 | Code | Meaning |
 |---|---|
-| 0 | Ran; no threshold crossed |
-| 1 | Ran; at least one threshold crossed |
+| 0 | Ran; no threshold crossed, and every node reporting |
+| 1 | Ran; a threshold was crossed, or a node stopped reporting (named under `not reporting`) |
 | 2 | Usage or config error: bad flag, unknown profile, invalid config |
 | 3 | The `atlas` CLI failed, timed out or returned non-JSON, or the cluster can't answer (not found, or paused for a "now" question). The message quotes the command and its error. |
 | 4 | Atlas answered with no data for the request, including when every series came back empty |

@@ -45,7 +45,7 @@ $AM history --cluster <name> --last 7d --profile connections --nodes primary --f
   measurement went past the line at some point; it does not mean it is still past it.
 - `gaps` counts missing samples. They are never treated as zero.
 
-Exit codes are as in `atlas-metrics-snapshot` (0 ok, 1 thresholds crossed, 2 usage,
+Exit codes are as in `atlas-metrics-snapshot` (0 ok, 1 threshold crossed or node silent, 2 usage,
 3 CLI failure or cluster unavailable, 4 no data, 5 engine bug). Report 2–5 as failures, never as "nothing found".
 
 ## Next steps

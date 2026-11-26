@@ -57,7 +57,9 @@ def nodes_for(ctx: RunContext, default_nodes: str = "", allow_paused: Optional[b
         ctx.notes.append(f"cluster {cluster} is paused; it last reported at "
                          f"{last_report(processes) or 'an unknown time'}. Measurements after "
                          "that are empty.")
-    nodes = ctx.flag("nodes", fallback=default_nodes)
+    # A command with its own node default keeps it unless --nodes names others: the
+    # config's defaults.nodes is for commands that have none.
+    nodes = getattr(ctx.args, "nodes", None) or default_nodes or ctx.config.default("nodes")
     # Cluster-level commands (collections, query-shapes) have no --shard / --host flags.
     return cluster, select_nodes(processes, nodes, getattr(ctx.args, "shard", None) or "",
                                  getattr(ctx.args, "host", None) or "")
@@ -125,7 +127,11 @@ def fetch_measurements(ctx: RunContext, argv: List[str], profile: Profile, windo
                                f"(INVALID_METRIC_NAME).{why}")
             continue
         collect_atlas_notes(report, payload)
-        return summarize_payload(payload, profile, what, requested=wanted)
+        summaries = summarize_payload(payload, profile, what, requested=wanted)
+        absent = [m for m in wanted if m not in {s.name for s in summaries}]
+        if absent:
+            report.add_warning(f"Atlas returned no series for {', '.join(absent)} on {scope}.")
+        return summaries
     raise NoDataError(f"Atlas offers none of profile {profile.name}'s measurements on {scope} "
                       f"(all rejected: {sorted(known_bad) or sorted(profile.measurements)}).",
                       {"warnings": report.atlas_warnings})
@@ -139,7 +145,10 @@ def fetch_process(ctx: RunContext, proc: Process, profile: Profile, window: Wind
 
 
 def add_series_section(report: Report, title: str, rows: List[Tuple[str, SeriesSummary]],
-                       columns: List[str]) -> Section:
+                       columns: List[str], per_node: bool = False) -> Section:
+    """Add one table of series. With per_node, each row's scope is one node (or one of its
+    partitions), and a node whose every series is empty or has stopped makes the verdict warn:
+    a health check must not pass while a node is silent."""
     if not rows:
         raise NoDataError(f"{title}: no series at all.", {"warnings": report.atlas_warnings})
     if all(s.severity is Severity.NO_DATA for _, s in rows):
@@ -152,6 +161,15 @@ def add_series_section(report: Report, title: str, rows: List[Tuple[str, SeriesS
         report.context["series without data"] = missing
     if stale:
         report.context["stale series"] = stale
+    if per_node:
+        by_scope: Dict[str, List[SeriesSummary]] = {}
+        for scope, summary in rows:
+            by_scope.setdefault(scope, []).append(summary)
+        silent = [scope for scope, summaries in by_scope.items()
+                  if all(s.severity is Severity.NO_DATA or s.stale for s in summaries)]
+        if silent:
+            report.context["not reporting"] = "; ".join(silent)
+            report.severities.append(Severity.WARN)
     section = Section(title, columns)
     for scope, summary in rows:
         section.rows.append(series_row(scope, summary, columns))
@@ -204,7 +222,7 @@ def cmd_process(ctx: RunContext, mode: str) -> Report:
         columns = COMPARE_COLUMNS
     else:
         columns = SNAPSHOT_COLUMNS if mode == "snapshot" else SERIES_COLUMNS
-    add_series_section(report, f"{profile.description}", rows, columns)
+    add_series_section(report, f"{profile.description}", rows, columns, per_node=True)
     return report
 
 
@@ -247,7 +265,8 @@ def _storage_disks(ctx: RunContext, nodes: List[Process], window: Window, report
                 ctx, [*Command.METRICS_DISKS_DESCRIBE, proc.process_id, partition], profile,
                 window, report, f"{proc.alias} {partition}", f"disk {partition}",
                 process_id=f"{proc.process_id}/disk")]
-    add_series_section(report, "Disks — " + profile.description, rows, SNAPSHOT_COLUMNS)
+    add_series_section(report, "Disks — " + profile.description, rows, SNAPSHOT_COLUMNS,
+                       per_node=True)
 
 
 def _storage_databases(ctx: RunContext, nodes: List[Process], window: Window, report: Report) -> None:

@@ -311,7 +311,7 @@ def adjust_profile(
     """Apply one-off command-line adjustments on top of a resolved profile."""
     if not (add or remove or threshold_flags):
         return base
-    measurements = [m for m in list(base.measurements) + [a for a in add if a not in base.measurements]
+    measurements = [m for m in list(base.measurements) + [a for a in dict.fromkeys(add) if a not in base.measurements]
                     if m not in set(remove)]
     if not measurements:
         raise UsageError("after --remove, the profile has no measurements left")

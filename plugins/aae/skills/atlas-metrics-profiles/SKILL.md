@@ -30,7 +30,7 @@ The config lives at `~/.config/atlas-metrics/config.json`. `ATLAS_METRICS_CONFIG
 
 ```json
 {
-  "defaults": {"cluster": "prod", "nodes": "all", "format": "table", "last": "6h"},
+  "defaults": {"cluster": "prod", "atlas_profile": "metrics", "format": "table"},
   "profiles": {
     "my-cpu": {"extends": "cpu", "add": ["SYSTEM_NORMALIZED_CPU_IRQ"],
                "thresholds": {"PROCESS_NORMALIZED_CPU_USER": {"warn": 50, "crit": 80}}},

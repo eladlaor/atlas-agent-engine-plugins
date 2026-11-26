@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-from typing import Any, Dict, List, Tuple
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 from atlas_metrics.commands_cluster import (
     SNAPSHOT_COLUMNS,
@@ -25,7 +25,7 @@ from atlas_metrics.constants import (
     Source,
 )
 from atlas_metrics.context import RunContext, collect_atlas_notes, require_list, window_context
-from atlas_metrics.errors import UsageError
+from atlas_metrics.errors import AtlasCliError, UsageError
 from atlas_metrics.logging_setup import get_logger
 from atlas_metrics.report import Report, Section
 from atlas_metrics.summarize import SeriesSummary, human
@@ -169,20 +169,28 @@ def cmd_incident(ctx: RunContext) -> Report:
         rows += [(proc.label(), s) for s in fetch_process(ctx, proc, profile, window, report)]
     rows.sort(key=lambda r: {"crit": 0, "warn": 1}.get(str(r[1].severity), 2))
     add_series_section(report, "Measurements across the padded window (worst first)", rows,
-                       SNAPSHOT_COLUMNS + ["peak at"])
+                       SNAPSHOT_COLUMNS + ["peak at"], per_node=True)
     _alerts(ctx, cluster, window, report)
     _events(ctx, cluster, window, report)
     return report
 
 
-def _within(stamp: str, window: Window) -> bool:
+def _instant(alert: Dict[str, Any], key: str) -> Optional[datetime]:
+    stamp = alert.get(key)
     if not stamp:
-        return False
+        return None
     try:
-        moment = parse_instant(stamp)
-    except UsageError:
-        return False
-    return window.start <= moment <= window.end
+        return parse_instant(stamp)
+    except UsageError as exc:
+        raise AtlasCliError(f"alert {alert.get('id', '?')}: unreadable {key} time {stamp!r}") from exc
+
+
+def _open_during(alert: Dict[str, Any], window: Window) -> bool:
+    """Opened before the window ended, and not resolved before it started."""
+    created, resolved = _instant(alert, "created"), _instant(alert, "resolved")
+    if created is None:
+        raise AtlasCliError(f"alert {alert.get('id', '?')} has no created time")
+    return created <= window.end and (resolved is None or resolved >= window.start)
 
 
 def _all_pages(ctx: RunContext, command: Tuple[str, ...], params: Dict[str, Any], what: str,
@@ -202,12 +210,12 @@ def _all_pages(ctx: RunContext, command: Tuple[str, ...], params: Dict[str, Any]
 
 
 def _alerts(ctx: RunContext, cluster: str, window: Window, report: Report) -> None:
-    section = Section("Alerts that opened, updated or resolved in the window",
+    section = Section("Alerts open at any time during the window",
                       ["created", "resolved", "status", "severity", "event", "metric", "host"])
     for alert in _all_pages(ctx, Command.ALERTS, {}, "alerts", section):
         if alert.get("clusterName") not in (None, cluster):
             continue
-        if not any(_within(alert.get(k, ""), window) for k in ("created", "updated", "resolved")):
+        if not _open_during(alert, window):
             continue
         section.rows.append([alert.get("created"), alert.get("resolved"), alert.get("status"),
                              alert.get("severity"), alert.get("eventTypeName"),

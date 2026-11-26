@@ -882,3 +882,67 @@ test_no_real_hostnames_or_ids_in_the_metrics_files() {
     | grep -v '000000000000000000000000' | grep -v 'mongodb\\\\\.net' | grep -v '__pycache__' || true)"
   assert_eq "" "$hits" "real-looking hostnames or IDs found"
 }
+
+# ------------------------------------------------------ independent review, 2026-11-26
+
+# A health check must not pass while one node is silent: `snapshot || notify` has to fire.
+test_a_silent_node_makes_the_verdict_warn() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'd["measurements"] = [dict(m, dataPoints=[{"timestamp": p["timestamp"]} for p in m["dataPoints"]]) for m in d["measurements"]]'
+  am snapshot "${AM_WINDOW[@]}" --nodes all --format json
+  assert_eq 1 "$AM_RC" "a silent node is a finding" || return 1
+  assert_eq warn "$(am_json 'd["verdict"]')" "verdict" || return 1
+  assert_contains "$(am_json 'd["context"]["not reporting"]')" "shard-00-00" "the silent node is named"
+}
+
+test_a_measurement_atlas_leaves_out_is_named() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/metrics_processes__${AM_PRIMARY}.json" \
+    'd["measurements"] = [m for m in d["measurements"] if m["name"] != "CONNECTIONS"]'
+  am snapshot "${AM_WINDOW[@]}" --nodes primary --format json
+  assert_contains "$(am_json 'd["atlasWarnings"]')" "no series for CONNECTIONS" "named in the report"
+}
+
+test_a_commands_own_node_default_beats_the_config() {
+  am_setup
+  mkdir -p "${HOME}/.config/atlas-metrics"
+  printf '{"defaults": {"nodes": "all"}}\n' > "${HOME}/.config/atlas-metrics/config.json"
+  am search "${AM_WINDOW[@]}"
+  case "$AM_RC" in 0|1) : ;; *) fail "search exited $AM_RC: $AM_ERR"; return 1 ;; esac
+  assert_eq 1 "$(grep -c '"listMeasurements"' "${FAKE_ATLAS_LOG}")" "search reads the primary only"
+}
+
+test_incident_includes_alerts_open_before_it_began() {
+  am_setup
+  am_edit_json "${SANDBOX}/fx/api_alerts_listAlerts.json" \
+    'd["results"].append({"id": "a4", "created": "2026-11-20T09:00:00Z", "status": "OPEN", "clusterName": "demo-cluster", "eventTypeName": "DISK_FULL"})'
+  am incident "${AM_WINDOW[@]}" --nodes primary --format json
+  assert_contains "$AM_OUT" "DISK_FULL" "an alert open since before the window" || return 1
+  am_edit_json "${SANDBOX}/fx/api_alerts_listAlerts.json" \
+    'd["results"].append({"id": "a5", "created": "yesterday", "clusterName": "demo-cluster"})'
+  am incident "${AM_WINDOW[@]}" --nodes primary
+  assert_eq 3 "$AM_RC" "an unreadable alert time is an error, not a dropped alert" || return 1
+  assert_contains "$AM_ERR" "unreadable created time" "message"
+}
+
+test_the_starter_config_names_the_identity_and_keeps_command_windows() {
+  am_setup
+  am profiles init
+  local cfg="${HOME}/.config/atlas-metrics/config.json"
+  grep -q '"atlas_profile": "metrics"' "$cfg" || { fail "init must name the metrics profile"; return 1; }
+  if grep -q '"last"' "$cfg"; then fail "init must not override every command's window"; return 1; fi
+}
+
+test_counts_and_repeats_are_checked() {
+  am_setup
+  am collections "${AM_WINDOW[@]}" --top 0
+  assert_eq 2 "$AM_RC" "--top 0" || return 1
+  am query-shapes "${AM_WINDOW[@]}" --top 101
+  assert_eq 2 "$AM_RC" "--top above what Atlas ranks" || return 1
+  am collections "${AM_WINDOW[@]}" --granularity PT1M
+  assert_eq 2 "$AM_RC" "collections takes no --granularity" || return 1
+  am snapshot "${AM_WINDOW[@]}" --nodes primary --profile cpu --add CONNECTIONS --add CONNECTIONS --format json
+  assert_eq 1 "$(am_json 'sum(1 for r in d["sections"][0]["rows"] if r["name"] == "CONNECTIONS")')" \
+    "a repeated --add adds it once"
+}

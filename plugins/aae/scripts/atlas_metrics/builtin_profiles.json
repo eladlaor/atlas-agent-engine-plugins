@@ -159,7 +159,7 @@
   },
   "replication": {
     "source": "process",
-    "description": "Replication lag and oplog window (reported by secondaries only), oplog growth, and replicated operation rates.",
+    "description": "Replication lag and headroom (reported by secondaries only), oplog growth, and replicated operation rates.",
     "measurements": [
       "OPLOG_REPLICATION_LAG_TIME",
       "OPLOG_MASTER_LAG_TIME_DIFF",

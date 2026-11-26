@@ -41,8 +41,9 @@ $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_
 
 ## Read the result
 
-- **Exit 1 means a threshold was crossed.** It is not an error. Lead with the `crit`
-  rows, then the `warn` rows, naming the node and its role.
+- **Exit 1 means a threshold was crossed, or a node stopped reporting.** It is not an
+  error. Lead with a `not reporting` node if there is one, then the `crit` rows, then the
+  `warn` rows, naming the node and its role.
 - **`ATLAS WARNING` lines are Atlas explaining itself,** for example a tier too small
   for that metric. Repeat them to the user and don't drop them.
 - **Gaps are missing samples, not zeros.** A node with many gaps is a finding in itself.
@@ -55,8 +56,8 @@ $AM snapshot --cluster <name> --add TICKETS_AVAILABLE_READS --threshold PROCESS_
 
 | Code | Meaning |
 |---|---|
-| 0 | Ran, and nothing crossed a threshold |
-| 1 | Ran, and something crossed a threshold |
+| 0 | Ran, nothing crossed a threshold, and every node reported |
+| 1 | Ran, and something crossed a threshold or a node stopped reporting |
 | 2 | Bad flag, profile or config |
 | 3 | The atlas CLI failed, or the cluster can't answer (not found, or paused for a "now" question). The message names the command and quotes its error. |
 | 4 | Atlas returned no data, including a window where every series came back empty |

@@ -33,6 +33,16 @@ log = get_logger("cli")
 _OFFLINE = {"profiles"}  # commands that never call Atlas
 
 
+
+def _positive_int(text: str) -> int:
+    try:
+        value = int(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a whole number") from exc
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be 1 or more, got {value}")
+    return value
+
 def _common(p: argparse.ArgumentParser) -> None:
     g = p.add_argument_group("target")
     g.add_argument("--cluster", help="cluster name (default: config defaults.cluster)")
@@ -93,14 +103,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--disk-profile")
     p.add_argument("--database-profile")
     p.add_argument("--database", action="append", help="only these databases")
-    p.add_argument("--top", type=int)
+    p.add_argument("--top", type=_positive_int)
     p.add_argument("--threshold", action="append", metavar="M:warn=N,crit=N")
 
     p = sub.add_parser("collections", help="per-collection latency and busiest namespaces")
     _common(p), _window(p), _profile(p)
     p.add_argument("--namespace", action="append", help="db.collection (repeatable)")
     p.add_argument("--view", choices=[v.value.lower() for v in ClusterView])
-    p.add_argument("--top", type=int)
+    p.add_argument("--top", type=_positive_int)
 
     p = sub.add_parser("query-shapes", help="per query-shape statistics, or one shape in full")
     _common(p), _window(p)
@@ -108,7 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--command", dest="shape_command", action="append",
                    help="MongoDB command type: find, aggregate, update, ...")
     p.add_argument("--sort", choices=SHAPE_SORTS)
-    p.add_argument("--top", type=int)
+    p.add_argument("--top", type=_positive_int)
     p.add_argument("--shape", help="query shape hash: show its details")
     p.add_argument("--include-system", action="store_true")
 
@@ -121,8 +131,8 @@ def build_parser() -> argparse.ArgumentParser:
     _common(p), _window(p), _nodes(p)
     p.add_argument("--part", action="append", choices=ADVISOR_PARTS)
     p.add_argument("--namespace", action="append")
-    p.add_argument("--top", type=int)
-    p.add_argument("--lines", type=int, help="slow-query log lines per node")
+    p.add_argument("--top", type=_positive_int)
+    p.add_argument("--lines", type=_positive_int, help="slow-query log lines per node")
 
     p = sub.add_parser("incident", help="metrics + alerts + events around a time")
     _common(p), _window(p), _nodes(p), _profile(p)

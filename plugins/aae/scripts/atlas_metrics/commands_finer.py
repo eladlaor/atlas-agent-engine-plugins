@@ -69,6 +69,8 @@ def cmd_collections(ctx: RunContext) -> Report:
     report = Report("collections", f"Collection latency on {cluster} — profile {profile.name}",
                     {"cluster": cluster, "view": str(view), "profile": profile.name,
                      **window_context(window)})
+    if ctx.args.granularity:
+        raise UsageError("collections takes no --granularity: Atlas picks it for this endpoint")
     report.context.pop("granularity")  # Atlas picks it for this endpoint
 
     ranked_payload = ctx.cli.api(Command.COLL_NAMESPACES,
@@ -127,10 +129,13 @@ def cmd_query_shapes(ctx: RunContext) -> Report:
     if ctx.args.shape:
         return _shape_details(ctx, cluster, span, report)
     top = ctx.args.top or DEFAULT_TOP_N
+    if top > SHAPE_SUMMARY_LIMIT:
+        raise UsageError(f"--top can be at most {SHAPE_SUMMARY_LIMIT}: Atlas ranks only that many "
+                         "query shapes per request")
     sort_key = _SHAPE_SORT_KEYS[ctx.args.sort or "total-time"]
     payload = ctx.cli.api(Command.SHAPE_SUMMARIES, {
         "clusterName": cluster, "namespaces": ctx.args.namespace or [], "commands": commands,
-        "nSummaries": max(top, SHAPE_SUMMARY_LIMIT), **span})
+        "nSummaries": SHAPE_SUMMARY_LIMIT, **span})
     collect_atlas_notes(report, payload)
     returned = require_list(payload, "summaries", "query shape summaries")
     summaries = [s for s in returned if ctx.args.include_system or not s.get("systemQuery")]
@@ -228,7 +233,8 @@ def cmd_search(ctx: RunContext) -> Report:
                           "series. Atlas does this both for an index with no activity in the window "
                           f"and for a name that doesn't exist: check the name. {INDEX_NAMES_HINT}",
                           {"warnings": report.atlas_warnings})
-    add_series_section(report, profile.description, rows, SERIES_COLUMNS)
+    add_series_section(report, profile.description, rows, SERIES_COLUMNS,
+                       per_node=(mode == "hardware"))
     return report
 
 

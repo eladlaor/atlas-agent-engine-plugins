@@ -14,7 +14,7 @@ from atlas_metrics.report import Report, Section
 log = get_logger("commands.admin")
 
 EXAMPLE_CONFIG = {
-    "defaults": {"cluster": "<your-cluster-name>", "nodes": "all", "format": "table", "last": "6h"},
+    "defaults": {"cluster": "<your-cluster-name>", "atlas_profile": "metrics", "format": "table"},
     "profiles": {
         "my-cpu": {
             "extends": "cpu",
