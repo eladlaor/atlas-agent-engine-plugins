@@ -151,10 +151,17 @@ Observability Viewer**, save it as the `atlas` CLI profile `metrics`, and set
 organization requires an API access list, add the IPs you work from.
 
 Every command was run live with Atlas CLI 1.60.1 on 2026-11-24, including on a cluster
-under real agent load, and the 0.9.0 fixes were checked live on 2026-11-26. Not yet seen
-with real content: Performance Advisor suggestions, Search query counts above zero,
-sharded clusters and 10-second data. Setup, profiles, thresholds and troubleshooting:
-**[Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md)**.
+under real agent load. The 0.9.0 fixes were checked live on 2026-11-26.
+
+The following hasn't yet been tested with real content:
+
+- Performance Advisor index suggestions and schema advice
+- Search query counts above zero
+- Sharded clusters (mongos and config servers)
+- 10-second data (needs premium monitoring, which comes with an M40 or larger cluster)
+
+**Setup and troubleshooting: [Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md)**
+([troubleshooting section](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md#troubleshooting)).
 
 ### Shell shortcut and daily check
 
