@@ -25,25 +25,12 @@ is why their headers carry a separate "Plugin version:" line.
   `--update-kb` one knowledge-base update fed by both, which bumps the stamp only for what it
   applied. The session notice shows new releases once and names a failed release check.
   Re-run `install-schedule.sh install` to pick this up.
-- `atlas-metrics-*`: nine read-only skills for an Atlas cluster's monitoring data, through
-  the `atlas` CLI. They cover snapshot, history with comparison against an earlier window,
-  storage (disks and databases), per-collection latency, query-shape statistics, Atlas Search
-  and Vector Search, the Performance Advisor (slow queries, suggested and droppable indexes,
-  schema advice), an incident timeline of metrics, alerts and events, and profiles. They share
-  one standard-library Python engine, `scripts/atlas-metrics.sh`, which runs only allowlisted
-  read commands. It ships 17 built-in measurement profiles, accepts user profiles and thresholds
-  from `~/.config/atlas-metrics/config.json`, and returns exit code 1 when a threshold is
-  crossed. A `doctor` command checks the CLI version, auth and every operation the engine
-  uses. It picks the finest time resolution Atlas still keeps for the window's age, and
-  refuses a resolution Atlas has already discarded. Verified live on CLI 1.60.1. Documented
-  in `knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md`.
-- `atlas-metrics-*` setup: the skills run as a dedicated project-level service account,
-  `atlas-metrics-readonly`, with Project Read Only and Project Observability Viewer, saved as
-  the CLI profile `metrics`. A named profile wins over exported `MONGODB_ATLAS_*`
-  credentials and tokens. Refused credentials print the setup steps. An `ORG_REQUIRES_ACCESS_LIST`
-  refusal prints the caller's IP and how an owner can list it; the skills never list it
-  themselves.
-
+- `atlas-metrics-*`: nine read-only skills for an Atlas cluster's monitoring data through the
+  `atlas` CLI: snapshots, history and comparisons, storage, per-collection latency, query
+  shapes, Atlas Search, the Performance Advisor, and incident timelines. Thresholds and
+  measurement profiles are adjustable per run or in `~/.config/atlas-metrics/config.json`.
+  They run as a dedicated read-only service account; see
+  `knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md`.
 - `aae-roadmap`: a subagent (a skill in Codex) for questions about where Atlas Agent Engine
   is going. It labels each roadmap item shipped, announced, planned, concept or unknown,
   quotes the source's own timing, links every claim to its dated source, separates public
