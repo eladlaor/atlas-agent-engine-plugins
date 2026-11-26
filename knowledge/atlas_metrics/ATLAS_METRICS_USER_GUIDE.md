@@ -310,7 +310,8 @@ Every command was last run live on 2026-11-24 with CLI 1.60.1, as the read-only 
 account, against two replica sets with Search indexes: a paused M10 over a past window,
 and a running M20 under about 15 minutes of real agent load. The reports showed the load
 (operation rates up 85–180%, real query shapes and slow queries, index drop candidates,
-per-index Search metrics, a crossed threshold). Rerun with
+per-index Search metrics, a crossed threshold). The 0.9.0 fixes were checked live on
+2026-11-26, against past windows of the M20 after it paused. Rerun with
 `tests/live/atlas_metrics_live.sh --cluster <name>` (`--end <time>` for a paused
 cluster); it masks hostnames and IDs.
 

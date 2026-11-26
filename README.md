@@ -3,10 +3,11 @@
 - [Summary](#summary)
 - [What's inside](#whats-inside)
 - [How does this relate to the skills the CLI installs?](#how-does-this-relate-to-the-skills-the-cli-installs)
-- [How do I read my Atlas cluster's metrics?](#how-do-i-read-my-atlas-clusters-metrics)
 - [Install](#install)
 - [Claude Code vs Codex: what each host gets](#claude-code-vs-codex-what-each-host-gets)
-- [Optional extras](#optional-extras)
+- [Extras](#extras)
+  - [Atlas cluster metrics](#atlas-cluster-metrics)
+  - [Shell shortcut and daily check](#shell-shortcut-and-daily-check)
 - [Status and caveats](#status-and-caveats)
 
 ## Summary
@@ -27,6 +28,9 @@ The plugin adds two things:
    and the docs keep moving — package names, flags and commands have all changed under
    readers. The plugin keeps an assistant from answering confidently from a picture of the
    product that is no longer true.
+
+It also ships read-only **Atlas cluster metrics** skills, useful for any Atlas cluster and
+not only AAE's ([Extras](#atlas-cluster-metrics)).
 
 **Token-efficient by design.** Checking the docs costs no AI tokens: both detectors are
 plain scripts with no AI in them. The scheduled default reads the git history of the
@@ -50,19 +54,20 @@ One plugin, `aae`:
 | `atlas-cli` | Subagent (a skill in Codex) | The Atlas CLI specialist: `atlas` authentication and profiles, clusters, database users, access lists, search indexes, backups, and `atlas api`, the generated escape hatch onto the whole Administration API. Reads `--help` on your installed binary before prescribing anything, and investigates read-only. |
 | `aae-roadmap` | Subagent (a skill in Codex) | The roadmap analyst: what is coming, how sure it is, and who said so. Labels every item shipped, announced, planned, concept or unknown, links every claim to its dated source, keeps public and internal claims apart, and re-checks its sources before repeating them. Keeps a dated roadmap ledger in its per-user memory directory. |
 | `aae-kb-read` | Skill | The guide's bundled knowledge base: a dated drift log, verified details the docs omit, runbooks, and troubleshooting. Every entry carries the date and CLI version it was checked on. |
-| `aae-kb-update` | Skill | Updates the knowledge from one of two sources. **Notes mode** promotes the generic findings from your personal notes into `aae-kb-read`, in your clone of this repo, after you approve. **Docs mode** applies the docs watcher's latest changes to the entries that rest on the changed pages. |
+| `aae-kb-update` | Skill | Updates the knowledge from one of three sources, always after you approve. **Direct mode** files a finding you state, once it checks out against the docs, CLI or API spec. **Notes mode** promotes the generic findings from your personal notes into `aae-kb-read`, in your clone of this repo. **Docs mode** applies the docs watcher's latest changes to the entries that rest on the changed pages. |
 | `aae-scout` | Skill | A cheap check before building anything: confirms the docs and CLI are current, then whether the platform, CLI, SDK, official examples or your repo already do it. Answers CONFIGURE, REUSE, WAIT or BUILD, with dated evidence. |
 | `aae-add-agent` | Skill | Adds one agent to an existing AAE monorepo. `agentengine create` only scaffolds whole new projects. |
 | `aae-delete-agent` | Skill | Tears one agent down completely. `workspace delete` alone leaves secrets, sessions and the database user behind. |
 | `aae-rename-atlas-cluster` | Skill | Atlas clusters cannot be renamed, so this runs the migration that stands in for one: preflight, create the target, move the data and rebuild the Search indexes, re-link the platform, rotate `MONGODB_URI`, redeploy, verify. The additive phases run unattended; the cutover takes one confirmation, and the old cluster is never deleted for you. |
-| `atlas-metrics-*` (9 skills) | Skills + script | Read-only Atlas cluster monitoring through the `atlas` CLI: snapshot, history with week-over-week comparison, storage, collection latency, query shapes, Search, the Performance Advisor, incident timelines, and your own profiles and thresholds. See the [Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md). |
+| `atlas-metrics-*` (9 skills) | Skills + script | Read-only Atlas cluster monitoring through the `atlas` CLI: snapshot, history with week-over-week comparison, storage, collection latency, query shapes, Search, the Performance Advisor, incident timelines, and your own profiles and thresholds. See [Atlas cluster metrics](#atlas-cluster-metrics). |
 | `aae-docs-watch` | Skill | Checks the AAE docs on demand, either by comparing page hashes with the last run or by reading the publishing repository's git history. Detection is deterministic with no AI involved; the model reads only the per-page diffs, and only when something changed. |
-| CLI reference guard | Script | `aae-cli-docs-check.sh` compares the `agentengine` binary's own command tree against the published CLI reference pages and exits non-zero if they disagree. Zero drift across 117 commands at CLI 0.1.118. |
-| Session-start notice | Hook | Asks GitHub, in one request, whether new commits landed in the AAE docs source since the last check, and tells you once if they did. Also tells you once when the last crawl found changed pages, and whether the knowledge base was already updated from them, and warns once a day when the watcher, the probe or the automatic update is failing. |
-| Daily docs crawl | `launchd` job (optional, macOS) | Runs the check every day, at 10:00 by default, retried hourly until it succeeds. With `--update-kb`, it also updates the knowledge base when the docs changed. See [Optional extras](#optional-extras). |
-| `ae` | Shell shortcut (optional) | Type `ae` instead of `agentengine`. See [Optional extras](#optional-extras). |
+| CLI reference guard | Script | `aae-cli-docs-check.sh` compares the `agentengine` binary's own command tree against the published CLI reference pages and exits non-zero if they disagree. |
+| Release watch | Script | `aae-release-check.sh` compares the CLI and SDK versions the knowledge base was verified against (`kb-versions.json`) with the latest releases on GitHub, PyPI and npm. For a new CLI release it verifies the binary's checksum and signature and runs the CLI reference guard against it, without installing anything. |
+| Session-start notice | Hook | Asks GitHub, in one request, whether new commits landed in the AAE docs source since the last check, and tells you once if they did. Also tells you once when the last crawl found changed pages or a new CLI or SDK release, and whether the knowledge base was already updated from them, and warns once a day when the watcher, the probe, the release check or the automatic update is failing. |
+| Daily check | `launchd` job (optional, macOS) | Every day, at 10:00 by default and retried hourly until it succeeds: the docs check, then the release watch. With `--update-kb`, it also updates the knowledge base from what changed. See [Extras](#shell-shortcut-and-daily-check). |
+| `ae` | Shell shortcut (optional) | Type `ae` instead of `agentengine`. See [Extras](#shell-shortcut-and-daily-check). |
 
-Nothing runs on a schedule unless you install the daily crawl. The session-start hook makes
+Nothing runs on a schedule unless you install the daily check. The session-start hook makes
 one request to GitHub's public API, at most once per 15 minutes and with no credentials;
 set `AAE_WATCH_ON_SESSION=off` to make it fully offline.
 
@@ -83,26 +88,6 @@ only inside that project. This plugin builds on them rather than replacing them:
 - **Available everywhere,** not just inside a project directory.
 
 Details: [`CLI_SKILLS_AND_THIS_PLUGIN.md`](plugins/aae/skills/aae-kb-read/references/CLI_SKILLS_AND_THIS_PLUGIN.md).
-
-## How do I read my Atlas cluster's metrics?
-
-Ask: "how is my cluster `prod` doing?", "which collection got slower since yesterday?",
-"what happened at 14:00?". Nine read-only `atlas-metrics-*` skills answer from the
-monitoring data Atlas already records, from cluster down to single query, over any time
-window, against thresholds you can tune. The same engine runs from a shell:
-
-```bash
-plugins/aae/scripts/atlas-metrics.sh doctor --cluster prod
-plugins/aae/scripts/atlas-metrics.sh history --cluster prod --last 24h --compare 7d
-```
-
-**Once per project, before the first run:** create a service account
-`atlas-metrics-readonly` with the roles **Project Read Only** and **Project
-Observability Viewer**, save it as the `atlas` CLI profile `metrics`, and set
-`"atlas_profile": "metrics"` in `~/.config/atlas-metrics/config.json`. If your
-organization requires an API access list, add the IPs you work from. The steps,
-profiles, thresholds and troubleshooting are in the
-**[Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md)**.
 
 ## Install
 
@@ -144,13 +129,40 @@ when asked**. Until you do, Codex skips it and you get no session-start notices.
 | Scheduled daily docs crawl | Opt-in, via macOS `launchd` | Same: opt-in, via macOS `launchd` |
 | `--update-kb` runner | `claude -p`, tested | `codex exec`, **untested** |
 
-## Optional extras
+## Extras
+
+### Atlas cluster metrics
+
+Ask: "how is my cluster `prod` doing?", "which collection got slower since yesterday?",
+"what happened at 14:00?". Nine read-only `atlas-metrics-*` skills answer from the
+monitoring data Atlas already records, from cluster down to single query, over any time
+window, against thresholds you can tune. The same engine runs from a shell:
+
+```bash
+plugins/aae/scripts/atlas-metrics.sh doctor --cluster prod
+plugins/aae/scripts/atlas-metrics.sh history --cluster prod --last 24h --compare 7d
+```
+
+They need the `atlas` CLI and a dedicated cluster (M10 and up): Free and Flex clusters
+publish no per-node metrics. **Once per project, before the first run:** create a service
+account `atlas-metrics-readonly` with the roles **Project Read Only** and **Project
+Observability Viewer**, save it as the `atlas` CLI profile `metrics`, and set
+`"atlas_profile": "metrics"` in `~/.config/atlas-metrics/config.json`. If your
+organization requires an API access list, add the IPs you work from.
+
+Every command was run live with Atlas CLI 1.60.1 on 2026-11-24, including on a cluster
+under real agent load, and the 0.9.0 fixes were checked live on 2026-11-26. Not yet seen
+with real content: Performance Advisor suggestions, Search query counts above zero,
+sharded clusters and 10-second data. Setup, profiles, thresholds and troubleshooting:
+**[Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md)**.
+
+### Shell shortcut and daily check
 
 From a clone of this repo, or from the installed plugin's directory:
 
 ```bash
 plugins/aae/scripts/install-ae-shortcut.sh install          # type `ae` instead of `agentengine`
-plugins/aae/scripts/install-schedule.sh install [--update-kb] # daily docs check on your Mac (launchd)
+plugins/aae/scripts/install-schedule.sh install [--update-kb] # daily docs and release check on your Mac (launchd)
 plugins/aae/scripts/install-schedule.sh status              # installed, current, healthy?
 ```
 
@@ -159,18 +171,21 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
 
 ## Status and caveats
 
+- **Version 0.9.0.** What changed in each release: [changelog](CHANGELOG.md).
 - **Tested in Claude Code**, including the `--update-kb` runner. In Codex (codex-cli
-  0.162.1) the plugin installs and the skills load; that check predates `atlas-cli`, so
-  seven of the eight were exercised. A full conversation, the hook-trust flow and the
-  `--update-kb` runner are untested there.
+  0.162.1) the plugin installs and the skills load; that check predates `atlas-cli`,
+  `aae-roadmap`, `aae-rename-atlas-cluster` and the `atlas-metrics-*` skills, which are
+  untested in Codex. A full conversation, the hook-trust flow and the `--update-kb` runner
+  are untested there too.
 - **The git-sourced detector is the scheduled default, and is new.** Its first run clones
   the publishing repository (around a minute, ~165 MB on disk); later runs only fetch. It has a full
   test suite but no long production record yet. Set `AAE_WATCH_IMPL=hash` when installing
   the schedule to keep the original page-hashing watcher instead.
 - Atlas Agent Engine is in **Public Preview**: *"intended for evaluation and
   prototyping purposes only"*, with no SLAs. This plugin inherits that.
-- Knowledge is checked against the live docs with `agentengine` CLI 0.1.118 and SDK
-  0.11.8; each `aae-kb-read` entry carries its own date. CLI 0.1.119 is out but untested.
+- Knowledge was last verified on 2026-11-24 against `agentengine` CLI 0.1.126 and SDK
+  0.11.15 (`kb-versions.json`); each `aae-kb-read` entry carries its own date. The daily
+  release watch reports anything newer.
 - Not affiliated with or endorsed by MongoDB.
 
 Docs: [user guide](knowledge/usage_guides/USER_GUIDE.md) ·
