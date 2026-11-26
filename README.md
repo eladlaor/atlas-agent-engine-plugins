@@ -186,7 +186,6 @@ work, and their settings: [`HOW_IT_WORKS.md`](plugins/aae/skills/aae-docs-watch/
 - Knowledge was last verified on 2026-11-24 against `agentengine` CLI 0.1.126 and SDK
   0.11.15 (`kb-versions.json`); each `aae-kb-read` entry carries its own date. The daily
   release watch reports anything newer.
-- Not affiliated with or endorsed by MongoDB.
 
 Docs: [user guide](knowledge/usage_guides/USER_GUIDE.md) ·
 [Atlas metrics user guide](knowledge/atlas_metrics/ATLAS_METRICS_USER_GUIDE.md) ·
