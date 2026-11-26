@@ -12,6 +12,8 @@ is why their headers carry a separate "Plugin version:" line.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-26
+
 ### Added
 
 - Release watch: `aae-kb-read/kb-versions.json` stamps the CLI and SDK versions the knowledge
@@ -366,7 +368,8 @@ First release as a standalone repository. Earlier history lives in the `aae` plu
 
 - Internal hostnames and personal model aliases from `aae-guide` examples.
 
-[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/eladlaor/atlas-agent-engine-plugins/compare/v0.5.2...v0.6.0
